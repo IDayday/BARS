@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 def package_logs(run_dir: str, include_patterns: Optional[Iterable[str]] = None) -> str:
     run = Path(run_dir); run.mkdir(parents=True, exist_ok=True); archive_dir = run / 'archives'; archive_dir.mkdir(exist_ok=True)
     archive_path = archive_dir / f'logs_{run.name}_{int(time.time())}.tar.gz'
-    patterns = list(include_patterns or ['logs', 'config.json', 'manifest.json', 'job.json'])
+    patterns = list(include_patterns or ['logs', 'config.json', 'manifest.json', 'job.json', 'stdout.log', 'stderr.log'])
     with tarfile.open(archive_path, 'w:gz') as tar:
         for pat in patterns:
             p = run / pat

@@ -17,6 +17,23 @@ def _pid_alive(pid: int) -> bool:
     if pid<=0: return False
     try: os.kill(pid,0); return True
     except OSError: return False
+def _archive_exists(run_dir: str) -> bool:
+    return bool(run_dir and list((Path(run_dir)/'archives').glob('*.tar.gz')))
+def _last_log_update(run_dir: str) -> Dict[str, object]:
+    if not run_dir: return {'last_log_update_time':None,'last_log_update_age_min':None,'last_log_update_path':'','stale':False}
+    paths=[Path(run_dir)/'stdout.log',Path(run_dir)/'stderr.log',Path(run_dir)/'logs'/'summary.csv',Path(run_dir)/'logs'/'graph.csv',Path(run_dir)/'logs'/'diagnostics.csv',Path(run_dir)/'logs'/'eval.csv']
+    existing=[p for p in paths if p.exists()]
+    if not existing: return {'last_log_update_time':None,'last_log_update_age_min':None,'last_log_update_path':'','stale':False}
+    latest=max(existing,key=lambda p:p.stat().st_mtime); age_min=max(0.0,(time.time()-latest.stat().st_mtime)/60.0)
+    return {'last_log_update_time':latest.stat().st_mtime,'last_log_update_age_min':age_min,'last_log_update_path':str(latest),'stale':age_min>=90.0}
+def _state_with_summary_fallback(st: Dict) -> Dict:
+    out=dict(st); run_dir=out.get('run_dir','')
+    if not run_dir: return out
+    last=read_last_csv_row(os.path.join(run_dir,'logs','summary.csv'))
+    for key in ['env','seed','variant','node_method']:
+        if out.get(key) in {None,'', 'null'} and last.get(key) not in {None,''}:
+            out[key]=last.get(key)
+    return out
 
 def _expand_sweep(sweep_path: str, overrides: Optional[List[str]] = None) -> List[Dict]:
     sweep=load_json(sweep_path); base_config=sweep.get('base_config')
@@ -70,8 +87,12 @@ def _assign_gpu(gpu_indices: Optional[List[int]], running: List[Dict], max_jobs_
 
 def _launch_one(task: Dict, log_root: str, gpu: int) -> subprocess.Popen:
     cmd,run_dir=_build_cmd(task,log_root); Path(run_dir).mkdir(parents=True,exist_ok=True); env=os.environ.copy(); env['CUDA_VISIBLE_DEVICES']=str(gpu)
+    env.setdefault('D4RL_SUPPRESS_IMPORT_ERROR','1')
+    # Avoid CPU oversubscription when many GPU jobs construct SciPy/sklearn graphs concurrently.
+    for _k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','VECLIB_MAXIMUM_THREADS','NUMEXPR_NUM_THREADS']:
+        env.setdefault(_k, '1')
     stdout=open(os.path.join(run_dir,'stdout.log'),'a',buffering=1,encoding='utf-8'); stderr=open(os.path.join(run_dir,'stderr.log'),'a',buffering=1,encoding='utf-8')
-    state={'run_id':task['run_id'],'status':'launching','gpu':gpu,'mem_mb':task['mem_mb'],'run_dir':run_dir,'cmd':cmd,'created_at':time.time()}; save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state)
+    state={'run_id':task['run_id'],'status':'launching','gpu':gpu,'mem_mb':task['mem_mb'],'run_dir':run_dir,'cmd':cmd,'created_at':time.time(),'env':task.get('env'),'seed':task.get('seed'),'variant':task.get('variant'),'node_method':task.get('node_method')}; save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state)
     proc=subprocess.Popen(cmd,stdout=stdout,stderr=stderr,env=env,preexec_fn=os.setsid); state.update({'status':'running','pid':proc.pid,'pgid':os.getpgid(proc.pid),'started_at':time.time()}); save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state); return proc
 
 def scheduler_loop(args) -> None:
@@ -85,6 +106,7 @@ def scheduler_loop(args) -> None:
             if st.get('run_dir'):
                 try: save_json(st,os.path.join(st['run_dir'],'job.json'))
                 except Exception: pass
+            print(f'job finished run_id={run_id} status={status} rc={ret} run_dir={st.get("run_dir","")}', flush=True)
             del procs[run_id]
         running_states=_load_all_states(args.log_root); reserved={}; launched=0
         for task in list(pending):
@@ -93,6 +115,7 @@ def scheduler_loop(args) -> None:
             if args.dry_run:
                 cmd,run_dir=_build_cmd(task,args.log_root); print('DRY-RUN',gpu,task['mem_mb'],' '.join(cmd),'->',run_dir); pending.remove(task); continue
             proc=_launch_one(task,args.log_root,gpu); procs[task['run_id']]=proc; pending.remove(task); launched+=1
+            print(f'launched run_id={task["run_id"]} gpu={gpu} mem_mb={task["mem_mb"]} env={task.get("env")} seed={task.get("seed")} variant={task.get("variant")} node_method={task.get("node_method")} run_dir={_build_cmd(task,args.log_root)[1]}', flush=True)
             if launched >= max(1,args.launch_burst): break
         if args.dry_run and not pending: break
         time.sleep(float(args.poll_seconds))
@@ -106,16 +129,22 @@ def launch_background(args) -> None:
     print(f'scheduler started pid={proc.pid} log_root={args.log_root}')
 
 def print_status(args) -> None:
-    infos=query_gpus(parse_gpu_list(args.gpus))
+    states=_load_all_states(args.log_root); wanted=parse_gpu_list(args.gpus); state_gpu_ids=sorted({int(st['gpu']) for st in states if st.get('gpu') is not None})
+    combined=None if wanted is None else sorted(set(wanted).union(state_gpu_ids))
+    infos=query_gpus(combined)
     if infos:
         print('GPUs:')
         for g in infos: print(f'  gpu={g.index} free={g.memory_free_mb}MB total={g.memory_total_mb}MB util={g.utilization_gpu}%')
     pid_path=_scheduler_pid_path(args.log_root)
     if pid_path.exists(): pid=int(pid_path.read_text().strip() or '0'); print(f'scheduler pid={pid} alive={_pid_alive(pid)}')
     print('Jobs:')
-    for st in _load_all_states(args.log_root):
-        pid=int(st.get('pid',0) or 0); alive=_pid_alive(pid); run_dir=st.get('run_dir',''); last=read_last_csv_row(os.path.join(run_dir,'logs','summary.csv')) if run_dir else {}; tail=f" last={last.get('status','')}" if last else ''
-        print(f"  {st.get('run_id')} status={st.get('status')} gpu={st.get('gpu')} pid={pid} alive={alive} rc={st.get('returncode','')}{tail}\n    dir={run_dir}")
+    for st in states:
+        st=_state_with_summary_fallback(st)
+        pid=int(st.get('pid',0) or 0); alive=_pid_alive(pid); run_dir=st.get('run_dir',''); last=read_last_csv_row(os.path.join(run_dir,'logs','summary.csv')) if run_dir else {}; tail=(last.get('phase') or last.get('status') or '') if last else ''; update=_last_log_update(run_dir); archive_exists=_archive_exists(run_dir)
+        terminal_status={"completed","failed","terminated","stopped","force_killed"}
+        is_stale=bool(update['stale']) and st.get('status') not in terminal_status and alive
+        print(f"  run_id={st.get('run_id')} pid={pid} gpu={st.get('gpu')} env={st.get('env')} seed={st.get('seed')} variant={st.get('variant')} node_method={st.get('node_method')} status={st.get('status')} alive={alive} rc={st.get('returncode','')} last_phase={tail} last_log_update_min={'' if update['last_log_update_age_min'] is None else round(float(update['last_log_update_age_min']),1)} stale={int(is_stale)} archive_exists={int(archive_exists)}")
+        print(f"    dir={run_dir}")
 
 def stop_jobs(args) -> None:
     states=_load_all_states(args.log_root); targets=[s for s in states if s.get('status') in {'running','launching'}] if args.all else [s for s in states if s.get('run_id')==args.run_id]

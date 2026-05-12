@@ -63,7 +63,12 @@
     "use_hard_neg": true,
     "hard_neg_pool": 30000,
     "hard_neg_knn": 16,
-    "hard_neg_weight": 0.5
+    "hard_neg_weight": 0.5,
+    "pos_frac": 0.5,
+    "same_neg_weight": 1.0,
+    "cross_random_weight": 0.25,
+    "far_neg_min_dt": 36,
+    "far_neg_max_dt": 140
   },
   "graph": {
     "node_method": "bars",
@@ -83,7 +88,20 @@
     "prune_lambda_risk": 0.25,
     "p_clip": 0.0001,
     "score_batch_size": 65536,
-    "load_if_exists": true
+    "load_if_exists": true,
+    "spectral_mode": "coarsened",
+    "spectral_coarse_nodes": 2500,
+    "spectral_eigen_solver": "lobpcg",
+    "spectral_eigen_tol": 0.001,
+    "spectral_eigen_maxiter": 200,
+    "coarse_kmeans_max_iter": 50,
+    "spectral_solver": "landmark",
+    "spectral_landmarks": 2048,
+    "spectral_full_max_nodes": 3000,
+    "spectral_eig_tol": 0.001,
+    "spectral_eig_maxiter": 1000,
+    "spectral_max_nodes": 8192,
+    "trajectory_stratified_support": true
   },
   "boundary": {
     "enabled": true,
@@ -112,7 +130,27 @@
       "shortest",
       "reachability",
       "full_bars"
-    ]
+    ],
+    "balanced_edge_pairs": 2048,
+    "balanced_unlabeled_pairs": 2048,
+    "path_min_graph_edges": 1,
+    "allow_zero_edge_pairs": false,
+    "max_path_sampling_attempts": 2000,
+    "balanced_far_min_dt": 36,
+    "balanced_far_max_dt": 140,
+    "balanced_edge_diag": true,
+    "edge_support_segments": 200000,
+    "include_trivial_path_pairs": false,
+    "max_sampling_attempts": 5000,
+    "lambda_risk_values": [
+      1.0
+    ],
+    "path_include_zero_pairs": false,
+    "path_max_sampling_attempts": 5120,
+    "balanced_edge_num_pos": 4096,
+    "balanced_edge_num_neg": 4096,
+    "balanced_edge_num_unlabeled": 4096,
+    "balanced_edge_hard_neg_knn": 16
   },
   "eval": {
     "enabled": false,
