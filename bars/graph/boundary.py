@@ -52,10 +52,13 @@ def _direction_boundary(graph: BARSGraph, cfg: Dict, logger: CSVLogger) -> Bound
     arr = np.zeros((graph.num_edges, 1), dtype=np.float32)
     has = np.zeros(graph.num_edges, dtype=bool)
     b = BoundaryIndex(dep, arr, has, has.copy(), float(bcfg.get('fallback_psi', 0.5)), edge_dir=edge_dir, direction_temperature=float(bcfg.get('direction_temperature', 1.0)))
-    out = graph.outgoing_edges(); checked = 0; psi_sum = 0.0
+    out = graph.outgoing_edges(); checked = 0; psi_sum = 0.0; progress_every = max(1, graph.num_edges // 5)
+    logger.log({'phase':'boundary','event':'start','method':'direction','num_edges':graph.num_edges})
     for eid in range(graph.num_edges):
         for ne in out[int(graph.dst[eid])]:
             checked += 1; psi_sum += b.psi(eid, int(ne))
+        if ((eid + 1) % progress_every) == 0 or eid == graph.num_edges - 1:
+            logger.log({'phase':'boundary','event':'progress','method':'direction','processed_edges':eid + 1,'num_edges':graph.num_edges,'composable_pairs_checked':checked})
     logger.log({'phase':'boundary','method':'direction','composable_pairs':checked,'psi_mean':psi_sum/max(1,checked),'direction_temperature':b.direction_temperature})
     return b
 

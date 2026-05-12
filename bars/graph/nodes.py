@@ -44,6 +44,7 @@ def spectral_bottleneck_scores(dataset: OfflineDataset, embeddings: np.ndarray, 
 
 def select_graph_nodes(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dict, logger: CSVLogger) -> np.ndarray:
     gcfg=cfg.get('graph',{}); method=str(gcfg.get('node_method','bars')).lower(); num_nodes=int(gcfg.get('num_nodes',500)); rng=np.random.default_rng(int(cfg.get('seed',0))+101); max_support=min(int(gcfg.get('max_support_states',20000)),dataset.size); pool_idx=rng.choice(dataset.size,size=max_support,replace=False) if max_support<dataset.size else np.arange(dataset.size); pool_emb=embeddings[pool_idx]
+    logger.log({'phase':'nodes','event':'start','node_method':method,'requested_nodes':num_nodes,'pool_size':len(pool_idx)})
     if method=='random': chosen=rng.choice(dataset.size,size=min(num_nodes,dataset.size),replace=False); logger.log({'phase':'nodes','node_method':method,'num_nodes':len(chosen)}); return chosen.astype(np.int64)
     if method=='fps': chosen=pool_idx[farthest_point_sampling(pool_emb,num_nodes,rng)]; logger.log({'phase':'nodes','node_method':method,'num_nodes':len(chosen)}); return chosen.astype(np.int64)
     if method=='kmeans':

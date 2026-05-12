@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# BARS runs and artifacts
+runs/
+runs_*/
+/data/
+/datasets/
+backups/
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.tar.gz

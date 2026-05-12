@@ -1,5 +1,11 @@
 from __future__ import annotations
+import os
+import time
+import urllib.request
+from contextlib import contextmanager
 from typing import Any, Dict, Tuple
+
+import h5py
 import numpy as np
 from .trajectories import OfflineDataset, TrajectorySlice
 
@@ -12,9 +18,71 @@ def _split_raw_trajectories(terminals: np.ndarray, timeouts: np.ndarray):
     if n - start >= 2: starts.append(start); ends.append(n)
     return np.asarray(starts, dtype=np.int64), np.asarray(ends, dtype=np.int64)
 
+@contextmanager
+def _file_lock(lock_path: str):
+    import fcntl
+    os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+    with open(lock_path, 'w', encoding='utf-8') as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+def _is_valid_hdf5_dataset(path: str) -> bool:
+    if not os.path.exists(path) or os.path.getsize(path) <= 0:
+        return False
+    try:
+        with h5py.File(path, 'r') as f:
+            return all(k in f for k in ('observations', 'actions', 'rewards', 'terminals'))
+    except Exception:
+        return False
+
+def _download_atomic(dataset_url: str, dataset_path: str) -> None:
+    tmp_path = f'{dataset_path}.tmp.{os.getpid()}'
+    if os.path.exists(tmp_path):
+        os.remove(tmp_path)
+    try:
+        urllib.request.urlretrieve(dataset_url, tmp_path)
+        if not _is_valid_hdf5_dataset(tmp_path):
+            raise IOError(f'Downloaded dataset is invalid or truncated: {tmp_path}')
+        os.replace(tmp_path, dataset_path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+def prefetch_d4rl_dataset(env_name: str, retries: int = 3) -> str:
+    import gym, d4rl  # noqa: F401
+    env = gym.make(env_name)
+    dataset_url = getattr(env, 'dataset_url', None) or getattr(env, '_dataset_url', None)
+    dataset_path = getattr(env, 'dataset_filepath', None)
+    if not dataset_url or not dataset_path:
+        raise ValueError(f'Could not resolve D4RL dataset path for {env_name}.')
+    lock_path = f'{dataset_path}.lock'
+    with _file_lock(lock_path):
+        if _is_valid_hdf5_dataset(dataset_path):
+            return dataset_path
+        if os.path.exists(dataset_path):
+            os.remove(dataset_path)
+        last_error = None
+        for attempt in range(1, retries + 1):
+            try:
+                print(f'Preparing D4RL dataset for {env_name}: {dataset_path} (attempt {attempt}/{retries})')
+                _download_atomic(dataset_url, dataset_path)
+                if _is_valid_hdf5_dataset(dataset_path):
+                    return dataset_path
+                raise IOError(f'Validation failed after download: {dataset_path}')
+            except Exception as exc:
+                last_error = exc
+                if os.path.exists(dataset_path):
+                    os.remove(dataset_path)
+                if attempt < retries:
+                    time.sleep(min(5.0, float(attempt)))
+        raise IOError(f'Failed to prepare D4RL dataset for {env_name}: {last_error}') from last_error
+
 def load_d4rl_dataset(env_name: str, dataset_limit: int = 0) -> Tuple[Any, OfflineDataset]:
     import gym, d4rl  # noqa: F401
-    env = gym.make(env_name); raw: Dict[str, np.ndarray] = env.get_dataset()
+    env = gym.make(env_name); h5path = prefetch_d4rl_dataset(env_name); raw: Dict[str, np.ndarray] = env.get_dataset(h5path=h5path)
     observations = raw['observations'].astype(np.float32); actions = raw['actions'].astype(np.float32)
     terminals = raw.get('terminals', np.zeros(len(observations), dtype=np.bool_)); timeouts = raw.get('timeouts', np.zeros(len(observations), dtype=np.bool_))
     if dataset_limit and dataset_limit > 0:
