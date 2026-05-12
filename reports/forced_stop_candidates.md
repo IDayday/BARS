@@ -1,0 +1,17 @@
+# Forced Stop Candidates Before Stage 1 v2
+
+Recorded on 2026-05-12 after graceful `jobctl stop --log-root runs_stage1_diag --all` and a 120s wait.
+
+Evidence:
+- `python -m bars.sched.jobctl status --log-root runs_stage1_diag --gpus 0,1,2,3` still reports these runs as `stop_requested alive=True`.
+- `last_log_update_min` is about 140 minutes for all remaining runs.
+- Tail checks show `summary.csv` stalled before graph/diagnostics, with no recent stdout/stderr progress.
+
+Candidates:
+- pid `30533`, run_id `antmaze-medium-play-v2_full_bars_bars_seed0_0_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed0_0_20260512_151756 --env antmaze-medium-play-v2 --seed 0 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `30670`, run_id `antmaze-medium-play-v2_full_bars_bars_seed1_1_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed1_1_20260512_151756 --env antmaze-medium-play-v2 --seed 1 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `30807`, run_id `antmaze-medium-play-v2_full_bars_bars_seed2_2_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed2_2_20260512_151756 --env antmaze-medium-play-v2 --seed 2 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `30945`, run_id `antmaze-medium-diverse-v2_full_bars_bars_seed0_3_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-medium-diverse-v2/full_bars/antmaze-medium-diverse-v2_full_bars_bars_seed0_3_20260512_151756 --env antmaze-medium-diverse-v2 --seed 0 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `31212`, run_id `antmaze-medium-diverse-v2_full_bars_bars_seed2_5_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-medium-diverse-v2/full_bars/antmaze-medium-diverse-v2_full_bars_bars_seed2_5_20260512_151756 --env antmaze-medium-diverse-v2 --seed 2 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `31353`, run_id `antmaze-large-play-v2_full_bars_bars_seed0_6_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-large-play-v2/full_bars/antmaze-large-play-v2_full_bars_bars_seed0_6_20260512_151756 --env antmaze-large-play-v2 --seed 0 --variant full_bars --node-method bars --set eval.enabled=false`
+- pid `31755`, run_id `antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260512_151756`, cmd `/root/anaconda3/envs/gcrlo/bin/python -m bars.cli run --config configs/sweeps/../d4rl_antmaze_quick.json --run-dir runs_stage1_diag/antmaze-large-diverse-v2/full_bars/antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260512_151756 --env antmaze-large-diverse-v2 --seed 0 --variant full_bars --node-method bars --set eval.enabled=false`

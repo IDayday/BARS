@@ -1,0 +1,34 @@
+GPUs:
+  gpu=0 free=19594MB total=24576MB util=90%
+  gpu=1 free=21918MB total=24576MB util=70%
+  gpu=2 free=21918MB total=24576MB util=71%
+  gpu=3 free=20658MB total=24576MB util=65%
+  gpu=4 free=21918MB total=24576MB util=58%
+  gpu=5 free=21918MB total=24576MB util=71%
+  gpu=6 free=21918MB total=24576MB util=73%
+scheduler pid=30531 alive=False
+Jobs:
+  run_id=antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260512_151756 pid=31755 gpu=5 env=antmaze-large-diverse-v2 seed=0 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=143.0 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-diverse-v2/full_bars/antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260512_151756
+  run_id=antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260512_151756 pid=31888 gpu=5 env=antmaze-large-diverse-v2 seed=1 variant=full_bars node_method=None status=failed alive=False rc=1 last_phase=run last_log_update_min=147.1 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-diverse-v2/full_bars/antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260512_151756
+  run_id=antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260512_151756 pid=35926 gpu=5 env=antmaze-large-diverse-v2 seed=2 variant=full_bars node_method=None status=failed alive=False rc=1 last_phase=run last_log_update_min=146.9 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-diverse-v2/full_bars/antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260512_151756
+  run_id=antmaze-large-play-v2_full_bars_bars_seed0_6_20260512_151756 pid=31353 gpu=5 env=antmaze-large-play-v2 seed=0 variant=full_bars node_method=None status=stopped alive=False rc=0 last_phase=run last_log_update_min=1.1 stale=0 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-play-v2/full_bars/antmaze-large-play-v2_full_bars_bars_seed0_6_20260512_151756
+  run_id=antmaze-large-play-v2_full_bars_bars_seed1_7_20260512_151756 pid=31486 gpu=5 env=antmaze-large-play-v2 seed=1 variant=full_bars node_method=None status=failed alive=False rc=1 last_phase=run last_log_update_min=147.6 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-play-v2/full_bars/antmaze-large-play-v2_full_bars_bars_seed1_7_20260512_151756
+  run_id=antmaze-large-play-v2_full_bars_bars_seed2_8_20260512_151756 pid=31622 gpu=5 env=antmaze-large-play-v2 seed=2 variant=full_bars node_method=None status=failed alive=False rc=1 last_phase=run last_log_update_min=147.4 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-large-play-v2/full_bars/antmaze-large-play-v2_full_bars_bars_seed2_8_20260512_151756
+  run_id=antmaze-medium-diverse-v2_full_bars_bars_seed0_3_20260512_151756 pid=30945 gpu=4 env=antmaze-medium-diverse-v2 seed=0 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=145.3 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-diverse-v2/full_bars/antmaze-medium-diverse-v2_full_bars_bars_seed0_3_20260512_151756
+  run_id=antmaze-medium-diverse-v2_full_bars_bars_seed1_4_20260512_151756 pid=31079 gpu=4 env=antmaze-medium-diverse-v2 seed=1 variant=full_bars node_method=None status=failed alive=False rc=1 last_phase=run last_log_update_min=148.1 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-diverse-v2/full_bars/antmaze-medium-diverse-v2_full_bars_bars_seed1_4_20260512_151756
+  run_id=antmaze-medium-diverse-v2_full_bars_bars_seed2_5_20260512_151756 pid=31212 gpu=4 env=antmaze-medium-diverse-v2 seed=2 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=145.3 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-diverse-v2/full_bars/antmaze-medium-diverse-v2_full_bars_bars_seed2_5_20260512_151756
+  run_id=antmaze-medium-play-v2_full_bars_bars_seed0_0_20260512_151756 pid=30533 gpu=6 env=antmaze-medium-play-v2 seed=0 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=146.5 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed0_0_20260512_151756
+  run_id=antmaze-medium-play-v2_full_bars_bars_seed1_1_20260512_151756 pid=30670 gpu=6 env=antmaze-medium-play-v2 seed=1 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=146.1 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed1_1_20260512_151756
+  run_id=antmaze-medium-play-v2_full_bars_bars_seed2_2_20260512_151756 pid=30807 gpu=3 env=antmaze-medium-play-v2 seed=2 variant=full_bars node_method=None status=stop_requested alive=False rc= last_phase=tdr last_log_update_min=146.2 stale=1 archive_exists=1
+    dir=runs_stage1_diag/antmaze-medium-play-v2/full_bars/antmaze-medium-play-v2_full_bars_bars_seed2_2_20260512_151756
