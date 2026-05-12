@@ -1,0 +1,1 @@
+{"base_config":"../d4rl_antmaze_quick.json","resources":{"default_mem_mb":6500},"grid":{"envs":["antmaze-medium-play-v2","antmaze-large-diverse-v2"],"seeds":[0,1,2],"variants":["full_bars"],"node_methods":["random","fps","kmeans","spectral","bars"],"set":{"eval.enabled":false}}}

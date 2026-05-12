@@ -1,0 +1,94 @@
+{
+  "seed": 0,
+  "device": "cpu",
+  "data": {
+    "source": "toy",
+    "env_name": "toy",
+    "num_traj": 16,
+    "length": 20
+  },
+  "tdr": {
+    "latent_dim": 8,
+    "hidden_dims": [
+      64
+    ],
+    "pair_hidden_dims": [
+      64
+    ],
+    "horizon": 20,
+    "steps": 3,
+    "batch_size": 32,
+    "lr": 0.001,
+    "log_every": 1,
+    "amp": false,
+    "load_if_exists": false
+  },
+  "policy": {
+    "hidden_dims": [
+      64
+    ],
+    "goal_delta": true,
+    "horizon": 10,
+    "steps": 3,
+    "batch_size": 32,
+    "lr": 0.001,
+    "log_every": 1,
+    "amp": false,
+    "load_if_exists": false
+  },
+  "reachability": {
+    "enabled": true,
+    "hidden_dims": [
+      64
+    ],
+    "horizon": 10,
+    "steps": 3,
+    "batch_size": 32,
+    "lr": 0.001,
+    "log_every": 1,
+    "use_hard_neg": false,
+    "load_if_exists": false
+  },
+  "graph": {
+    "node_method": "bars",
+    "num_nodes": 20,
+    "num_bottleneck_nodes": 6,
+    "max_support_states": 300,
+    "support_knn": 4,
+    "spectral_clusters": 4,
+    "edge_knn": 4,
+    "temporal_connect": 2,
+    "temporal_edge_horizon": 30,
+    "top_outgoing": 4,
+    "load_if_exists": false
+  },
+  "boundary": {
+    "enabled": true,
+    "num_modes": 3,
+    "support_k": 8,
+    "segment_horizon": 6,
+    "fallback_psi": 0.5,
+    "load_if_exists": false,
+    "method": "direction",
+    "direction_temperature": 1.0
+  },
+  "planner": {
+    "variant": "full_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 1.0
+  },
+  "diagnostics": {
+    "enabled": true,
+    "num_path_pairs": 2,
+    "path_min_dt": 5,
+    "path_max_dt": 25,
+    "planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ]
+  },
+  "eval": {
+    "enabled": false
+  }
+}

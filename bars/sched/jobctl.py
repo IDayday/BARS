@@ -1,0 +1,156 @@
+from __future__ import annotations
+import argparse, itertools, json, os, signal, subprocess, sys, time
+from pathlib import Path
+from typing import Dict, List, Optional
+from bars.common.artifacts import package_logs
+from bars.common.config import load_json, save_json
+from bars.common.logging import read_last_csv_row
+from bars.sched.gpu import parse_gpu_list, query_gpus
+
+def _jobs_dir(log_root: str) -> Path: p=Path(log_root)/'_jobs'; p.mkdir(parents=True,exist_ok=True); return p
+def _state_path(log_root: str, run_id: str) -> Path: return _jobs_dir(log_root)/f'{run_id}.json'
+def _scheduler_pid_path(log_root: str) -> Path: return _jobs_dir(log_root)/'scheduler.pid'
+def _read_state(path: Path) -> Dict:
+    with open(path,'r',encoding='utf-8') as f: return json.load(f)
+def _write_state(log_root: str, state: Dict) -> None: save_json(state, str(_state_path(log_root,state['run_id'])))
+def _pid_alive(pid: int) -> bool:
+    if pid<=0: return False
+    try: os.kill(pid,0); return True
+    except OSError: return False
+
+def _expand_sweep(sweep_path: str, overrides: Optional[List[str]] = None) -> List[Dict]:
+    sweep=load_json(sweep_path); base_config=sweep.get('base_config')
+    if base_config is None: raise ValueError('Sweep JSON must contain base_config')
+    if not os.path.isabs(base_config): base_config=os.path.join(os.path.dirname(sweep_path),base_config)
+    tasks=[]
+    if 'tasks' in sweep: tasks.extend(sweep['tasks'])
+    else:
+        grid=sweep.get('grid',{}); envs=grid.get('env',grid.get('envs',[None])); seeds=grid.get('seed',grid.get('seeds',[None])); variants=grid.get('variant',grid.get('variants',[None])); node_methods=grid.get('node_method',grid.get('node_methods',[None]))
+        for env,seed,variant,node_method in itertools.product(envs,seeds,variants,node_methods):
+            t={}
+            if env is not None: t['env']=env
+            if seed is not None: t['seed']=seed
+            if variant is not None: t['variant']=variant
+            if node_method is not None: t['node_method']=node_method
+            if 'set' in grid: t['set']=dict(grid['set'])
+            tasks.append(t)
+    resources=sweep.get('resources',{}); out=[]
+    for idx,t in enumerate(tasks):
+        env=t.get('env','env'); seed=t.get('seed',0); variant=t.get('variant','full_bars'); node=t.get('node_method','bars'); stamp=time.strftime('%Y%m%d_%H%M%S'); run_id=t.get('run_id',f'{env}_{variant}_{node}_seed{seed}_{idx}_{stamp}'.replace('/','_'))
+        set_items=[f'{k}={json.dumps(v) if not isinstance(v,str) else v}' for k,v in (t.get('set',{}) or {}).items()] + list(overrides or [])
+        out.append({'run_id':run_id,'base_config':base_config,'env':t.get('env'),'seed':t.get('seed'),'variant':t.get('variant'),'node_method':t.get('node_method'),'set':set_items,'mem_mb':int(t.get('mem_mb',resources.get('default_mem_mb',6000)))})
+    return out
+
+def _build_cmd(task: Dict, log_root: str):
+    env=task.get('env') or 'unknown_env'; variant=task.get('variant') or 'variant'; run_dir=os.path.join(log_root,str(env),str(variant),str(task['run_id'])); cmd=[sys.executable,'-m','bars.cli','run','--config',task['base_config'],'--run-dir',run_dir]
+    if task.get('env') is not None: cmd += ['--env',str(task['env'])]
+    if task.get('seed') is not None: cmd += ['--seed',str(task['seed'])]
+    if task.get('variant') is not None: cmd += ['--variant',str(task['variant'])]
+    if task.get('node_method') is not None: cmd += ['--node-method',str(task['node_method'])]
+    for s in task.get('set',[]): cmd += ['--set',s]
+    return cmd, run_dir
+
+def _load_all_states(log_root: str) -> List[Dict]:
+    states=[]
+    for p in sorted(_jobs_dir(log_root).glob('*.json')):
+        try: states.append(_read_state(p))
+        except Exception: pass
+    return states
+
+def _assign_gpu(gpu_indices: Optional[List[int]], running: List[Dict], max_jobs_per_gpu: int, mem_mb: int, reserved: Dict[int,int]) -> Optional[int]:
+    infos=query_gpus(gpu_indices)
+    if not infos: return 0
+    counts={g.index:0 for g in infos}
+    for st in running:
+        if st.get('status')=='running' and st.get('gpu') in counts: counts[int(st['gpu'])]+=1
+    infos.sort(key=lambda g:g.memory_free_mb-reserved.get(g.index,0), reverse=True)
+    for g in infos:
+        if counts[g.index] < max_jobs_per_gpu and g.memory_free_mb - reserved.get(g.index,0) >= mem_mb: reserved[g.index]=reserved.get(g.index,0)+mem_mb; return g.index
+    return None
+
+def _launch_one(task: Dict, log_root: str, gpu: int) -> subprocess.Popen:
+    cmd,run_dir=_build_cmd(task,log_root); Path(run_dir).mkdir(parents=True,exist_ok=True); env=os.environ.copy(); env['CUDA_VISIBLE_DEVICES']=str(gpu)
+    stdout=open(os.path.join(run_dir,'stdout.log'),'a',buffering=1,encoding='utf-8'); stderr=open(os.path.join(run_dir,'stderr.log'),'a',buffering=1,encoding='utf-8')
+    state={'run_id':task['run_id'],'status':'launching','gpu':gpu,'mem_mb':task['mem_mb'],'run_dir':run_dir,'cmd':cmd,'created_at':time.time()}; save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state)
+    proc=subprocess.Popen(cmd,stdout=stdout,stderr=stderr,env=env,preexec_fn=os.setsid); state.update({'status':'running','pid':proc.pid,'pgid':os.getpgid(proc.pid),'started_at':time.time()}); save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state); return proc
+
+def scheduler_loop(args) -> None:
+    tasks=_expand_sweep(args.sweep,overrides=args.set); gpu_indices=parse_gpu_list(args.gpus); pending=list(tasks); procs={}; _jobs_dir(args.log_root)
+    with open(_scheduler_pid_path(args.log_root),'w',encoding='utf-8') as f: f.write(str(os.getpid()))
+    while pending or procs:
+        for run_id,proc in list(procs.items()):
+            ret=proc.poll()
+            if ret is None: continue
+            st_path=_state_path(args.log_root,run_id); st=_read_state(st_path) if st_path.exists() else {'run_id':run_id}; prior=st.get('status','running'); status='stopped' if prior=='stop_requested' else ('completed' if ret==0 else 'failed'); st.update({'status':status,'returncode':ret,'ended_at':time.time()}); _write_state(args.log_root,st)
+            if st.get('run_dir'):
+                try: save_json(st,os.path.join(st['run_dir'],'job.json'))
+                except Exception: pass
+            del procs[run_id]
+        running_states=_load_all_states(args.log_root); reserved={}; launched=0
+        for task in list(pending):
+            gpu=_assign_gpu(gpu_indices,running_states,args.max_jobs_per_gpu,task['mem_mb'],reserved)
+            if gpu is None: continue
+            if args.dry_run:
+                cmd,run_dir=_build_cmd(task,args.log_root); print('DRY-RUN',gpu,task['mem_mb'],' '.join(cmd),'->',run_dir); pending.remove(task); continue
+            proc=_launch_one(task,args.log_root,gpu); procs[task['run_id']]=proc; pending.remove(task); launched+=1
+            if launched >= max(1,args.launch_burst): break
+        if args.dry_run and not pending: break
+        time.sleep(float(args.poll_seconds))
+
+def launch_background(args) -> None:
+    cmd=[sys.executable,'-m','bars.sched.jobctl','scheduler','--sweep',args.sweep,'--log-root',args.log_root,'--gpus',args.gpus,'--max-jobs-per-gpu',str(args.max_jobs_per_gpu),'--poll-seconds',str(args.poll_seconds),'--launch-burst',str(args.launch_burst)]
+    for s in args.set or []: cmd += ['--set',s]
+    if args.dry_run: cmd.append('--dry-run')
+    _jobs_dir(args.log_root); out=open(_jobs_dir(args.log_root)/'scheduler.out','a',buffering=1,encoding='utf-8'); proc=subprocess.Popen(cmd,stdout=out,stderr=out,preexec_fn=os.setsid)
+    with open(_scheduler_pid_path(args.log_root),'w',encoding='utf-8') as f: f.write(str(proc.pid))
+    print(f'scheduler started pid={proc.pid} log_root={args.log_root}')
+
+def print_status(args) -> None:
+    infos=query_gpus(parse_gpu_list(args.gpus))
+    if infos:
+        print('GPUs:')
+        for g in infos: print(f'  gpu={g.index} free={g.memory_free_mb}MB total={g.memory_total_mb}MB util={g.utilization_gpu}%')
+    pid_path=_scheduler_pid_path(args.log_root)
+    if pid_path.exists(): pid=int(pid_path.read_text().strip() or '0'); print(f'scheduler pid={pid} alive={_pid_alive(pid)}')
+    print('Jobs:')
+    for st in _load_all_states(args.log_root):
+        pid=int(st.get('pid',0) or 0); alive=_pid_alive(pid); run_dir=st.get('run_dir',''); last=read_last_csv_row(os.path.join(run_dir,'logs','summary.csv')) if run_dir else {}; tail=f" last={last.get('status','')}" if last else ''
+        print(f"  {st.get('run_id')} status={st.get('status')} gpu={st.get('gpu')} pid={pid} alive={alive} rc={st.get('returncode','')}{tail}\n    dir={run_dir}")
+
+def stop_jobs(args) -> None:
+    states=_load_all_states(args.log_root); targets=[s for s in states if s.get('status') in {'running','launching'}] if args.all else [s for s in states if s.get('run_id')==args.run_id]
+    if not targets: print('No matching running jobs.'); return
+    for st in targets:
+        pid=int(st.get('pid',0) or 0); pgid=int(st.get('pgid',pid) or pid)
+        if pid<=0 or not _pid_alive(pid): st['status']='stopped'; _write_state(args.log_root,st); continue
+        sig=signal.SIGKILL if args.force else signal.SIGTERM
+        try:
+            os.killpg(pgid,sig); st['status']='force_killed' if args.force else 'stop_requested'; st['stop_requested_at']=time.time(); _write_state(args.log_root,st)
+            if st.get('run_dir'): save_json(st,os.path.join(st['run_dir'],'job.json'))
+            print(f'sent {sig.name} to run_id={st.get("run_id")} pgid={pgid}')
+        except Exception as exc: print(f'failed to stop {st.get("run_id")}: {exc}')
+
+def pack_jobs(args) -> None:
+    states=_load_all_states(args.log_root); targets=states if args.all else [s for s in states if s.get('run_id')==args.run_id]
+    for st in targets:
+        rd=st.get('run_dir')
+        if rd and os.path.isdir(rd): print(package_logs(rd))
+
+def main(argv=None) -> None:
+    parser=argparse.ArgumentParser(prog='barsctl'); sub=parser.add_subparsers(dest='cmd',required=True)
+    launch=sub.add_parser('launch'); launch.add_argument('--sweep',required=True); launch.add_argument('--log-root',default='runs'); launch.add_argument('--gpus',default='auto'); launch.add_argument('--max-jobs-per-gpu',type=int,default=1); launch.add_argument('--poll-seconds',type=float,default=10); launch.add_argument('--launch-burst',type=int,default=1); launch.add_argument('--background',action='store_true'); launch.add_argument('--dry-run',action='store_true'); launch.add_argument('--set',action='append',default=[])
+    sched=sub.add_parser('scheduler'); sched.add_argument('--sweep',required=True); sched.add_argument('--log-root',default='runs'); sched.add_argument('--gpus',default='auto'); sched.add_argument('--max-jobs-per-gpu',type=int,default=1); sched.add_argument('--poll-seconds',type=float,default=10); sched.add_argument('--launch-burst',type=int,default=1); sched.add_argument('--dry-run',action='store_true'); sched.add_argument('--set',action='append',default=[])
+    status=sub.add_parser('status'); status.add_argument('--log-root',default='runs'); status.add_argument('--gpus',default='auto')
+    stop=sub.add_parser('stop'); stop.add_argument('--log-root',default='runs'); stop.add_argument('--run-id',default=None); stop.add_argument('--all',action='store_true'); stop.add_argument('--force',action='store_true')
+    pack=sub.add_parser('pack'); pack.add_argument('--log-root',default='runs'); pack.add_argument('--run-id',default=None); pack.add_argument('--all',action='store_true')
+    args=parser.parse_args(argv)
+    if args.cmd=='launch': launch_background(args) if args.background else scheduler_loop(args)
+    elif args.cmd=='scheduler': scheduler_loop(args)
+    elif args.cmd=='status': print_status(args)
+    elif args.cmd=='stop':
+        if not args.all and not args.run_id: raise SystemExit('Provide --run-id or --all')
+        stop_jobs(args)
+    elif args.cmd=='pack':
+        if not args.all and not args.run_id: raise SystemExit('Provide --run-id or --all')
+        pack_jobs(args)
+if __name__=='__main__': main()

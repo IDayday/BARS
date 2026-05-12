@@ -1,0 +1,127 @@
+{
+  "seed": 0,
+  "device": "cuda",
+  "data": {
+    "source": "d4rl",
+    "env_name": "antmaze-medium-play-v2",
+    "dataset_limit": 0
+  },
+  "tdr": {
+    "latent_dim": 32,
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "pair_hidden_dims": [
+      256,
+      256
+    ],
+    "horizon": 80,
+    "steps": 40000,
+    "batch_size": 2048,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "bce_weight": 1.0,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 500,
+    "embed_batch_size": 16384,
+    "load_if_exists": true,
+    "force_reembed": false
+  },
+  "policy": {
+    "hidden_dims": [
+      256,
+      256,
+      256
+    ],
+    "goal_delta": true,
+    "horizon": 35,
+    "steps": 60000,
+    "batch_size": 2048,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 500,
+    "load_if_exists": true
+  },
+  "reachability": {
+    "enabled": true,
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "horizon": 35,
+    "steps": 30000,
+    "batch_size": 4096,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "log_every": 500,
+    "load_if_exists": true,
+    "use_hard_neg": true,
+    "hard_neg_pool": 30000,
+    "hard_neg_knn": 16,
+    "hard_neg_weight": 0.5
+  },
+  "graph": {
+    "node_method": "bars",
+    "num_nodes": 800,
+    "num_bottleneck_nodes": 280,
+    "max_support_states": 30000,
+    "support_knn": 12,
+    "spectral_clusters": 8,
+    "anchor_exclude_quantile": 0.1,
+    "edge_knn": 20,
+    "bidirectional_knn": true,
+    "temporal_connect": 4,
+    "temporal_edge_horizon": 120,
+    "temporal_reverse": false,
+    "cost_mode": "hybrid",
+    "top_outgoing": 20,
+    "prune_lambda_risk": 0.25,
+    "p_clip": 0.0001,
+    "score_batch_size": 65536,
+    "load_if_exists": true
+  },
+  "boundary": {
+    "enabled": true,
+    "num_modes": 4,
+    "support_k": 64,
+    "segment_horizon": 35,
+    "segment_min_dt": 1,
+    "fallback_psi": 0.5,
+    "load_if_exists": true,
+    "method": "direction",
+    "direction_temperature": 1.0
+  },
+  "planner": {
+    "variant": "full_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 1.0
+  },
+  "diagnostics": {
+    "enabled": true,
+    "edge_label_horizon": 35,
+    "edge_selected_threshold": 0.5,
+    "num_path_pairs": 256,
+    "path_min_dt": 70,
+    "path_max_dt": 280,
+    "planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ]
+  },
+  "eval": {
+    "enabled": false,
+    "episodes": 20,
+    "variant": "full_bars",
+    "max_steps": 1000,
+    "subgoal_horizon": 35,
+    "goal_dim": 2,
+    "success_threshold": 0.5,
+    "subgoal_threshold": 0.5
+  }
+}
