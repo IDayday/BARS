@@ -25,6 +25,7 @@ from bars.graph.edges import build_edges
 from bars.graph.nodes import select_graph_nodes
 from bars.graph.types import BARSGraph
 from bars.models.reachability import ReachabilityModel
+from bars.models.policy import GoalConditionedPolicy
 from bars.training.policy_train import train_policy
 from bars.training.reach_train import train_reachability
 from bars.training.tdr_train import embed_dataset, train_tdr
@@ -74,6 +75,18 @@ def _load_reachability_if_available(cfg: Dict, run_dir: str, latent_dim: int, de
     model.eval()
     return model
 
+
+
+
+def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device) -> Optional[GoalConditionedPolicy]:
+    ckpt_path = os.path.join(run_dir, 'checkpoints', 'policy.pt')
+    if not os.path.exists(ckpt_path):
+        return None
+    pcfg = cfg.get('policy', {})
+    model = GoalConditionedPolicy(dataset.obs_dim, dataset.action_dim, tuple(pcfg.get('hidden_dims', [256, 256])), bool(pcfg.get('goal_delta', True))).to(device)
+    load_checkpoint(ckpt_path, model, map_location=str(device))
+    model.eval()
+    return model
 
 def run_cached_diagnostics(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -> str:
     """Rerun only diagnostics from cached embeddings/graph/boundary/checkpoint.
@@ -296,9 +309,17 @@ def rerun_diagnostics(cfg: Dict, run_dir: str, clear: bool = False, rebuild_boun
             loggers['graph'].log({'phase': 'boundary', 'event': 'saved_for_diagnostics_only', 'path': boundary_path, 'method': boundary.method})
     device = get_torch_device(str(cfg.get('device', 'cuda')))
     reach_model = _load_reachability_if_available(cfg, run_dir, embeddings.shape[1], device)
+    policy = _load_policy_if_available(cfg, run_dir, dataset, device)
     run_edge_diagnostics(dataset, embeddings, graph, cfg, loggers['diagnostics'])
     run_boundary_diagnostics(graph, boundary, cfg, loggers['diagnostics'])
     run_path_diagnostics(dataset, embeddings, graph, boundary, cfg, loggers['diagnostics'])
+    dcfg = cfg.get('diagnostics', {})
+    edge_rollout_enabled = bool(dcfg.get('edge_rollout_enabled', dcfg.get('edge_rollout', {}).get('enabled', False) if isinstance(dcfg.get('edge_rollout', {}), dict) else False))
+    if env is not None and edge_rollout_enabled:
+        if policy is None:
+            loggers['diagnostics'].log({'phase': 'edge_rollout_diag', 'event': 'completed', 'enabled': 1, 'available': 0, 'reason': 'missing_policy_checkpoint'})
+        else:
+            run_edge_rollout_diagnostics(env, dataset, policy, graph, cfg, device, loggers['diagnostics'])
     _summary_log(summary, 'diagnostics_only_end', 'completed')
     if package:
         archive = package_logs(run_dir)

@@ -25,16 +25,27 @@ class BoundaryIndex:
     edge_dir: np.ndarray | None = None
     direction_temperature: float = 1.0
     method: str = "unknown"
+    direction_fallback_weight: float = 0.0
+
+    def _direction_psi(self, prev_edge: int, next_edge: int) -> Optional[float]:
+        if self.edge_dir is None:
+            return None
+        a = self.edge_dir[prev_edge]
+        b = self.edge_dir[next_edge]
+        dist2 = float(np.sum((a - b) ** 2))
+        return float(np.clip(np.exp(-dist2 / max(self.direction_temperature, 1e-6)), 1e-4, 1.0))
 
     def psi(self, prev_edge: int, next_edge: int) -> float:
+        dir_psi = self._direction_psi(prev_edge, next_edge)
         if self.has_arr[prev_edge] and self.has_dep[next_edge]:
             val = float(np.minimum(self.arr_hist[prev_edge], self.dep_hist[next_edge]).sum())
+            val = float(np.clip(val, 1e-4, 1.0))
+            if dir_psi is not None and self.direction_fallback_weight > 0:
+                w = float(np.clip(self.direction_fallback_weight, 0.0, 1.0))
+                val = (1.0 - w) * val + w * dir_psi
             return float(np.clip(val, 1e-4, 1.0))
-        if self.edge_dir is not None:
-            a = self.edge_dir[prev_edge]
-            b = self.edge_dir[next_edge]
-            dist2 = float(np.sum((a - b) ** 2))
-            return float(np.clip(np.exp(-dist2 / max(self.direction_temperature, 1e-6)), 1e-4, 1.0))
+        if dir_psi is not None:
+            return dir_psi
         return float(self.fallback_psi)
 
     def boundary_cost(self, prev_edge: int, next_edge: int) -> float:
@@ -53,6 +64,7 @@ class BoundaryIndex:
             edge_dir=np.asarray([]) if self.edge_dir is None else self.edge_dir,
             direction_temperature=self.direction_temperature,
             method=np.asarray(self.method),
+            direction_fallback_weight=np.asarray(self.direction_fallback_weight, dtype=np.float32),
         )
 
     @classmethod
@@ -61,7 +73,8 @@ class BoundaryIndex:
         edge_dir = d["edge_dir"] if "edge_dir" in d and d["edge_dir"].size else None
         temp = float(d["direction_temperature"]) if "direction_temperature" in d else 1.0
         method = str(d["method"].item() if hasattr(d["method"], "item") else d["method"]) if "method" in d else "loaded"
-        return cls(d["dep_hist"], d["arr_hist"], d["has_dep"], d["has_arr"], float(d["fallback_psi"]), edge_dir, temp, method)
+        weight = float(d["direction_fallback_weight"]) if "direction_fallback_weight" in d else 0.0
+        return cls(d["dep_hist"], d["arr_hist"], d["has_dep"], d["has_arr"], float(d["fallback_psi"]), edge_dir, temp, method, weight)
 
 
 def _normalize(x: np.ndarray) -> np.ndarray:
@@ -280,7 +293,17 @@ def _support_mode_boundary(dataset: OfflineDataset, embeddings: np.ndarray, grap
     has_dep = dep_count >= int(bcfg.get("min_edge_support_count", 1))
     has_arr = arr_count >= int(bcfg.get("min_edge_support_count", 1))
     edge_dir = _direction_vectors(graph) if bool(bcfg.get("direction_fallback", True)) else None
-    b = BoundaryIndex(dep, arr, has_dep, has_arr, fallback_psi, edge_dir=edge_dir, direction_temperature=float(bcfg.get("direction_temperature", 1.0)), method="support_modes")
+    b = BoundaryIndex(
+        dep,
+        arr,
+        has_dep,
+        has_arr,
+        fallback_psi,
+        edge_dir=edge_dir,
+        direction_temperature=float(bcfg.get("direction_temperature", 1.0)),
+        method="support_modes",
+        direction_fallback_weight=float(bcfg.get("direction_fallback_weight", 0.0)),
+    )
     logger.log({
         "phase": "boundary",
         "event": "completed",

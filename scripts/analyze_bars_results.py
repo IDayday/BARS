@@ -260,6 +260,9 @@ def main() -> None:
         'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate',
         'found', 'total_risk', 'total_boundary', 'total_cost', 'objective', 'num_edges', 'num_subgoals', 'is_trivial_pair', 'lambda_risk',
         'success', 'return', 'steps', 'replans', 'no_path_count', 'last_plan_edges', 'goal_distance_final',
+        'edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate',
+        'unselected_edge_success_rate', 'reset_ok_count', 'reset_unavailable_count', 'reset_available',
+        'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval',
     ]
     summary_all = _read_csv(analysis_dir / 'summary_all.csv')
     diagnostics_all = _coerce_numeric(_read_csv(analysis_dir / 'diagnostics_all.csv'), numeric_cols)
@@ -283,6 +286,7 @@ def main() -> None:
     edge_diag = _latest_metric_rows(diagnostics_all, 'edge_diag', ['run_id'])
     balanced_edge_diag = _latest_metric_rows(diagnostics_all, 'balanced_edge_diag', ['run_id'])
     boundary_diag = _latest_metric_rows(diagnostics_all, 'boundary_diag', ['run_id'])
+    edge_rollout_diag = _latest_metric_rows(diagnostics_all, 'edge_rollout_diag', ['run_id'])
     path_diag = diagnostics_all[diagnostics_all.get('phase', pd.Series(dtype=object)) == 'path_diag'].copy()
     if 'variant' in path_diag.columns:
         path_diag = path_diag[path_diag['variant'].notna()].copy()
@@ -298,6 +302,7 @@ def main() -> None:
     planner_summary_all = _round_df(_planner_summary(path_diag, planner_keys, nonzero_only=False))
     planner_summary_nonzero = _round_df(_planner_summary(path_diag, planner_keys, nonzero_only=True))
     boundary_summary = _round_df(_agg_mean(boundary_diag, boundary_keys, ['psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'num_pairs']))
+    edge_rollout_summary = _round_df(_agg_mean(edge_rollout_diag, edge_keys, ['edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate', 'unselected_edge_success_rate', 'reset_available', 'reset_ok_count', 'reset_unavailable_count', 'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval']))
     eval_summary = _round_df(_eval_summary(eval_all, ['env', 'variant']))
     graph_summary = _round_df(_agg_mean(graph_all, ['env', 'event'], ['num_nodes', 'num_edges', 'mean_out_degree', 'p_exec_mean', 'risk_mean', 'cost_mean', 'duration_sec', 'spectral_seconds']))
     profile_summary = _round_df(_agg_mean(profile_all, ['env', 'phase', 'event'], ['duration_sec']))
@@ -309,6 +314,7 @@ def main() -> None:
         (f'{prefix}_planner_summary_all_pairs.csv', planner_summary_all),
         (f'{prefix}_planner_summary_nonzero_pairs.csv', planner_summary_nonzero),
         (f'{prefix}_boundary_summary.csv', boundary_summary),
+        (f'{prefix}_edge_rollout_summary.csv', edge_rollout_summary),
         (f'{prefix}_graph_summary.csv', graph_summary),
         (f'{prefix}_profile_summary.csv', profile_summary),
     ]:
@@ -351,6 +357,9 @@ def main() -> None:
         '',
         '## Boundary Diagnostics',
         _markdown_table(boundary_summary),
+        '',
+        '## Edge Rollout Diagnostics',
+        _markdown_table(edge_rollout_summary),
         '',
         '## Graph Summary',
         _markdown_table(graph_summary),

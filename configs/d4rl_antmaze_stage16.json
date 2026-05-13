@@ -14,8 +14,14 @@
   },
   "tdr": {
     "latent_dim": 16,
-    "hidden_dims": [128, 128],
-    "pair_hidden_dims": [128, 128],
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "pair_hidden_dims": [
+      128,
+      128
+    ],
     "horizon": 50,
     "steps": 3000,
     "batch_size": 1024,
@@ -30,13 +36,16 @@
     "force_reembed": false
   },
   "policy": {
-    "hidden_dims": [128, 128],
+    "hidden_dims": [
+      128,
+      128
+    ],
     "goal_delta": true,
     "horizon": 30,
     "steps": 3000,
     "batch_size": 1024,
     "lr": 0.0003,
-    "weight_decay": 0.00001,
+    "weight_decay": 1e-05,
     "grad_clip": 10.0,
     "amp": true,
     "log_every": 200,
@@ -44,12 +53,15 @@
   },
   "reachability": {
     "enabled": true,
-    "hidden_dims": [128, 128],
+    "hidden_dims": [
+      128,
+      128
+    ],
     "horizon": 30,
     "steps": 3000,
     "batch_size": 2048,
     "lr": 0.0003,
-    "weight_decay": 0.00001,
+    "weight_decay": 1e-05,
     "grad_clip": 10.0,
     "log_every": 200,
     "load_if_exists": true,
@@ -112,7 +124,8 @@
     "fallback_psi": 0.5,
     "direction_fallback": true,
     "direction_temperature": 1.0,
-    "load_if_exists": true
+    "load_if_exists": true,
+    "direction_fallback_weight": 0.15
   },
   "planner": {
     "variant": "full_bars",
@@ -133,8 +146,18 @@
     "path_min_graph_edges": 1,
     "include_trivial_path_pairs": false,
     "max_sampling_attempts": 10000,
-    "planner_variants": ["shortest", "reachability", "full_bars"],
-    "lambda_risk_values": [0.0, 0.1, 0.3, 1.0, 3.0],
+    "planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ],
+    "lambda_risk_values": [
+      0.0,
+      0.1,
+      0.3,
+      1.0,
+      3.0
+    ],
     "edge_rollout_enabled": false,
     "edge_rollout": {
       "enabled": false,

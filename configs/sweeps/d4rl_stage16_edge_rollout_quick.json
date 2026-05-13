@@ -1,16 +1,31 @@
 {
   "base_config": "../d4rl_antmaze_stage16.json",
-  "resources": {"default_mem_mb": 3500},
+  "resources": {
+    "default_mem_mb": 5000
+  },
   "grid": {
-    "envs": ["antmaze-medium-play-v2", "antmaze-medium-diverse-v2"],
-    "seeds": [0],
-    "variants": ["full_bars"],
-    "node_methods": ["bars"],
+    "envs": [
+      "antmaze-medium-play-v2",
+      "antmaze-medium-diverse-v2",
+      "antmaze-large-play-v2",
+      "antmaze-large-diverse-v2"
+    ],
+    "seeds": [
+      0
+    ],
+    "variants": [
+      "full_bars"
+    ],
+    "node_methods": [
+      "bars"
+    ],
     "set": {
       "eval.enabled": false,
       "diagnostics.edge_rollout_enabled": true,
-      "diagnostics.edge_rollout.num_edges": 48,
-      "diagnostics.edge_rollout.horizon": 30
+      "diagnostics.edge_rollout.num_edges": 128,
+      "diagnostics.edge_rollout.horizon": 50,
+      "diagnostics.edge_rollout.goal_tolerance": 1.0,
+      "diagnostics.edge_rollout.success_threshold": 1.0
     }
   }
 }

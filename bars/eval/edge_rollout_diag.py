@@ -131,7 +131,9 @@ def run_edge_rollout_diagnostics(
 
     labels = []
     scores = []
+    selected_flags = []
     reset_ok_count = 0
+    reset_unavailable_count = 0
     for k, eid in enumerate(edge_ids):
         if stopper is not None and stopper.stop_requested:
             break
@@ -142,7 +144,8 @@ def run_edge_rollout_diagnostics(
         dst_obs = dataset.observations[int(graph.node_indices[dst_node])]
         ok, reset_method = _try_reset_to_obs(env, src_obs)
         if not ok:
-            logger.log({'phase': 'edge_rollout_diag', 'event': 'reset_unavailable', 'edge_id': eid, 'reset_method': reset_method})
+            reset_unavailable_count += 1
+            logger.log({'phase': 'edge_rollout_diag', 'event': 'reset_unavailable', 'edge_id': eid, 'reset_method': reset_method, 'reset_unavailable_count': reset_unavailable_count})
             break
         reset_ok_count += 1
         obs = np.asarray(src_obs, dtype=np.float32).copy()
@@ -162,6 +165,7 @@ def run_edge_rollout_diagnostics(
                 break
         labels.append(int(success))
         scores.append(float(graph.p_exec[eid]))
+        selected_flags.append(int(graph.p_exec[eid] >= selected_threshold))
         logger.log({
             'phase': 'edge_rollout_diag',
             'event': 'edge',
@@ -170,6 +174,7 @@ def run_edge_rollout_diagnostics(
             'src_node': src_node,
             'dst_node': dst_node,
             'p_exec': float(graph.p_exec[eid]),
+            'selected_edge': int(graph.p_exec[eid] >= selected_threshold),
             'risk': float(graph.risk[eid]),
             'cost': float(graph.cost[eid]),
             'success': int(success),
@@ -181,17 +186,29 @@ def run_edge_rollout_diagnostics(
 
     labels_np = np.asarray(labels, dtype=np.int32)
     scores_np = np.asarray(scores, dtype=np.float32)
+    selected_np = np.asarray(selected_flags, dtype=bool)
     auc, auprc = _safe_auc(labels_np, scores_np)
+    selected_success_rate = float(labels_np[selected_np].mean()) if selected_np.any() else float('nan')
+    unselected_success_rate = float(labels_np[~selected_np].mean()) if (~selected_np).any() else float('nan')
     logger.log({
         'phase': 'edge_rollout_diag',
         'event': 'completed',
         'enabled': 1,
         'reset_ok_count': reset_ok_count,
+        'reset_unavailable_count': reset_unavailable_count,
+        'reset_available': int(reset_ok_count > 0),
         'num_edges_eval': int(len(labels_np)),
+        'num_selected_edges_eval': int(selected_np.sum()),
+        'num_unselected_edges_eval': int((~selected_np).sum()),
         'success_rate': float(labels_np.mean()) if len(labels_np) else float('nan'),
+        'selected_edge_success_rate': selected_success_rate,
+        'unselected_edge_success_rate': unselected_success_rate,
         'p_exec_mean': float(scores_np.mean()) if len(scores_np) else float('nan'),
+        'selected_p_exec_mean': float(scores_np[selected_np].mean()) if selected_np.any() else float('nan'),
+        'unselected_p_exec_mean': float(scores_np[~selected_np].mean()) if (~selected_np).any() else float('nan'),
         'edge_rollout_auc': auc,
         'edge_rollout_auprc': auprc,
         'horizon': horizon,
         'success_threshold': threshold,
+        'selected_threshold': selected_threshold,
     })
