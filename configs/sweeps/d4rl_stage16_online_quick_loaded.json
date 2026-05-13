@@ -1,0 +1,24 @@
+{
+  "base_config": "../d4rl_antmaze_stage16.json",
+  "resources": {"default_mem_mb": 5000},
+  "grid": {
+    "envs": [
+      "antmaze-medium-play-v2",
+      "antmaze-medium-diverse-v2"
+    ],
+    "seeds": [0, 1, 2],
+    "variants": ["shortest", "reachability", "full_bars"],
+    "node_methods": ["bars"],
+    "set": {
+      "experiment.warmstart_root": "runs_stage16_full12",
+      "experiment.warmstart_source_variant": "full_bars",
+      "experiment.warmstart_artifacts": ["tdr", "policy", "reachability", "embeddings", "graph", "boundary"],
+      "eval.enabled": true,
+      "eval.episodes": 30,
+      "diagnostics.enabled": false,
+      "diagnostics.edge_rollout_enabled": false,
+      "boundary.enabled": true,
+      "boundary.method": "support_modes"
+    }
+  }
+}

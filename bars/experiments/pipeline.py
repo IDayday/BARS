@@ -98,32 +98,90 @@ def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device) -> Optio
 
 
 def _maybe_materialize_warmstart(cfg: Dict, run_dir: str, summary: CSVLogger) -> None:
+    """Copy selected artifacts from a previous run into the current run dir.
+
+    Stage-16 experiments often need to reuse expensive representation/policy
+    artifacts while deliberately retraining reachability.  Earlier versions
+    copied reachability unconditionally, which made PU-retrain ablations invalid.
+
+    Supported experiment fields:
+      warmstart_root: root containing env/variant/run directories.
+      warmstart_source_variant: override source variant, e.g. full_bars for
+        shortest/reachability eval jobs.
+      warmstart_artifacts: list or comma-separated string.  Valid values are
+        tdr, policy, reachability, embeddings, graph, boundary, all.
+    """
     exp_cfg = cfg.get('experiment', {})
     warmstart_root = exp_cfg.get('warmstart_root')
     if not warmstart_root:
         return
     env_name = cfg.get('data', {}).get('env_name', cfg.get('env_name', 'unknown'))
     variant = cfg.get('planner', {}).get('variant', 'full_bars')
+    source_variant = str(exp_cfg.get('warmstart_source_variant', variant))
     seed = int(cfg.get('seed', 0))
+
+    artifacts = exp_cfg.get('warmstart_artifacts', exp_cfg.get('warmstart_copy', 'all'))
+    if artifacts is None:
+        artifacts = 'all'
+    if isinstance(artifacts, str):
+        artifacts_set = {x.strip().lower() for x in artifacts.split(',') if x.strip()}
+    else:
+        artifacts_set = {str(x).strip().lower() for x in artifacts if str(x).strip()}
+    if not artifacts_set or 'all' in artifacts_set:
+        artifacts_set = {'tdr', 'policy', 'reachability', 'embeddings'}
+
+    rel_map = {
+        'tdr': 'checkpoints/tdr.pt',
+        'policy': 'checkpoints/policy.pt',
+        'reachability': 'checkpoints/reachability.pt',
+        'embeddings': 'cache/embeddings.npy',
+        'graph': 'cache/graph.npz',
+        'boundary': 'cache/boundary.npz',
+    }
+    unknown = sorted(artifacts_set - set(rel_map))
+    if unknown:
+        _summary_log(summary, 'warmstart', 'warning', reason='unknown_artifacts_ignored', artifacts=','.join(unknown))
+    selected = [k for k in rel_map if k in artifacts_set]
+
     root = Path(str(warmstart_root))
-    search_dir = root / str(env_name) / str(variant)
+    search_dir = root / str(env_name) / source_variant
     if not search_dir.exists():
-        _summary_log(summary, 'warmstart', 'skipped', reason='missing_search_dir', warmstart_root=str(root), env=env_name, variant=variant, seed=seed)
+        _summary_log(summary, 'warmstart', 'skipped', reason='missing_search_dir', warmstart_root=str(root), env=env_name, variant=variant, source_variant=source_variant, seed=seed, artifacts=','.join(selected))
         return
     candidates = sorted(search_dir.glob(f'*seed{seed}_*'), key=lambda p: p.stat().st_mtime)
     if not candidates:
-        _summary_log(summary, 'warmstart', 'skipped', reason='missing_source_run', warmstart_root=str(root), env=env_name, variant=variant, seed=seed)
+        _summary_log(summary, 'warmstart', 'skipped', reason='missing_source_run', warmstart_root=str(root), env=env_name, variant=variant, source_variant=source_variant, seed=seed, artifacts=','.join(selected))
         return
     src_run = candidates[-1]
     copied = []
-    for rel in ['checkpoints/tdr.pt', 'checkpoints/policy.pt', 'checkpoints/reachability.pt', 'cache/embeddings.npy']:
+    skipped_existing = []
+    missing = []
+    for name in selected:
+        rel = rel_map[name]
         src = src_run / rel
         dst = Path(run_dir) / rel
-        if src.exists() and not dst.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-            copied.append(rel)
-    _summary_log(summary, 'warmstart', 'completed', source_run_dir=str(src_run), copied_count=len(copied), copied=';'.join(copied))
+        if not src.exists():
+            missing.append(rel)
+            continue
+        if dst.exists():
+            skipped_existing.append(rel)
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        copied.append(rel)
+    _summary_log(
+        summary,
+        'warmstart',
+        'completed',
+        source_run_dir=str(src_run),
+        warmstart_root=str(root),
+        source_variant=source_variant,
+        requested_artifacts=','.join(selected),
+        copied_count=len(copied),
+        copied=';'.join(copied),
+        missing=';'.join(missing),
+        skipped_existing=';'.join(skipped_existing),
+    )
 
 def run_cached_diagnostics(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -> str:
     """Rerun only diagnostics from cached embeddings/graph/boundary/checkpoint.
@@ -282,7 +340,7 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
                 run_path_diagnostics(dataset, embeddings, graph, boundary, cfg, loggers['diagnostics'])
             if env is not None and bool(cfg.get('diagnostics', {}).get('edge_rollout_enabled', cfg.get('diagnostics', {}).get('edge_rollout', {}).get('enabled', False) if isinstance(cfg.get('diagnostics', {}).get('edge_rollout', {}), dict) else False)):
                 with phase_timer(loggers.get('profile'), 'diagnostics', 'edge_rollout'):
-                    run_edge_rollout_diagnostics(env, dataset, policy, graph, cfg, device, loggers['diagnostics'], stopper)
+                    run_edge_rollout_diagnostics(env, dataset, policy, graph, cfg, device, loggers['diagnostics'], stopper, embeddings=embeddings)
         _summary_log(summary, 'diagnostics_end', 'completed', enabled=int(bool(cfg.get('diagnostics', {}).get('enabled', True))))
         if _stop_requested(stopper, summary, 'after_diagnostics'):
             status = 'terminated'
@@ -361,7 +419,7 @@ def rerun_diagnostics(cfg: Dict, run_dir: str, clear: bool = False, rebuild_boun
         if policy is None:
             loggers['diagnostics'].log({'phase': 'edge_rollout_diag', 'event': 'completed', 'enabled': 1, 'available': 0, 'reason': 'missing_policy_checkpoint'})
         else:
-            run_edge_rollout_diagnostics(env, dataset, policy, graph, cfg, device, loggers['diagnostics'])
+            run_edge_rollout_diagnostics(env, dataset, policy, graph, cfg, device, loggers['diagnostics'], embeddings=embeddings)
     _summary_log(summary, 'diagnostics_only_end', 'completed')
     if package:
         archive = package_logs(run_dir)
