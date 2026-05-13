@@ -128,7 +128,7 @@ def _eval_summary(eval_df: pd.DataFrame, keys: List[str]) -> pd.DataFrame:
     if eval_df.empty:
         return pd.DataFrame()
     keys = [c for c in keys if c in eval_df.columns]
-    keep = [c for c in ['success', 'return', 'steps', 'replans', 'no_path_count', 'last_plan_edges', 'goal_distance_final'] if c in eval_df.columns]
+    keep = [c for c in ['success', 'return', 'steps', 'replans', 'no_path_count', 'initial_plan_failed_count', 'plan_failed_initial', 'fallback_used', 'fallback_count', 'direct_goal_attempts', 'last_plan_edges', 'first_plan_edges', 'max_plan_edges', 'mean_plan_edges', 'num_plan_calls', 'num_subgoal_attempts', 'num_subgoal_reached', 'subgoal_reach_rate', 'goal_distance_final', 'subgoal_horizon', 'subgoal_threshold', 'success_threshold', 'lambda_risk', 'lambda_boundary'] if c in eval_df.columns]
     if not keys or not keep:
         return pd.DataFrame()
     agg = eval_df.groupby(keys, dropna=False)[keep].agg(['mean', 'std']).reset_index()
@@ -261,15 +261,14 @@ def main() -> None:
         'selected_supported_rate', 'selected_hard_neg_proxy_rate', 'selected_unlabeled_bridge_rate',
         'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate',
         'found', 'total_risk', 'total_boundary', 'total_cost', 'objective', 'num_edges', 'num_subgoals', 'is_trivial_pair', 'lambda_risk',
-        'success', 'return', 'steps', 'replans', 'no_path_count', 'last_plan_edges', 'goal_distance_final',
+        'success', 'return', 'steps', 'replans', 'no_path_count', 'initial_plan_failed_count', 'plan_failed_initial',
+        'fallback_used', 'fallback_count', 'direct_goal_attempts', 'last_plan_edges', 'first_plan_edges',
+        'max_plan_edges', 'mean_plan_edges', 'num_plan_calls', 'num_subgoal_attempts', 'num_subgoal_reached',
+        'subgoal_reach_rate', 'goal_distance_final', 'subgoal_horizon', 'subgoal_threshold', 'success_threshold',
+        'lambda_risk', 'lambda_boundary',
         'edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate',
         'unselected_edge_success_rate', 'reset_ok_count', 'reset_unavailable_count', 'reset_available',
-        'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval', 'support_available',
-        'n_selected_supported', 'success_rate_selected_supported', 'p_exec_mean_selected_supported', 'final_dist_mean_selected_supported',
-        'n_selected_unlabeled_bridge', 'success_rate_selected_unlabeled_bridge', 'p_exec_mean_selected_unlabeled_bridge', 'final_dist_mean_selected_unlabeled_bridge',
-        'n_selected_hard_neg_proxy', 'success_rate_selected_hard_neg_proxy', 'p_exec_mean_selected_hard_neg_proxy', 'final_dist_mean_selected_hard_neg_proxy',
-        'n_unselected_supported', 'success_rate_unselected_supported', 'p_exec_mean_unselected_supported', 'final_dist_mean_unselected_supported',
-        'n_unselected_hard_neg_proxy', 'success_rate_unselected_hard_neg_proxy', 'p_exec_mean_unselected_hard_neg_proxy', 'final_dist_mean_unselected_hard_neg_proxy',
+        'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval',
     ]
     summary_all = _read_csv(analysis_dir / 'summary_all.csv')
     diagnostics_all = _coerce_numeric(_read_csv(analysis_dir / 'diagnostics_all.csv'), numeric_cols)
@@ -309,16 +308,7 @@ def main() -> None:
     planner_summary_all = _round_df(_planner_summary(path_diag, planner_keys, nonzero_only=False))
     planner_summary_nonzero = _round_df(_planner_summary(path_diag, planner_keys, nonzero_only=True))
     boundary_summary = _round_df(_agg_mean(boundary_diag, boundary_keys, ['psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'num_pairs']))
-    edge_rollout_summary = _round_df(_agg_mean(edge_rollout_diag, edge_keys, [
-        'edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate',
-        'unselected_edge_success_rate', 'reset_available', 'reset_ok_count', 'reset_unavailable_count',
-        'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval', 'support_available',
-        'n_selected_supported', 'success_rate_selected_supported', 'p_exec_mean_selected_supported', 'final_dist_mean_selected_supported',
-        'n_selected_unlabeled_bridge', 'success_rate_selected_unlabeled_bridge', 'p_exec_mean_selected_unlabeled_bridge', 'final_dist_mean_selected_unlabeled_bridge',
-        'n_selected_hard_neg_proxy', 'success_rate_selected_hard_neg_proxy', 'p_exec_mean_selected_hard_neg_proxy', 'final_dist_mean_selected_hard_neg_proxy',
-        'n_unselected_supported', 'success_rate_unselected_supported', 'p_exec_mean_unselected_supported', 'final_dist_mean_unselected_supported',
-        'n_unselected_hard_neg_proxy', 'success_rate_unselected_hard_neg_proxy', 'p_exec_mean_unselected_hard_neg_proxy', 'final_dist_mean_unselected_hard_neg_proxy',
-    ]))
+    edge_rollout_summary = _round_df(_agg_mean(edge_rollout_diag, edge_keys, ['edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate', 'unselected_edge_success_rate', 'reset_available', 'reset_ok_count', 'reset_unavailable_count', 'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval']))
     eval_summary = _round_df(_eval_summary(eval_all, ['env', 'variant']))
     graph_summary = _round_df(_agg_mean(graph_all, ['env', 'event'], ['num_nodes', 'num_edges', 'mean_out_degree', 'p_exec_mean', 'risk_mean', 'cost_mean', 'duration_sec', 'spectral_seconds']))
     profile_summary = _round_df(_agg_mean(profile_all, ['env', 'phase', 'event'], ['duration_sec']))
