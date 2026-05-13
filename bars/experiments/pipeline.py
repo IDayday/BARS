@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import shutil
 import socket
 import time
 from typing import Dict, Optional
+from pathlib import Path
 
 import numpy as np
 
@@ -66,6 +68,12 @@ def _stop_requested(stopper: Optional[Stopper], summary: CSVLogger, location: st
     return True
 
 
+def _stop_after_phase(cfg: Dict, phase: str) -> bool:
+    exp_cfg = cfg.get('experiment', {})
+    stop_phase = str(exp_cfg.get('stop_after_phase', '') or '').strip().lower()
+    return bool(stop_phase) and stop_phase == str(phase).strip().lower()
+
+
 def _load_reachability_if_available(cfg: Dict, run_dir: str, latent_dim: int, device) -> Optional[ReachabilityModel]:
     ckpt_path = os.path.join(run_dir, 'checkpoints', 'reachability.pt')
     if not os.path.exists(ckpt_path):
@@ -87,6 +95,35 @@ def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device) -> Optio
     load_checkpoint(ckpt_path, model, map_location=str(device))
     model.eval()
     return model
+
+
+def _maybe_materialize_warmstart(cfg: Dict, run_dir: str, summary: CSVLogger) -> None:
+    exp_cfg = cfg.get('experiment', {})
+    warmstart_root = exp_cfg.get('warmstart_root')
+    if not warmstart_root:
+        return
+    env_name = cfg.get('data', {}).get('env_name', cfg.get('env_name', 'unknown'))
+    variant = cfg.get('planner', {}).get('variant', 'full_bars')
+    seed = int(cfg.get('seed', 0))
+    root = Path(str(warmstart_root))
+    search_dir = root / str(env_name) / str(variant)
+    if not search_dir.exists():
+        _summary_log(summary, 'warmstart', 'skipped', reason='missing_search_dir', warmstart_root=str(root), env=env_name, variant=variant, seed=seed)
+        return
+    candidates = sorted(search_dir.glob(f'*seed{seed}_*'), key=lambda p: p.stat().st_mtime)
+    if not candidates:
+        _summary_log(summary, 'warmstart', 'skipped', reason='missing_source_run', warmstart_root=str(root), env=env_name, variant=variant, seed=seed)
+        return
+    src_run = candidates[-1]
+    copied = []
+    for rel in ['checkpoints/tdr.pt', 'checkpoints/policy.pt', 'checkpoints/reachability.pt', 'cache/embeddings.npy']:
+        src = src_run / rel
+        dst = Path(run_dir) / rel
+        if src.exists() and not dst.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            copied.append(rel)
+    _summary_log(summary, 'warmstart', 'completed', source_run_dir=str(src_run), copied_count=len(copied), copied=';'.join(copied))
 
 def run_cached_diagnostics(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -> str:
     """Rerun only diagnostics from cached embeddings/graph/boundary/checkpoint.
@@ -155,6 +192,7 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
     try:
         set_seed(int(cfg.get('seed', 0)))
         device = get_torch_device(str(cfg.get('device', 'cuda')))
+        _maybe_materialize_warmstart(cfg, run_dir, summary)
         _summary_log(summary, 'start', 'started', host=socket.gethostname(), cuda=describe_visible_cuda(), run_dir=run_dir)
 
         _summary_log(summary, 'load_dataset', 'running')
@@ -229,6 +267,10 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
                 with phase_timer(loggers.get('profile'), 'graph_build', 'save_boundary'):
                     boundary.save_npz(boundary_path)
                 loggers['graph'].log({'phase': 'boundary', 'event': 'saved', 'path': boundary_path})
+        if _stop_after_phase(cfg, 'graph_build'):
+            status = 'completed_graph_timing'
+            _summary_log(summary, 'graph_timing_stop', 'completed_graph_timing', location='after_boundary_build', boundary_enabled=int(bool(cfg.get('boundary', {}).get('enabled', True))))
+            return run_dir
 
         _summary_log(summary, 'diagnostics_start', 'running', enabled=int(bool(cfg.get('diagnostics', {}).get('enabled', True))))
         if bool(cfg.get('diagnostics', {}).get('enabled', True)):

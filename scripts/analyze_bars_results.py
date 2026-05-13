@@ -114,6 +114,8 @@ def _planner_summary(path_diag: pd.DataFrame, keys: List[str], nonzero_only: boo
         agg_spec['rows'] = ('pair_id', 'count')
         agg_spec['unique_pairs'] = ('pair_id', 'nunique')
     for col in ['found', 'total_risk', 'total_boundary', 'total_cost', 'objective', 'num_edges', 'num_subgoals', 'is_trivial_pair', 'lambda_risk']:
+        if col in keys:
+            continue
         if col in df.columns:
             out_col = 'found_rate' if col == 'found' else ('trivial_pair_rate' if col == 'is_trivial_pair' else col)
             agg_spec[out_col] = (col, 'mean')

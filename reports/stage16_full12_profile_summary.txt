@@ -1,0 +1,252 @@
+PROFILE_PATH runs_stage16_full12/_analysis/profile_all.csv
+profile_shape (312, 10)
+profile_columns ['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'duration_sec', 'run_dir']
+
+=== profile mean/median/max by env/phase ===
+                                       count    mean  median     max
+env                       phase                                     
+antmaze-large-diverse-v2  diagnostics      9  11.981   1.340  46.144
+                          graph_build     15   1.121   0.735   3.411
+                          pipeline        15   0.912   0.023   3.401
+antmaze-large-play-v2     diagnostics      9  13.284   1.326  47.017
+                          graph_build     15   1.113   0.745   3.357
+                          pipeline        15   0.896   0.021   3.370
+antmaze-medium-diverse-v2 diagnostics      9  13.781   1.339  44.300
+                          graph_build     15   1.126   0.743   3.367
+                          pipeline        15   0.881   0.019   3.282
+antmaze-medium-play-v2    diagnostics      9  17.216   1.343  59.190
+                          graph_build     15   1.117   0.786   3.283
+                          pipeline        15   0.888   0.019   3.296
+
+=== graph-related profile ===
+                                       count   mean  median    max
+env                       phase                                   
+antmaze-large-diverse-v2  graph_build     15  1.121   0.735  3.411
+antmaze-large-play-v2     graph_build     15  1.113   0.745  3.357
+antmaze-medium-diverse-v2 graph_build     15  1.126   0.743  3.367
+antmaze-medium-play-v2    graph_build     15  1.117   0.786  3.283
+
+=== per-run graph_related_total_sec ===
+                                                          run_id                       env  seed  graph_related_total_sec
+antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853  antmaze-large-diverse-v2     2                    5.477
+    antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853     antmaze-large-play-v2     0                    5.491
+   antmaze-medium-play-v2_full_bars_bars_seed2_2_20260513_113853    antmaze-medium-play-v2     2                    5.561
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113853    antmaze-medium-play-v2     0                    5.565
+antmaze-medium-diverse-v2_full_bars_bars_seed0_3_20260513_113853 antmaze-medium-diverse-v2     0                    5.574
+    antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853     antmaze-large-play-v2     2                    5.581
+    antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853     antmaze-large-play-v2     1                    5.630
+   antmaze-medium-play-v2_full_bars_bars_seed1_1_20260513_113853    antmaze-medium-play-v2     1                    5.632
+antmaze-medium-diverse-v2_full_bars_bars_seed2_5_20260513_113853 antmaze-medium-diverse-v2     2                    5.634
+ antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853  antmaze-large-diverse-v2     0                    5.643
+antmaze-medium-diverse-v2_full_bars_bars_seed1_4_20260513_113853 antmaze-medium-diverse-v2     1                    5.679
+antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853  antmaze-large-diverse-v2     1                    5.698
+
+=== graph_related_total_hours by env ===
+                           count    mean  median     max
+env                                                     
+antmaze-large-diverse-v2       3  0.0016  0.0016  0.0016
+antmaze-large-play-v2          3  0.0015  0.0016  0.0016
+antmaze-medium-diverse-v2      3  0.0016  0.0016  0.0016
+antmaze-medium-play-v2         3  0.0016  0.0015  0.0016
+
+=== summary status ===
+completed    120
+running       96
+started       12
+Name: status, dtype: int64
+
+=== summary tail ===
+                     env  seed                                                           run_id                    phase    status
+   antmaze-large-play-v2     0     antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853               eval_start   running
+   antmaze-large-play-v2     0     antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853                 eval_end completed
+   antmaze-large-play-v2     0     antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853            package_start   running
+   antmaze-large-play-v2     0     antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853              package_end completed
+   antmaze-large-play-v2     0     antmaze-large-play-v2_full_bars_bars_seed0_6_20260513_113853                completed completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853                warmstart completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853                    start   started
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853             load_dataset   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853             load_dataset completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853          train_tdr_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853            train_tdr_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853       train_policy_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853         train_policy_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853 train_reachability_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853   train_reachability_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853        graph_build_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853          graph_build_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853        diagnostics_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853          diagnostics_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853               eval_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853                 eval_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853            package_start   running
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853              package_end completed
+   antmaze-large-play-v2     2     antmaze-large-play-v2_full_bars_bars_seed2_8_20260513_113853                completed completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853                warmstart completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853                    start   started
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853             load_dataset   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853             load_dataset completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853          train_tdr_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853            train_tdr_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853       train_policy_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853         train_policy_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853 train_reachability_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853   train_reachability_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853        graph_build_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853          graph_build_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853        diagnostics_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853          diagnostics_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853               eval_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853                 eval_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853            package_start   running
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853              package_end completed
+   antmaze-large-play-v2     1     antmaze-large-play-v2_full_bars_bars_seed1_7_20260513_113853                completed completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853                warmstart completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853                    start   started
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853             load_dataset   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853             load_dataset completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853          train_tdr_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853            train_tdr_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853       train_policy_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853         train_policy_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853 train_reachability_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853   train_reachability_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853        graph_build_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853          graph_build_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853        diagnostics_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853          diagnostics_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853               eval_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853                 eval_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853            package_start   running
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853              package_end completed
+antmaze-large-diverse-v2     2 antmaze-large-diverse-v2_full_bars_bars_seed2_11_20260513_113853                completed completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853                warmstart completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853                    start   started
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853             load_dataset   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853             load_dataset completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853          train_tdr_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853            train_tdr_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853       train_policy_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853         train_policy_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853 train_reachability_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853   train_reachability_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853        graph_build_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853          graph_build_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853        diagnostics_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853          diagnostics_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853               eval_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853                 eval_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853            package_start   running
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853              package_end completed
+antmaze-large-diverse-v2     1 antmaze-large-diverse-v2_full_bars_bars_seed1_10_20260513_113853                completed completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853                warmstart completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853                    start   started
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853             load_dataset   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853             load_dataset completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853          train_tdr_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853            train_tdr_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853       train_policy_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853         train_policy_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853 train_reachability_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853   train_reachability_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853        graph_build_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853          graph_build_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853        diagnostics_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853          diagnostics_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853               eval_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853                 eval_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853            package_start   running
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853              package_end completed
+antmaze-large-diverse-v2     0  antmaze-large-diverse-v2_full_bars_bars_seed0_9_20260513_113853                completed completed
+
+=== diagnostics phases ===
+path_diag             23112
+edge_diag                24
+boundary_diag            24
+edge_support_diag        12
+balanced_edge_diag       12
+Name: phase, dtype: int64
+
+=== edge_diag rows=24 ===
+columns: ['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'num_edges', 'edge_label_horizon', 'num_pos_proxy', 'num_cross_traj_proxy', 'reach_auc_proxy', 'reach_auprc_proxy', 'selected_threshold', 'selected_edges', 'false_positive_proxy_rate', 'cross_traj_selected_rate', 'reachable_edge_coverage_proxy', 'sampled_segments', 'target_segments', 'edge_hits', 'support_sampled_segments', 'support_edge_hits', 'support_hit_rate', 'num_supported_edges', 'supported_edge_rate', 'num_hard_neg_proxy_edges', 'num_unlabeled_bridge_edges', 'edge_auc_balanced', 'edge_auprc_balanced', 'selected_supported_rate', 'selected_hard_neg_proxy_rate', 'selected_unlabeled_bridge_rate', 'score_supported_mean', 'score_supported_std', 'score_supported_p10', 'score_supported_p50', 'score_supported_p90', 'score_hard_neg_proxy_mean', 'score_hard_neg_proxy_std', 'score_hard_neg_proxy_p10', 'score_hard_neg_proxy_p50', 'score_hard_neg_proxy_p90', 'score_unlabeled_bridge_mean', 'score_unlabeled_bridge_std', 'score_unlabeled_bridge_p10', 'score_unlabeled_bridge_p50', 'score_unlabeled_bridge_p90', 'enabled', 'boundary_method', 'num_pairs', 'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'variants', 'path_min_graph_edges', 'include_trivial_path_pairs', 'lambda_risk_values', 'pair_id', 'attempt_id', 'start_index', 'goal_index', 'true_future_dt', 'start_node', 'goal_node', 'is_trivial_pair', 'lambda_risk', 'lambda_boundary', 'found', 'num_subgoals', 'total_cost', 'total_risk', 'total_boundary', 'objective', 'pairs_done', 'attempts', 'skipped_same_node', 'skipped_short_graph', 'accepted_pairs', 'zero_edge_rate_attempt_proxy', 'run_dir']
+Empty DataFrame
+Columns: [reach_auc_proxy, reach_auprc_proxy, cross_traj_selected_rate, reachable_edge_coverage_proxy, selected_edges, num_edges]
+Index: []
+
+=== balanced_edge_diag rows=12 ===
+columns: ['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'num_edges', 'edge_label_horizon', 'num_pos_proxy', 'num_cross_traj_proxy', 'reach_auc_proxy', 'reach_auprc_proxy', 'selected_threshold', 'selected_edges', 'false_positive_proxy_rate', 'cross_traj_selected_rate', 'reachable_edge_coverage_proxy', 'sampled_segments', 'target_segments', 'edge_hits', 'support_sampled_segments', 'support_edge_hits', 'support_hit_rate', 'num_supported_edges', 'supported_edge_rate', 'num_hard_neg_proxy_edges', 'num_unlabeled_bridge_edges', 'edge_auc_balanced', 'edge_auprc_balanced', 'selected_supported_rate', 'selected_hard_neg_proxy_rate', 'selected_unlabeled_bridge_rate', 'score_supported_mean', 'score_supported_std', 'score_supported_p10', 'score_supported_p50', 'score_supported_p90', 'score_hard_neg_proxy_mean', 'score_hard_neg_proxy_std', 'score_hard_neg_proxy_p10', 'score_hard_neg_proxy_p50', 'score_hard_neg_proxy_p90', 'score_unlabeled_bridge_mean', 'score_unlabeled_bridge_std', 'score_unlabeled_bridge_p10', 'score_unlabeled_bridge_p50', 'score_unlabeled_bridge_p90', 'enabled', 'boundary_method', 'num_pairs', 'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'variants', 'path_min_graph_edges', 'include_trivial_path_pairs', 'lambda_risk_values', 'pair_id', 'attempt_id', 'start_index', 'goal_index', 'true_future_dt', 'start_node', 'goal_node', 'is_trivial_pair', 'lambda_risk', 'lambda_boundary', 'found', 'num_subgoals', 'total_cost', 'total_risk', 'total_boundary', 'objective', 'pairs_done', 'attempts', 'skipped_same_node', 'skipped_short_graph', 'accepted_pairs', 'zero_edge_rate_attempt_proxy', 'run_dir']
+Empty DataFrame
+Columns: [edge_auc_balanced, edge_auprc_balanced, support_hit_rate, supported_edge_rate, selected_supported_rate, selected_hard_neg_proxy_rate, score_supported_mean, score_hard_neg_proxy_mean, score_unlabeled_bridge_mean]
+Index: []
+
+=== boundary_diag rows=24 ===
+columns: ['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'num_edges', 'edge_label_horizon', 'num_pos_proxy', 'num_cross_traj_proxy', 'reach_auc_proxy', 'reach_auprc_proxy', 'selected_threshold', 'selected_edges', 'false_positive_proxy_rate', 'cross_traj_selected_rate', 'reachable_edge_coverage_proxy', 'sampled_segments', 'target_segments', 'edge_hits', 'support_sampled_segments', 'support_edge_hits', 'support_hit_rate', 'num_supported_edges', 'supported_edge_rate', 'num_hard_neg_proxy_edges', 'num_unlabeled_bridge_edges', 'edge_auc_balanced', 'edge_auprc_balanced', 'selected_supported_rate', 'selected_hard_neg_proxy_rate', 'selected_unlabeled_bridge_rate', 'score_supported_mean', 'score_supported_std', 'score_supported_p10', 'score_supported_p50', 'score_supported_p90', 'score_hard_neg_proxy_mean', 'score_hard_neg_proxy_std', 'score_hard_neg_proxy_p10', 'score_hard_neg_proxy_p50', 'score_hard_neg_proxy_p90', 'score_unlabeled_bridge_mean', 'score_unlabeled_bridge_std', 'score_unlabeled_bridge_p10', 'score_unlabeled_bridge_p50', 'score_unlabeled_bridge_p90', 'enabled', 'boundary_method', 'num_pairs', 'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'variants', 'path_min_graph_edges', 'include_trivial_path_pairs', 'lambda_risk_values', 'pair_id', 'attempt_id', 'start_index', 'goal_index', 'true_future_dt', 'start_node', 'goal_node', 'is_trivial_pair', 'lambda_risk', 'lambda_boundary', 'found', 'num_subgoals', 'total_cost', 'total_risk', 'total_boundary', 'objective', 'pairs_done', 'attempts', 'skipped_same_node', 'skipped_short_graph', 'accepted_pairs', 'zero_edge_rate_attempt_proxy', 'run_dir']
+Empty DataFrame
+Columns: [supported_pair_rate, psi_mean, psi_p10, psi_p50, psi_p90]
+Index: []
+
+=== path_diag rows=23112 ===
+columns: ['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'num_edges', 'edge_label_horizon', 'num_pos_proxy', 'num_cross_traj_proxy', 'reach_auc_proxy', 'reach_auprc_proxy', 'selected_threshold', 'selected_edges', 'false_positive_proxy_rate', 'cross_traj_selected_rate', 'reachable_edge_coverage_proxy', 'sampled_segments', 'target_segments', 'edge_hits', 'support_sampled_segments', 'support_edge_hits', 'support_hit_rate', 'num_supported_edges', 'supported_edge_rate', 'num_hard_neg_proxy_edges', 'num_unlabeled_bridge_edges', 'edge_auc_balanced', 'edge_auprc_balanced', 'selected_supported_rate', 'selected_hard_neg_proxy_rate', 'selected_unlabeled_bridge_rate', 'score_supported_mean', 'score_supported_std', 'score_supported_p10', 'score_supported_p50', 'score_supported_p90', 'score_hard_neg_proxy_mean', 'score_hard_neg_proxy_std', 'score_hard_neg_proxy_p10', 'score_hard_neg_proxy_p50', 'score_hard_neg_proxy_p90', 'score_unlabeled_bridge_mean', 'score_unlabeled_bridge_std', 'score_unlabeled_bridge_p10', 'score_unlabeled_bridge_p50', 'score_unlabeled_bridge_p90', 'enabled', 'boundary_method', 'num_pairs', 'psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'variants', 'path_min_graph_edges', 'include_trivial_path_pairs', 'lambda_risk_values', 'pair_id', 'attempt_id', 'start_index', 'goal_index', 'true_future_dt', 'start_node', 'goal_node', 'is_trivial_pair', 'lambda_risk', 'lambda_boundary', 'found', 'num_subgoals', 'total_cost', 'total_risk', 'total_boundary', 'objective', 'pairs_done', 'attempts', 'skipped_same_node', 'skipped_short_graph', 'accepted_pairs', 'zero_edge_rate_attempt_proxy', 'run_dir']
+                                                    found  ...  lambda_risk
+env                       variant      lambda_risk         ...             
+antmaze-large-diverse-v2  full_bars    0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          reachability 0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          shortest     0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+antmaze-large-play-v2     full_bars    0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          reachability 0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          shortest     0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+antmaze-medium-diverse-v2 full_bars    0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          reachability 0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          shortest     0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+antmaze-medium-play-v2    full_bars    0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          reachability 0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+                          shortest     0.0            1.0  ...          0.0
+                                       0.1            1.0  ...          0.1
+                                       0.3            1.0  ...          0.3
+                                       1.0            1.0  ...          1.0
+                                       3.0            1.0  ...          3.0
+
+[60 rows x 8 columns]

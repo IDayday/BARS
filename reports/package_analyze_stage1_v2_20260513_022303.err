@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/root/remote/project/BARS/scripts/analyze_bars_results.py", line 403, in <module>
+    main()
+  File "/root/remote/project/BARS/scripts/analyze_bars_results.py", line 352, in main
+    eval_summary = _round_df(_eval_summary(eval_all, eval_keys))
+  File "/root/remote/project/BARS/scripts/analyze_bars_results.py", line 147, in _eval_summary
+    eval_df.groupby(keys, dropna=False)[[c for c in keep if c in eval_df.columns]]
+  File "/root/anaconda3/envs/gcrlo/lib/python3.9/site-packages/pandas/core/groupby/generic.py", line 979, in aggregate
+    result = op.agg()
+  File "/root/anaconda3/envs/gcrlo/lib/python3.9/site-packages/pandas/core/apply.py", line 164, in agg
+    return self.agg_list_like()
+  File "/root/anaconda3/envs/gcrlo/lib/python3.9/site-packages/pandas/core/apply.py", line 379, in agg_list_like
+    raise ValueError("no results")
+ValueError: no results

@@ -1,0 +1,15 @@
+On branch auto-bars-stage1-3-20260512-164636
+Your branch is up to date with 'origin/auto-bars-stage1-3-20260512-164636'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	analysis_packages/
+	reports/package_analyze_stage1_v2_20260513_022303.err
+	reports/package_analyze_stage1_v2_20260513_022303.out
+	reports/package_collect_stage1_v2_20260513_022303.err
+	reports/package_collect_stage1_v2_20260513_022303.out
+	reports/stage16_git_status_before.txt
+	reports/stage1_diagnostics_partial.md
+	scripts/package_stage1_v2_upload.sh
+
+nothing added to commit but untracked files present (use "git add" to track)

@@ -1,0 +1,118 @@
+diff --git a/.gitignore b/.gitignore
+index 2047a84..fc7d1cb 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -220,6 +220,7 @@ __marimo__/
+ # BARS runs and artifacts
+ runs/
+ runs_*/
++/analysis_packages/
+ /data/
+ /datasets/
+ backups/
+@@ -227,4 +228,6 @@ backups/
+ *.pt
+ *.pth
+ *.ckpt
++*.npz
++*.npy
+ *.tar.gz
+diff --git a/bars/experiments/pipeline.py b/bars/experiments/pipeline.py
+index dcafef2..9cf3c92 100644
+--- a/bars/experiments/pipeline.py
++++ b/bars/experiments/pipeline.py
+@@ -66,6 +66,12 @@ def _stop_requested(stopper: Optional[Stopper], summary: CSVLogger, location: st
+     return True
+ 
+ 
++def _stop_after_phase(cfg: Dict, phase: str) -> bool:
++    exp_cfg = cfg.get('experiment', {})
++    stop_phase = str(exp_cfg.get('stop_after_phase', '') or '').strip().lower()
++    return bool(stop_phase) and stop_phase == str(phase).strip().lower()
++
++
+ def _load_reachability_if_available(cfg: Dict, run_dir: str, latent_dim: int, device) -> Optional[ReachabilityModel]:
+     ckpt_path = os.path.join(run_dir, 'checkpoints', 'reachability.pt')
+     if not os.path.exists(ckpt_path):
+@@ -229,6 +235,10 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
+                 with phase_timer(loggers.get('profile'), 'graph_build', 'save_boundary'):
+                     boundary.save_npz(boundary_path)
+                 loggers['graph'].log({'phase': 'boundary', 'event': 'saved', 'path': boundary_path})
++        if _stop_after_phase(cfg, 'graph_build'):
++            status = 'completed_graph_timing'
++            _summary_log(summary, 'graph_timing_stop', 'completed_graph_timing', location='after_boundary_build', boundary_enabled=int(bool(cfg.get('boundary', {}).get('enabled', True))))
++            return run_dir
+ 
+         _summary_log(summary, 'diagnostics_start', 'running', enabled=int(bool(cfg.get('diagnostics', {}).get('enabled', True))))
+         if bool(cfg.get('diagnostics', {}).get('enabled', True)):
+diff --git a/configs/d4rl_antmaze_stage16.json b/configs/d4rl_antmaze_stage16.json
+index 25bb164..41fc366 100644
+--- a/configs/d4rl_antmaze_stage16.json
++++ b/configs/d4rl_antmaze_stage16.json
+@@ -8,7 +8,7 @@
+   },
+   "ann": {
+     "backend": "auto",
+-    "use_gpu": false,
++    "use_gpu": true,
+     "gpu_id": 0,
+     "n_threads": 1
+   },
+@@ -90,9 +90,9 @@
+     "spectral_clusters": 6,
+     "spectral_solver": "landmark",
+     "spectral_landmarks": 2048,
+-    "spectral_full_max_nodes": 3000,
+-    "spectral_eig_tol": 0.001,
+-    "spectral_eig_maxiter": 1000,
++    "spectral_full_max_nodes": 3500,
++    "spectral_eig_tol": 0.01,
++    "spectral_eig_maxiter": 500,
+     "spectral_landmark_method": "fps",
+     "anchor_exclude_quantile": 0.1,
+     "edge_knn": 12,
+@@ -107,17 +107,17 @@
+     "score_batch_size": 65536,
+     "load_if_exists": true,
+     "ann_backend": "auto",
+-    "ann_use_gpu": false,
++    "ann_use_gpu": true,
+     "ann_threads": 1
+   },
+   "boundary": {
+     "enabled": true,
+     "method": "support_modes",
+     "num_modes": 4,
+-    "support_k": 64,
++    "support_k": 32,
+     "segment_horizon": 30,
+     "segment_min_dt": 1,
+-    "support_segments": 100000,
++    "support_segments": 60000,
+     "support_batch_size": 65536,
+     "mode_kmeans_max_iter": 50,
+     "min_edge_support_count": 1,
+@@ -145,7 +145,7 @@
+     "path_max_dt": 160,
+     "path_min_graph_edges": 1,
+     "include_trivial_path_pairs": false,
+-    "max_sampling_attempts": 10000,
++    "max_sampling_attempts": 20000,
+     "planner_variants": [
+       "shortest",
+       "reachability",
+diff --git a/configs/sweeps/d4rl_stage16_full12.json b/configs/sweeps/d4rl_stage16_full12.json
+index e4a9677..2cfe82f 100644
+--- a/configs/sweeps/d4rl_stage16_full12.json
++++ b/configs/sweeps/d4rl_stage16_full12.json
+@@ -23,7 +23,9 @@
+     ],
+     "set": {
+       "eval.enabled": false,
+-      "diagnostics.edge_rollout_enabled": false
++      "diagnostics.edge_rollout_enabled": false,
++      "boundary.enabled": true,
++      "boundary.method": "support_modes"
+     }
+   }
+ }

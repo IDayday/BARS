@@ -11,9 +11,7 @@
       "antmaze-large-diverse-v2"
     ],
     "seeds": [
-      0,
-      1,
-      2
+      0
     ],
     "variants": [
       "full_bars"
@@ -26,6 +24,7 @@
       "diagnostics.edge_rollout_enabled": false,
       "boundary.enabled": true,
       "boundary.method": "support_modes",
+      "experiment.stop_after_phase": "graph_build",
       "experiment.warmstart_root": "runs_stage1_diag_v2"
     }
   }

@@ -1,0 +1,184 @@
+PROFILE_PATH runs_stage16_graph_timing4/_analysis/profile_all.csv
+
+=== profile columns ===
+['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'duration_sec', 'run_dir']
+
+=== profile shape ===
+(80, 10)
+DURATION_COLUMN duration_sec
+PHASE_COLUMN phase
+
+=== mean profile by env/phase ===
+                                       count   mean  median    max
+env                       phase                                   
+antmaze-large-diverse-v2  graph_build      5  1.105   0.757  3.205
+                          pipeline         5  0.929   0.019  3.315
+antmaze-large-play-v2     graph_build      5  1.101   0.790  3.162
+                          pipeline         5  0.896   0.024  3.102
+antmaze-medium-diverse-v2 graph_build      5  1.148   0.828  3.318
+                          pipeline         5  0.903   0.024  3.087
+antmaze-medium-play-v2    graph_build      5  1.115   0.795  3.224
+                          pipeline         5  0.867   0.019  2.927
+
+=== graph-related phases ===
+                                       count   mean  median    max
+env                       phase                                   
+antmaze-large-diverse-v2  graph_build      5  1.105   0.757  3.205
+antmaze-large-play-v2     graph_build      5  1.101   0.790  3.162
+antmaze-medium-diverse-v2 graph_build      5  1.148   0.828  3.318
+antmaze-medium-play-v2    graph_build      5  1.115   0.795  3.224
+
+=== per-run graph_related_total_sec ===
+                                                          run_id                       env  seed  graph_related_total_sec
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0                    5.504
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0                    5.526
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0                    5.573
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0                    5.742
+
+=== graph_related_total_hours summary ===
+count    4.0000
+mean     0.0016
+std      0.0000
+min      0.0015
+25%      0.0015
+50%      0.0015
+75%      0.0016
+max      0.0016
+Name: graph_related_total_sec, dtype: float64
+
+=== summary status counts ===
+completed                 28
+running                   24
+completed_graph_timing     8
+started                    4
+Name: status, dtype: int64
+
+=== summary tail ===
+                                                          run_id                       env  seed                    phase                 status
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0                warmstart              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0                    start                started
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0             load_dataset                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0             load_dataset              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0          train_tdr_start                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0            train_tdr_end              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0       train_policy_start                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0         train_policy_end              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0 train_reachability_start                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0   train_reachability_end              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0        graph_build_start                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0          graph_build_end              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0        graph_timing_stop completed_graph_timing
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0            package_start                running
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0              package_end              completed
+antmaze-medium-diverse-v2_full_bars_bars_seed0_1_20260513_113710 antmaze-medium-diverse-v2     0   completed_graph_timing completed_graph_timing
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0                warmstart              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0                    start                started
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0             load_dataset                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0             load_dataset              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0          train_tdr_start                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0            train_tdr_end              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0       train_policy_start                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0         train_policy_end              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0 train_reachability_start                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0   train_reachability_end              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0        graph_build_start                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0          graph_build_end              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0        graph_timing_stop completed_graph_timing
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0            package_start                running
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0              package_end              completed
+   antmaze-medium-play-v2_full_bars_bars_seed0_0_20260513_113710    antmaze-medium-play-v2     0   completed_graph_timing completed_graph_timing
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0                warmstart              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0                    start                started
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0             load_dataset                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0             load_dataset              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0          train_tdr_start                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0            train_tdr_end              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0       train_policy_start                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0         train_policy_end              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0 train_reachability_start                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0   train_reachability_end              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0        graph_build_start                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0          graph_build_end              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0        graph_timing_stop completed_graph_timing
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0            package_start                running
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0              package_end              completed
+    antmaze-large-play-v2_full_bars_bars_seed0_2_20260513_113710     antmaze-large-play-v2     0   completed_graph_timing completed_graph_timing
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0                warmstart              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0                    start                started
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0             load_dataset                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0             load_dataset              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0          train_tdr_start                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0            train_tdr_end              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0       train_policy_start                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0         train_policy_end              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0 train_reachability_start                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0   train_reachability_end              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0        graph_build_start                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0          graph_build_end              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0        graph_timing_stop completed_graph_timing
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0            package_start                running
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0              package_end              completed
+ antmaze-large-diverse-v2_full_bars_bars_seed0_3_20260513_113710  antmaze-large-diverse-v2     0   completed_graph_timing completed_graph_timing
+
+=== graph file columns ===
+['time_sec', 'run_id', 'env', 'seed', 'variant', 'node_method', 'phase', 'event', 'requested_nodes', 'pool_size', 'num_nodes', 'duration_sec', 'spectral_solver_used', 'spectral_landmarks', 'spectral_landmark_seconds', 'support_edges', 'support_nodes', 'boundary_mean', 'transition_cross_mean', 'spectral_seconds', 'candidate_edges', 'knn', 'ann_backend', 'temporal_connect', 'temporal_edge_horizon', 'p_exec_mean', 'risk_mean', 'top_outgoing', 'prune_lambda_risk', 'kept_edges', 'num_edges', 'mean_out_degree', 'p_exec_p10', 'cost_mean', 'path', 'method', 'num_modes', 'support_segments', 'processed_nodes', 'node_has_mode_rate', 'sampled_segments', 'edge_hits', 'mode_hits', 'edge_hit_rate', 'mode_hit_rate', 'edge_has_dep_rate', 'edge_has_arr_rate', 'run_dir']
+                                                              num_nodes  ...  duration_sec
+env                       event                     phase                ...              
+antmaze-large-diverse-v2  completed                 boundary        NaN  ...         1.446
+                                                    edges         300.0  ...         0.757
+                                                    nodes         300.0  ...         1.542
+                          knn_candidates_built      edges           NaN  ...         0.006
+                          mode_fit_completed        boundary        NaN  ...         0.961
+                          mode_fit_progress         boundary      300.0  ...           NaN
+                          pruned                    edges           NaN  ...         0.003
+                          saved                     boundary        NaN  ...           NaN
+                                                    graph         300.0  ...           NaN
+                          scored                    edges           NaN  ...         0.736
+                          start                     boundary        NaN  ...           NaN
+                                                    edges         300.0  ...           NaN
+                                                    nodes           NaN  ...           NaN
+                          temporal_candidates_built edges           NaN  ...         0.001
+antmaze-large-play-v2     completed                 boundary        NaN  ...         1.368
+                                                    edges         300.0  ...         0.789
+                                                    nodes         300.0  ...         1.530
+                          knn_candidates_built      edges           NaN  ...         0.006
+                          mode_fit_completed        boundary        NaN  ...         0.987
+                          mode_fit_progress         boundary      300.0  ...           NaN
+                          pruned                    edges           NaN  ...         0.003
+                          saved                     boundary        NaN  ...           NaN
+                                                    graph         300.0  ...           NaN
+                          scored                    edges           NaN  ...         0.769
+                          start                     boundary        NaN  ...           NaN
+                                                    edges         300.0  ...           NaN
+                                                    nodes           NaN  ...           NaN
+                          temporal_candidates_built edges           NaN  ...         0.001
+antmaze-medium-diverse-v2 completed                 boundary        NaN  ...         1.483
+                                                    edges         300.0  ...         0.828
+                                                    nodes         300.0  ...         1.573
+                          knn_candidates_built      edges           NaN  ...         0.006
+                          mode_fit_completed        boundary        NaN  ...         1.006
+                          mode_fit_progress         boundary      300.0  ...           NaN
+                          pruned                    edges           NaN  ...         0.008
+                          saved                     boundary        NaN  ...           NaN
+                                                    graph         300.0  ...           NaN
+                          scored                    edges           NaN  ...         0.802
+                          start                     boundary        NaN  ...           NaN
+                                                    edges         300.0  ...           NaN
+                                                    nodes           NaN  ...           NaN
+                          temporal_candidates_built edges           NaN  ...         0.001
+antmaze-medium-play-v2    completed                 boundary        NaN  ...         1.458
+                                                    edges         300.0  ...         0.795
+                                                    nodes         300.0  ...         1.532
+                          knn_candidates_built      edges           NaN  ...         0.006
+                          mode_fit_completed        boundary        NaN  ...         0.960
+                          mode_fit_progress         boundary      300.0  ...           NaN
+                          pruned                    edges           NaN  ...         0.003
+                          saved                     boundary        NaN  ...           NaN
+                                                    graph         300.0  ...           NaN
+                          scored                    edges           NaN  ...         0.775
+                          start                     boundary        NaN  ...           NaN
+                                                    edges         300.0  ...           NaN
+                                                    nodes           NaN  ...           NaN
+                          temporal_candidates_built edges           NaN  ...         0.001
+
+[56 rows x 4 columns]

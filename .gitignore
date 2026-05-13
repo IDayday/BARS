@@ -220,6 +220,7 @@ __marimo__/
 # BARS runs and artifacts
 runs/
 runs_*/
+/analysis_packages/
 /data/
 /datasets/
 backups/
@@ -227,4 +228,6 @@ backups/
 *.pt
 *.pth
 *.ckpt
+*.npz
+*.npy
 *.tar.gz
