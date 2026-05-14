@@ -309,7 +309,10 @@ def main() -> None:
     planner_summary_nonzero = _round_df(_planner_summary(path_diag, planner_keys, nonzero_only=True))
     boundary_summary = _round_df(_agg_mean(boundary_diag, boundary_keys, ['psi_mean', 'psi_p10', 'psi_p50', 'psi_p90', 'supported_pair_rate', 'supported_edge_arr_rate', 'supported_edge_dep_rate', 'num_pairs']))
     edge_rollout_summary = _round_df(_agg_mean(edge_rollout_diag, edge_keys, ['edge_rollout_auc', 'edge_rollout_auprc', 'success_rate', 'selected_edge_success_rate', 'unselected_edge_success_rate', 'reset_available', 'reset_ok_count', 'reset_unavailable_count', 'num_edges_eval', 'num_selected_edges_eval', 'num_unselected_edges_eval']))
-    eval_summary = _round_df(_eval_summary(eval_all, ['env', 'variant']))
+    eval_keys = ['env', 'variant']
+    if 'condition' in eval_all.columns:
+        eval_keys = ['condition', 'env', 'variant']
+    eval_summary = _round_df(_eval_summary(eval_all, eval_keys))
     graph_summary = _round_df(_agg_mean(graph_all, ['env', 'event'], ['num_nodes', 'num_edges', 'mean_out_degree', 'p_exec_mean', 'risk_mean', 'cost_mean', 'duration_sec', 'spectral_seconds']))
     profile_summary = _round_df(_agg_mean(profile_all, ['env', 'phase', 'event'], ['duration_sec']))
 

@@ -200,6 +200,9 @@ def evaluate_planner_policy(
     subgoal_threshold = float(ecfg.get("subgoal_threshold", success_threshold))
     goal_dim = int(ecfg.get("goal_dim", 2))
     variant = str(ecfg.get("variant", cfg.get("planner", {}).get("variant", "full_bars"))).lower()
+    # Log the protocol-ablation label on every eval row so mixed-condition
+    # sweeps remain analyzable after CSV collection.
+    condition = str(ecfg.get("condition", ecfg.get("protocol_condition", "default")))
     fallback_mode = _resolve_fallback_mode(ecfg)
     direct_goal_after_k = max(1, int(ecfg.get("direct_goal_after_k", 1)))
     lambda_r = float(cfg.get("planner", {}).get("lambda_risk", ecfg.get("lambda_risk", 1.0)))
@@ -328,6 +331,7 @@ def evaluate_planner_policy(
                 "phase": "eval",
                 "enabled": 1,
                 "episode": ep,
+                "condition": condition,
                 "variant": variant,
                 "success": int(success),
                 "return": total_reward,
