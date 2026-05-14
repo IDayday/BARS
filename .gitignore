@@ -231,3 +231,13 @@ backups/
 *.npz
 *.npy
 *.tar.gz
+
+# Local vendored environments and runtime caches
+/external_envs/
+/external_runtime/__pycache__/
+/external_src/GAS/demo/
+/external_src/HIQL/calvin/
+
+# Generated packaging and analysis logs
+/reports/package_*.out
+/reports/package_*.err

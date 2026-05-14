@@ -1,0 +1,31 @@
+{
+  "_description": "Route-B base config. Set routeb.backbone to gas_te, gas_keygraph, or hiql_external. This file intentionally uses the same Stage18 execution/eval protocol fields so strong-backbone comparisons remain same-backbone and same-protocol.",
+  "seed": 0,
+  "device": "cuda",
+  "data": {"source": "d4rl", "env_name": "antmaze-medium-play-v2", "dataset_limit": 0},
+  "ann": {"backend": "auto", "use_gpu": false, "gpu_id": 0, "n_threads": 1},
+  "routeb": {
+    "backbone": "gas_te",
+    "way_steps": 25,
+    "te_threshold": 0.99,
+    "keygraph_path": "",
+    "dataset_embeddings_path": "",
+    "node_indices_path": "",
+    "rescore_edges": true
+  },
+  "experiment": {
+    "warmstart_root": "runs_stage16_full12",
+    "warmstart_source_variant": "full_bars",
+    "warmstart_artifacts": ["tdr", "policy", "reachability", "embeddings"]
+  },
+  "tdr": {"latent_dim": 16, "hidden_dims": [128, 128], "pair_hidden_dims": [128, 128], "horizon": 50, "steps": 3000, "batch_size": 1024, "lr": 0.0003, "weight_decay": 0.0001, "bce_weight": 1.0, "grad_clip": 10.0, "amp": true, "log_every": 200, "embed_batch_size": 8192, "load_if_exists": true, "force_reembed": false},
+  "policy": {"type": "gcbc", "hidden_dims": [128, 128], "goal_delta": true, "horizon": 30, "steps": 3000, "batch_size": 1024, "lr": 0.0003, "weight_decay": 0.00001, "grad_clip": 10.0, "amp": true, "log_every": 200, "load_if_exists": true},
+  "external_policy": {"repo_path": "external_src/HIQL", "factory": "routeb_hiql_adapter.build_policy", "checkpoint_path": "", "act_method": "act", "kwargs": {}},
+  "reachability": {"enabled": true, "hidden_dims": [128, 128], "horizon": 30, "steps": 2500, "batch_size": 2048, "lr": 0.0003, "weight_decay": 0.00001, "grad_clip": 10.0, "log_every": 200, "load_if_exists": true, "loss_mode": "pu", "pu_class_prior": 0.2, "pu_beta": 0.0, "pu_gamma": 1.0, "use_hard_neg": true, "hard_neg_pool": 12000, "hard_neg_knn": 12, "hard_neg_weight": 0.5, "pos_frac": 0.5, "same_neg_weight": 1.0, "cross_random_weight": 0.15, "far_neg_min_dt": 31, "far_neg_max_dt": 120},
+  "graph": {"node_method": "bars", "num_nodes": 300, "num_bottleneck_nodes": 100, "max_support_states": 12000, "support_knn": 10, "spectral_clusters": 6, "anchor_exclude_quantile": 0.1, "edge_knn": 12, "bidirectional_knn": true, "temporal_connect": 3, "temporal_edge_horizon": 80, "temporal_reverse": false, "cost_mode": "hybrid", "top_outgoing": 12, "prune_lambda_risk": 0.25, "p_clip": 0.0001, "score_batch_size": 65536, "load_if_exists": true, "spectral_solver": "landmark", "spectral_landmarks": 2048, "spectral_landmark_method": "fps", "spectral_full_max_nodes": 3000, "spectral_eig_tol": 0.001, "spectral_eig_maxiter": 1000, "ann_backend": "auto", "ann_gpu": false, "profile_enabled": true, "gas_way_steps": 25, "gas_te_threshold": 0.99},
+  "external_gas": {"enabled": false, "keygraph_path": "", "dataset_embeddings_path": "", "node_indices_path": "", "rescore_edges": true},
+  "boundary": {"enabled": true, "method": "support_modes", "num_modes": 4, "support_k": 64, "segment_horizon": 30, "segment_min_dt": 1, "fallback_psi": 0.5, "load_if_exists": true, "direction_temperature": 1.0, "support_segments": 200000, "support_batch_size": 65536, "min_edge_support_count": 1, "direction_fallback": true, "direction_fallback_weight": 0.15},
+  "planner": {"variant": "full_bars", "lambda_risk": 1.0, "lambda_boundary": 0.1},
+  "diagnostics": {"enabled": false, "edge_label_horizon": 30, "edge_selected_threshold": 0.5, "num_path_pairs": 96, "path_min_dt": 50, "path_max_dt": 180, "planner_variants": ["shortest", "reachability", "full_bars"], "path_min_graph_edges": 1, "include_trivial_path_pairs": false, "max_sampling_attempts": 10000, "lambda_risk_values": [0.0, 0.1, 0.3, 1.0, 3.0], "balanced_edge_diag": true, "edge_support_segments": 200000, "edge_support_batch_size": 65536, "edge_rollout_enabled": false},
+  "eval": {"enabled": true, "episodes": 50, "max_steps": 700, "subgoal_horizon": 50, "goal_dim": 2, "success_threshold": 0.5, "subgoal_threshold": 1.0, "fallback_enabled": true, "fallback_variants": ["reachability", "shortest", "direct_goal"], "goal_obs_strategy": "current"}
+}

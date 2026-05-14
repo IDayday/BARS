@@ -74,19 +74,32 @@ def _as_list(value, default: List[str]) -> List[str]:
     return list(default)
 
 
-def _fallback_chain(current_variant: str, ecfg: Dict) -> List[str]:
-    """Return planner attempts in degradation order.
+def _resolve_fallback_mode(ecfg: Dict) -> str:
+    mode = ecfg.get("fallback_mode")
+    if mode is None:
+        if "fallback_enabled" in ecfg:
+            return "direct_goal" if bool(ecfg.get("fallback_enabled", False)) else "none"
+        if bool(ecfg.get("direct_goal_on_no_path", False)):
+            return "direct_goal"
+        return "none"
+    mode = str(mode).lower()
+    valid = {"none", "planner_only", "direct_goal", "direct_goal_after_k"}
+    if mode not in valid:
+        raise ValueError(f"Unknown eval.fallback_mode={mode!r}; expected one of {sorted(valid)}")
+    return mode
 
-    The same sweep config is often used for shortest/reachability/full_bars. To
-    keep baselines interpretable, fallback never upgrades a weaker baseline to a
-    stronger planner. E.g. shortest may only fall back to direct_goal, while
-    full_bars may fall back to reachability, shortest, then direct_goal.
+
+def _planner_fallback_chain(current_variant: str, ecfg: Dict) -> List[str]:
+    """Return graph-planner attempts in degradation order.
+
+    Fallback never upgrades a weaker baseline to a stronger planner. Direct-goal
+    is handled separately by eval.fallback_mode so that planner-only ablations
+    remain causal and easy to interpret.
     """
     cur = str(current_variant).lower()
-    default = ["reachability", "shortest", "direct_goal"]
+    default = ["reachability", "shortest"]
     configured = _as_list(ecfg.get("fallback_variants", default), default)
     rank = {
-        "direct_goal": -1,
         "shortest": 0,
         "gas": 0,
         "tdr_shortest": 0,
@@ -101,7 +114,7 @@ def _fallback_chain(current_variant: str, ecfg: Dict) -> List[str]:
     out: List[str] = [cur]
     for item in configured:
         v = str(item).lower()
-        if v == cur:
+        if v in {cur, "direct_goal"}:
             continue
         if rank.get(v, 99) <= cur_rank and v not in out:
             out.append(v)
@@ -117,8 +130,8 @@ def _try_plan_with_fallback(
     lambda_boundary: float,
     boundary: Optional[BoundaryIndex],
     ecfg: Dict,
-) -> Tuple[Optional[PlanResult], str, bool, bool, int, List[int]]:
-    """Try current planner and optional fallbacks.
+) -> Tuple[Optional[PlanResult], str, bool, bool, int, List[int], bool]:
+    """Try planner fallbacks and optional direct-goal fallback.
 
     Returns:
       plan: chosen graph plan or None for direct_goal.
@@ -128,15 +141,17 @@ def _try_plan_with_fallback(
       fallback_count: number of fallback attempts needed before success.
       attempted_edges: usable graph edge counts for attempts; -1 for failed,
         0 for direct_goal.
+      planner_succeeded: whether a graph planner produced the chosen subgoal.
     """
-    fallback_enabled = bool(ecfg.get("fallback_enabled", False))
-    attempts = _fallback_chain(variant, ecfg) if fallback_enabled else [str(variant).lower()]
+    requested = str(variant).lower()
+    mode = _resolve_fallback_mode(ecfg)
+    allow_planner_fallback = mode in {"planner_only", "direct_goal", "direct_goal_after_k"}
+    attempts = _planner_fallback_chain(requested, ecfg) if allow_planner_fallback else [requested]
+    direct_goal_after_k = max(1, int(ecfg.get("direct_goal_after_k", 1)))
+    planner_failure_streak = int(ecfg.get("_planner_failure_streak", 0))
     attempted_edges: List[int] = []
     initial_failed = False
     for idx, cand in enumerate(attempts):
-        if cand == "direct_goal":
-            attempted_edges.append(0)
-            return None, cand, idx > 0, initial_failed, idx, attempted_edges
         plan = plan_path(
             graph,
             int(start_node),
@@ -151,8 +166,14 @@ def _try_plan_with_fallback(
         if idx == 0 and not usable:
             initial_failed = True
         if usable:
-            return plan, cand, idx > 0, initial_failed, idx, attempted_edges
-    return None, "none", len(attempts) > 1, initial_failed, max(0, len(attempts) - 1), attempted_edges
+            return plan, cand, idx > 0, initial_failed, idx, attempted_edges, True
+    if mode == "direct_goal":
+        attempted_edges.append(0)
+        return None, "direct_goal", requested != "direct_goal", initial_failed, len(attempts), attempted_edges, False
+    if mode == "direct_goal_after_k" and planner_failure_streak + 1 >= direct_goal_after_k:
+        attempted_edges.append(0)
+        return None, "direct_goal", requested != "direct_goal", len(attempts) > 0, len(attempts), attempted_edges, False
+    return None, "none", False, initial_failed, max(0, len(attempts) - 1), attempted_edges, False
 
 
 def evaluate_planner_policy(
@@ -179,12 +200,14 @@ def evaluate_planner_policy(
     subgoal_threshold = float(ecfg.get("subgoal_threshold", success_threshold))
     goal_dim = int(ecfg.get("goal_dim", 2))
     variant = str(ecfg.get("variant", cfg.get("planner", {}).get("variant", "full_bars"))).lower()
+    fallback_mode = _resolve_fallback_mode(ecfg)
+    direct_goal_after_k = max(1, int(ecfg.get("direct_goal_after_k", 1)))
     lambda_r = float(cfg.get("planner", {}).get("lambda_risk", ecfg.get("lambda_risk", 1.0)))
     lambda_b = float(cfg.get("planner", {}).get("lambda_boundary", ecfg.get("lambda_boundary", 1.0)))
-    direct_goal_on_no_path = bool(ecfg.get("direct_goal_on_no_path", bool(ecfg.get("fallback_enabled", False))))
+    direct_goal_variant = variant == "direct_goal"
 
     rng = np.random.default_rng(int(cfg.get("seed", 0)) + 211)
-    nbrs = NearestNeighbors(n_neighbors=1).fit(graph.node_embeddings)
+    nbrs = None if direct_goal_variant else NearestNeighbors(n_neighbors=1).fit(graph.node_embeddings)
     action_low = getattr(env.action_space, "low", None)
     action_high = getattr(env.action_space, "high", None)
 
@@ -209,56 +232,63 @@ def evaluate_planner_policy(
         subgoal_attempts = 0
         num_subgoal_reached = 0
         direct_goal_attempts = 0
+        planner_failure_streak = 0
 
         while steps < max_steps:
             if np.linalg.norm(obs[:goal_dim] - goal_obs[:goal_dim]) <= success_threshold:
                 success = True
                 break
 
-            z_s = _embed_one(tdr_model, obs, dataset, device)
-            z_g = _embed_one(tdr_model, goal_obs, dataset, device)
-            s_node = int(nbrs.kneighbors(z_s[None], return_distance=False)[0, 0])
-            g_node = int(nbrs.kneighbors(z_g[None], return_distance=False)[0, 0])
-
-            plan, chosen_variant, fallback_used, initial_failed, fallback_count, attempted_edges = _try_plan_with_fallback(
-                graph,
-                s_node,
-                g_node,
-                variant,
-                lambda_r,
-                lambda_b,
-                boundary,
-                ecfg,
-            )
             replans += 1
-            num_plan_calls += 1
-            if initial_failed:
-                initial_plan_failed_count += 1
-            if fallback_used:
-                fallback_used_any = True
-                fallback_count_total += int(fallback_count)
-                fallback_variants_used.append(chosen_variant)
+            chosen_variant = variant
+            plan = None
+            fallback_used = False
+            initial_failed = False
+            fallback_count = 0
+            planner_succeeded = False
+            plan_edges = 0
 
-            if chosen_variant == "direct_goal":
+            if direct_goal_variant:
                 subgoal_obs = goal_obs
                 direct_goal_attempts += 1
-                plan_edges = 0
-            elif plan is not None and plan.found and len(plan.node_path) > 1:
-                plan_edges = len(plan.edge_path)
-                next_node = plan.node_path[1]
-                subgoal_obs = dataset.observations[graph.node_indices[next_node]]
-                if next_node == g_node:
-                    subgoal_obs = goal_obs
             else:
-                no_path_count += 1
-                if direct_goal_on_no_path:
+                z_s = _embed_one(tdr_model, obs, dataset, device)
+                z_g = _embed_one(tdr_model, goal_obs, dataset, device)
+                s_node = int(nbrs.kneighbors(z_s[None], return_distance=False)[0, 0])
+                g_node = int(nbrs.kneighbors(z_g[None], return_distance=False)[0, 0])
+                plan, chosen_variant, fallback_used, initial_failed, fallback_count, _attempted_edges, planner_succeeded = _try_plan_with_fallback(
+                    graph,
+                    s_node,
+                    g_node,
+                    variant,
+                    lambda_r,
+                    lambda_b,
+                    boundary,
+                    {**ecfg, "_planner_failure_streak": planner_failure_streak},
+                )
+                num_plan_calls += 1
+                if initial_failed:
+                    initial_plan_failed_count += 1
+                if fallback_used:
+                    fallback_used_any = True
+                    fallback_count_total += int(fallback_count)
+                    fallback_variants_used.append(chosen_variant)
+
+                if planner_succeeded and plan is not None and plan.found and len(plan.node_path) > 1:
+                    planner_failure_streak = 0
+                    plan_edges = len(plan.edge_path)
+                    next_node = plan.node_path[1]
+                    subgoal_obs = dataset.observations[graph.node_indices[next_node]]
+                    if next_node == g_node:
+                        subgoal_obs = goal_obs
+                elif chosen_variant == "direct_goal":
+                    planner_failure_streak += 1
                     subgoal_obs = goal_obs
                     direct_goal_attempts += 1
                     plan_edges = 0
-                    chosen_variant = "direct_goal_forced"
-                    fallback_used_any = True
-                    fallback_variants_used.append(chosen_variant)
                 else:
+                    planner_failure_streak += 1
+                    no_path_count += 1
                     break
 
             last_plan_edges = int(plan_edges)
@@ -306,11 +336,13 @@ def evaluate_planner_policy(
                 "no_path_count": no_path_count,
                 "initial_plan_failed_count": initial_plan_failed_count,
                 "plan_failed_initial": int(initial_plan_failed_count > 0),
-                "fallback_enabled": int(bool(ecfg.get("fallback_enabled", False))),
+                "fallback_enabled": int(fallback_mode != "none"),
+                "fallback_mode": fallback_mode,
                 "fallback_used": int(fallback_used_any),
                 "fallback_variant": fallback_variant,
                 "fallback_count": fallback_count_total,
                 "direct_goal_attempts": direct_goal_attempts,
+                "direct_goal_after_k": direct_goal_after_k,
                 "last_plan_edges": last_plan_edges,
                 "first_plan_edges": int(first_plan_edges),
                 "max_plan_edges": int(plan_edges_arr.max()) if len(plan_edges_arr) else 0,

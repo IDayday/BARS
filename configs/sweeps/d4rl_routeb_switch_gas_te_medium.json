@@ -1,0 +1,11 @@
+{
+  "base_config": "../routeb/d4rl_antmaze_routeb_base.json",
+  "resources": {"default_mem_mb": 5000},
+  "grid": {
+    "envs": ["antmaze-medium-play-v2", "antmaze-medium-diverse-v2"],
+    "seeds": [0, 1, 2],
+    "variants": ["shortest", "reachability", "full_bars"],
+    "node_methods": ["gas_te"],
+    "set": {"routeb.backbone": "gas_te", "routeb.way_steps": 25, "routeb.te_threshold": 0.99, "eval.enabled": true, "eval.episodes": 50, "diagnostics.enabled": false}
+  }
+}

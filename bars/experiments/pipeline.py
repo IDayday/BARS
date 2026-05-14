@@ -21,11 +21,13 @@ from bars.data.d4rl_dataset import load_d4rl_dataset
 from bars.data.toy_dataset import make_toy_dataset
 from bars.eval.rollout import evaluate_planner_policy
 from bars.eval.edge_rollout_diag import run_edge_rollout_diagnostics
+from bars.external.gas_compat import convert_gas_keygraph_to_bars_graph
 from bars.graph.boundary import BoundaryIndex, build_boundary_index
 from bars.graph.diagnostics import run_boundary_diagnostics, run_edge_diagnostics, run_path_diagnostics
-from bars.graph.edges import build_edges
+from bars.graph.edges import build_edges, _score_reachability
 from bars.graph.nodes import select_graph_nodes
 from bars.graph.types import BARSGraph
+from bars.models.external_policy import build_external_policy_from_config
 from bars.models.reachability import ReachabilityModel
 from bars.models.policy import GoalConditionedPolicy
 from bars.training.policy_train import train_policy
@@ -40,6 +42,7 @@ def _make_loggers(run_dir: str, cfg: Dict) -> Dict[str, CSVLogger]:
         'seed': cfg.get('seed', 0),
         'variant': cfg.get('planner', {}).get('variant', 'full_bars'),
         'node_method': cfg.get('graph', {}).get('node_method', 'bars'),
+        'condition': cfg.get('experiment', {}).get('condition', cfg.get('eval', {}).get('protocol_condition', '')),
     }
     return {name: CSVLogger(os.path.join(run_dir, 'logs', f'{name}.csv'), base) for name in ['train', 'graph', 'diagnostics', 'eval', 'summary', 'profile']}
 
@@ -59,6 +62,70 @@ def _load_data(cfg: Dict):
 
 def _summary_log(summary: CSVLogger, phase: str, status: str, **kwargs) -> None:
     summary.log({'phase': phase, 'status': status, **kwargs})
+
+
+def _apply_routeb_backbone_config(cfg: Dict) -> Dict:
+    """Normalize Route-B backbone switches into the existing config structure."""
+    cfg = dict(cfg)
+    rb = dict(cfg.get('routeb', {}))
+    mode = str(rb.get('backbone', rb.get('mode', '')) or '').lower()
+    if not mode:
+        return cfg
+    cfg['routeb'] = rb
+    cfg.setdefault('experiment', {})['routeb_backbone'] = mode
+    if mode in {'gas_te', 'gas', 'td_aware'}:
+        cfg.setdefault('graph', {})['node_method'] = rb.get('node_method', 'gas_te')
+        if 'way_steps' in rb:
+            cfg['graph']['gas_way_steps'] = rb['way_steps']
+        if 'te_threshold' in rb:
+            cfg['graph']['gas_te_threshold'] = rb['te_threshold']
+    elif mode in {'gas_keygraph', 'gas_official', 'official_gas'}:
+        eg = cfg.setdefault('external_gas', {})
+        eg['enabled'] = True
+        if rb.get('keygraph_path'):
+            eg['keygraph_path'] = rb['keygraph_path']
+        if rb.get('node_indices_path'):
+            eg['node_indices_path'] = rb['node_indices_path']
+        if rb.get('dataset_embeddings_path'):
+            eg['dataset_embeddings_path'] = rb['dataset_embeddings_path']
+        if 'rescore_edges' in rb:
+            eg['rescore_edges'] = rb['rescore_edges']
+    elif mode in {'hiql', 'hiql_external', 'external_hiql'}:
+        cfg.setdefault('policy', {})['type'] = 'external'
+        ep = cfg.setdefault('external_policy', {})
+        for key in ['repo_path', 'factory', 'factory_path', 'object', 'object_path', 'checkpoint_path', 'act_method']:
+            if key in rb:
+                ep[key] = rb[key]
+        if 'kwargs' in rb:
+            ep.setdefault('kwargs', {}).update(rb['kwargs'])
+    else:
+        cfg.setdefault('experiment', {})['routeb_unknown_backbone'] = mode
+    return cfg
+
+
+def _rescore_graph_edges_with_reachability(graph: BARSGraph, reach_model, cfg: Dict, device, logger: CSVLogger) -> BARSGraph:
+    if graph.num_edges == 0 or reach_model is None:
+        return graph
+    gcfg = cfg.get('graph', {})
+    p_exec = _score_reachability(
+        reach_model,
+        graph.node_embeddings,
+        graph.src,
+        graph.dst,
+        device,
+        batch_size=int(gcfg.get('score_batch_size', 32768)),
+        fallback_scale=float(np.median(graph.cost) + 1e-6),
+    )
+    graph.p_exec = p_exec.astype(np.float32)
+    graph.risk = (-np.log(np.clip(graph.p_exec, float(gcfg.get('p_clip', 1e-4)), 1.0))).astype(np.float32)
+    logger.log({
+        'phase': 'graph',
+        'event': 'rescored_external_graph',
+        'num_edges': graph.num_edges,
+        'p_exec_mean': float(np.mean(graph.p_exec)),
+        'risk_mean': float(np.mean(graph.risk)),
+    })
+    return graph
 
 
 def _stop_requested(stopper: Optional[Stopper], summary: CSVLogger, location: str) -> bool:
@@ -86,11 +153,13 @@ def _load_reachability_if_available(cfg: Dict, run_dir: str, latent_dim: int, de
 
 
 
-def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device) -> Optional[GoalConditionedPolicy]:
+def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device):
+    pcfg = cfg.get('policy', {})
+    if str(pcfg.get('type', 'gcbc')).lower() in {'external', 'hiql_external', 'gas_external'}:
+        return build_external_policy_from_config(cfg, dataset, device=device)
     ckpt_path = os.path.join(run_dir, 'checkpoints', 'policy.pt')
     if not os.path.exists(ckpt_path):
         return None
-    pcfg = cfg.get('policy', {})
     model = GoalConditionedPolicy(dataset.obs_dim, dataset.action_dim, tuple(pcfg.get('hidden_dims', [256, 256])), bool(pcfg.get('goal_delta', True))).to(device)
     load_checkpoint(ckpt_path, model, map_location=str(device))
     model.eval()
@@ -154,7 +223,7 @@ def run_cached_diagnostics(cfg: Dict, run_dir: str, stopper: Optional[Stopper] =
     This is intended for Stage 1.5. It makes lambda/path/edge diagnostic sweeps
     cheap instead of rebuilding the expensive graph for every analysis change.
     """
-    cfg = dict(cfg)
+    cfg = _apply_routeb_backbone_config(cfg)
     cfg.setdefault('run_id', os.path.basename(run_dir))
     cfg.setdefault('env_name', cfg.get('data', {}).get('env_name', 'unknown'))
     loggers = _make_loggers(run_dir, cfg)
@@ -204,7 +273,7 @@ def run_cached_diagnostics(cfg: Dict, run_dir: str, stopper: Optional[Stopper] =
 
 def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -> str:
     os.makedirs(run_dir, exist_ok=True)
-    cfg = dict(cfg)
+    cfg = _apply_routeb_backbone_config(cfg)
     cfg.setdefault('run_id', os.path.basename(run_dir))
     cfg.setdefault('env_name', cfg.get('data', {}).get('env_name', 'unknown'))
     save_json(cfg, os.path.join(run_dir, 'config.json'))
@@ -266,10 +335,19 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
             graph = BARSGraph.load_npz(graph_path)
             loggers['graph'].log({'phase': 'graph', 'event': 'loaded', 'path': graph_path, 'num_nodes': graph.num_nodes, 'num_edges': graph.num_edges})
         else:
-            with phase_timer(loggers.get('profile'), 'graph_build', 'select_nodes'):
-                node_indices = select_graph_nodes(dataset, embeddings, cfg, loggers['graph'])
-            with phase_timer(loggers.get('profile'), 'graph_build', 'build_edges'):
-                graph = build_edges(dataset, embeddings, node_indices, reach_model, cfg, device, loggers['graph'])
+            external_gas_cfg = cfg.get('external_gas', {})
+            gas_keygraph_path = str(external_gas_cfg.get('keygraph_path', '') or '').strip()
+            if bool(external_gas_cfg.get('enabled', False)) and gas_keygraph_path and os.path.exists(gas_keygraph_path):
+                with phase_timer(loggers.get('profile'), 'graph_build', 'import_gas_keygraph'):
+                    graph = convert_gas_keygraph_to_bars_graph(gas_keygraph_path, embeddings, cfg, loggers['graph'])
+                if bool(external_gas_cfg.get('rescore_edges', True)):
+                    with phase_timer(loggers.get('profile'), 'graph_build', 'rescore_external_graph'):
+                        graph = _rescore_graph_edges_with_reachability(graph, reach_model, cfg, device, loggers['graph'])
+            else:
+                with phase_timer(loggers.get('profile'), 'graph_build', 'select_nodes'):
+                    node_indices = select_graph_nodes(dataset, embeddings, cfg, loggers['graph'])
+                with phase_timer(loggers.get('profile'), 'graph_build', 'build_edges'):
+                    graph = build_edges(dataset, embeddings, node_indices, reach_model, cfg, device, loggers['graph'])
             with phase_timer(loggers.get('profile'), 'graph_build', 'save_graph'):
                 graph.save_npz(graph_path)
             loggers['graph'].log({'phase': 'graph', 'event': 'saved', 'path': graph_path, 'num_nodes': graph.num_nodes, 'num_edges': graph.num_edges})
@@ -341,7 +419,7 @@ def rerun_diagnostics(cfg: Dict, run_dir: str, clear: bool = False, rebuild_boun
     sampling, path lambda sweeps, or boundary scoring without retraining TDR,
     policy, reachability, or rebuilding graph edges.
     """
-    cfg = dict(cfg)
+    cfg = _apply_routeb_backbone_config(cfg)
     cfg.setdefault('run_id', os.path.basename(run_dir))
     cfg.setdefault('env_name', cfg.get('data', {}).get('env_name', 'unknown'))
     loggers = _make_loggers(run_dir, cfg)

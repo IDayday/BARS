@@ -25,6 +25,30 @@ python -m pip install -e .
 
 Your D4RL environment should already be available. OGBench is not required.
 
+## JAX and Torch in the same environment
+
+This project uses `torch` only. If your shared Conda environment also has GPU `jax` installed, JAX may reserve a large fraction of GPU memory on its first device operation and make Torch runs look unstable or incompatible.
+
+For interactive work in a shared environment, prefer:
+
+```bash
+source scripts/gcrlo_torch_safe_env.sh 0
+```
+
+That helper:
+
+- disables JAX GPU preallocation
+- limits visibility to one GPU when you pass a GPU id
+- leaves the scheduler behavior unchanged because scheduled jobs already set `CUDA_VISIBLE_DEVICES`
+
+If you do not want to use the helper, the important manual setting is:
+
+```bash
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+```
+
+If JAX is not needed for this project, the cleanest option is to remove it from the environment used for BARS runs.
+
 ## Smoke test without D4RL
 
 ```bash

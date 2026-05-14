@@ -8,10 +8,22 @@ from bars.common.checkpoint import load_checkpoint, save_checkpoint
 from bars.common.logging import CSVLogger
 from bars.common.stopper import Stopper
 from bars.data.trajectories import OfflineDataset
+from bars.models.external_policy import build_external_policy_from_config
 from bars.models.policy import GoalConditionedPolicy
 
-def train_policy(dataset: OfflineDataset, cfg: Dict, run_dir: str, device, logger: CSVLogger, stopper: Optional[Stopper] = None) -> GoalConditionedPolicy:
-    pcfg=cfg.get('policy',{}); ckpt_path=os.path.join(run_dir,'checkpoints','policy.pt')
+def train_policy(dataset: OfflineDataset, cfg: Dict, run_dir: str, device, logger: CSVLogger, stopper: Optional[Stopper] = None):
+    pcfg=cfg.get('policy',{})
+    if str(pcfg.get('type', 'gcbc')).lower() in {'external', 'hiql_external', 'gas_external'}:
+        model = build_external_policy_from_config(cfg, dataset, device=device)
+        logger.log({
+            'phase':'policy',
+            'event':'external_loaded',
+            'policy_type':pcfg.get('type'),
+            'external_policy': str(cfg.get('external_policy', {}).get('factory', cfg.get('external_policy', {}).get('object', ''))),
+            'checkpoint_path': str(cfg.get('external_policy', {}).get('checkpoint_path', '')),
+        })
+        return model
+    ckpt_path=os.path.join(run_dir,'checkpoints','policy.pt')
     model=GoalConditionedPolicy(dataset.obs_dim,dataset.action_dim,tuple(pcfg.get('hidden_dims',[256,256,256])),bool(pcfg.get('goal_delta',True))).to(device)
     if pcfg.get('load_if_exists', True) and os.path.exists(ckpt_path): load_checkpoint(ckpt_path, model, map_location=str(device)); logger.log({'phase':'policy','event':'loaded','path':ckpt_path}); return model
     opt=torch.optim.AdamW(model.parameters(), lr=float(pcfg.get('lr',3e-4)), weight_decay=float(pcfg.get('weight_decay',1e-5)))

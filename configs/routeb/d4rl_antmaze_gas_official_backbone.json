@@ -1,0 +1,18 @@
+{
+  "_description": "Exact official GAS backbone mode. Provide external_gas.keygraph_path plus either external_gas.node_indices_path or external_gas.dataset_embeddings_path, and provide a GAS policy adapter/checkpoint via external_policy.*. BARS only replaces the planner/scoring layer.",
+  "seed": 0,
+  "device": "cuda",
+  "data": {"source": "d4rl", "env_name": "antmaze-medium-play-v2", "dataset_limit": 0},
+  "routeb": {"backbone": "gas_keygraph", "keygraph_path": "", "dataset_embeddings_path": "", "node_indices_path": "", "rescore_edges": true},
+  "ann": {"backend": "auto", "use_gpu": false},
+  "tdr": {"latent_dim": 16, "hidden_dims": [128, 128], "pair_hidden_dims": [128, 128], "horizon": 50, "steps": 0, "batch_size": 1024, "load_if_exists": true, "embed_batch_size": 8192},
+  "policy": {"type": "external", "load_if_exists": false, "horizon": 30},
+  "external_policy": {"repo_path": "external_src/GAS", "factory": "routeb_gas_policy_adapter.build_policy", "checkpoint_path": "", "act_method": "act", "kwargs": {}},
+  "reachability": {"enabled": true, "hidden_dims": [128, 128], "horizon": 30, "steps": 2500, "batch_size": 2048, "lr": 0.0003, "weight_decay": 0.00001, "grad_clip": 10.0, "log_every": 200, "load_if_exists": true},
+  "graph": {"node_method": "bars", "num_nodes": 300, "edge_knn": 12, "top_outgoing": 12, "load_if_exists": true, "p_clip": 0.0001, "score_batch_size": 65536},
+  "external_gas": {"enabled": true, "keygraph_path": "", "dataset_embeddings_path": "", "node_indices_path": "", "rescore_edges": true},
+  "boundary": {"enabled": true, "method": "support_modes", "num_modes": 4, "support_k": 64, "support_segments": 200000, "direction_fallback_weight": 0.15, "load_if_exists": true},
+  "planner": {"variant": "full_bars", "lambda_risk": 1.0, "lambda_boundary": 0.1},
+  "diagnostics": {"enabled": false},
+  "eval": {"enabled": true, "episodes": 50, "max_steps": 700, "subgoal_horizon": 50, "goal_dim": 2, "success_threshold": 0.5, "subgoal_threshold": 1.0, "fallback_enabled": true, "fallback_variants": ["reachability", "shortest", "direct_goal"], "goal_obs_strategy": "current"}
+}

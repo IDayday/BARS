@@ -1,0 +1,11 @@
+{
+  "base_config": "../routeb/d4rl_antmaze_gas_official_backbone.json",
+  "resources": {"default_mem_mb": 5000},
+  "grid": {
+    "envs": ["antmaze-medium-play-v2", "antmaze-medium-diverse-v2"],
+    "seeds": [0, 1, 2],
+    "variants": ["shortest", "reachability", "full_bars"],
+    "node_methods": ["bars"],
+    "set": {"routeb.backbone": "gas_keygraph", "routeb.keygraph_path": "/ABS/PATH/TO/GAS/keygraph.pkl", "routeb.dataset_embeddings_path": "/ABS/PATH/TO/GAS/dataset_embeddings.npy", "external_policy.checkpoint_path": "/ABS/PATH/TO/GAS/params.pkl", "eval.enabled": true, "eval.episodes": 50, "diagnostics.enabled": false}
+  }
+}

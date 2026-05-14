@@ -10,6 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 
 from bars.common.logging import CSVLogger
 from bars.data.trajectories import OfflineDataset
+from bars.external.gas_compat import select_gas_te_nodes
 from .ann import KNNIndex
 
 
@@ -178,6 +179,11 @@ def select_graph_nodes(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dic
     pool_idx = rng.choice(dataset.size, size=max_support, replace=False) if max_support < dataset.size else np.arange(dataset.size)
     pool_emb = embeddings[pool_idx].astype(np.float32)
     logger.log({'phase': 'nodes', 'event': 'start', 'node_method': method, 'requested_nodes': num_nodes, 'pool_size': len(pool_idx)})
+
+    if method in {'gas', 'gas_te', 'td_aware', 'gas_te_nodes'}:
+        chosen = select_gas_te_nodes(dataset, embeddings, cfg, logger)
+        logger.log({'phase': 'nodes', 'event': 'completed', 'node_method': method, 'num_nodes': len(chosen), 'duration_sec': time.time() - t0})
+        return chosen[:num_nodes].astype(np.int64)
 
     if method == 'random':
         chosen = rng.choice(dataset.size, size=min(num_nodes, dataset.size), replace=False)
