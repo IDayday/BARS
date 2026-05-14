@@ -31,6 +31,19 @@ class HIQLPolicyWrapper:
     def eval(self):
         return self
 
+    def embed(self, obs: np.ndarray) -> np.ndarray:
+        obs = np.asarray(obs, dtype=np.float32)
+        for name in ["get_phi", "encode", "encode_obs"]:
+            method = getattr(self.agent, name, None)
+            if method is None:
+                continue
+            try:
+                z = np.asarray(method(obs[None]), dtype=np.float32)
+                return z[0] if z.ndim > 1 else z
+            except Exception:
+                pass
+        raise AttributeError("HIQL agent does not expose a reusable embedding method.")
+
     def act(self, obs: np.ndarray, goal: np.ndarray) -> np.ndarray:
         obs = np.asarray(obs, dtype=np.float32)[None]
         goal = np.asarray(goal, dtype=np.float32)[None]

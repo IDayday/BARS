@@ -28,6 +28,7 @@ from bars.graph.edges import build_edges, _score_reachability
 from bars.graph.nodes import select_graph_nodes
 from bars.graph.types import BARSGraph
 from bars.models.external_policy import build_external_policy_from_config
+from bars.models.dataset_embedding import DatasetEmbeddingLookupModel
 from bars.models.reachability import ReachabilityModel
 from bars.models.policy import GoalConditionedPolicy
 from bars.training.policy_train import train_policy
@@ -60,6 +61,80 @@ def _load_data(cfg: Dict):
     raise ValueError(f'Unknown data.source={source}')
 
 
+def _expand_path_value(value) -> str:
+    if value is None:
+        return ""
+    return os.path.expandvars(str(value)).strip()
+
+
+def _compact_external_embeddings_for_dataset(raw_embeddings: np.ndarray, dataset) -> np.ndarray:
+    raw_embeddings = np.asarray(raw_embeddings, dtype=np.float32)
+    if len(raw_embeddings) == dataset.size:
+        return raw_embeddings
+    raw_idx = []
+    for sl in dataset.traj_slices:
+        raw_idx.extend(range(int(sl.raw_start), max(int(sl.raw_start), int(sl.raw_end) - 1)))
+    raw_idx = np.asarray(raw_idx, dtype=np.int64)
+    if len(raw_idx) == dataset.size and len(raw_idx) and int(raw_idx.max()) < len(raw_embeddings):
+        return raw_embeddings[raw_idx].astype(np.float32)
+    raise ValueError(
+        f"External dataset embeddings length {len(raw_embeddings)} does not match compact dataset size {dataset.size}; "
+        "provide compact embeddings or an export aligned to D4RL raw observations."
+    )
+
+
+def _resolve_external_embedding_path(cfg: Dict) -> str:
+    emb_cfg = cfg.get('embedding', {})
+    path = _expand_path_value(emb_cfg.get('dataset_embeddings_path', ''))
+    if path:
+        return path
+    # Exact GAS same-backbone mode commonly stores the official TDR embeddings here.
+    path = _expand_path_value(cfg.get('external_gas', {}).get('dataset_embeddings_path', ''))
+    if path and bool(emb_cfg.get('auto_use_external_gas_embeddings', True)):
+        return path
+    return ''
+
+
+def _load_or_train_embeddings(cfg: Dict, dataset, run_dir: str, device, train_logger: CSVLogger, summary: CSVLogger, profile_logger: CSVLogger | None, stopper: Optional[Stopper]):
+    """Return (tdr_or_lookup_model, embeddings, embedding_path, source_label)."""
+    emb_cache = os.path.join(run_dir, 'cache', 'embeddings.npy')
+    external_path = _resolve_external_embedding_path(cfg)
+    if external_path:
+        if not os.path.exists(external_path):
+            raise FileNotFoundError(f"Configured external dataset embeddings not found: {external_path}")
+        raw = np.load(external_path)
+        embeddings = _compact_external_embeddings_for_dataset(raw, dataset).astype(np.float32)
+        os.makedirs(os.path.dirname(emb_cache), exist_ok=True)
+        np.save(emb_cache, embeddings)
+        lookup_dim = int(cfg.get('embedding', {}).get('lookup_obs_dim', cfg.get('eval', {}).get('goal_dim', dataset.obs_dim)))
+        model = DatasetEmbeddingLookupModel(dataset.observations, embeddings, raw_obs_dim=lookup_dim)
+        train_logger.log({
+            'phase': 'tdr',
+            'event': 'external_embeddings_loaded',
+            'path': external_path,
+            'cache_path': emb_cache,
+            'latent_dim': int(embeddings.shape[1]),
+            'lookup_obs_dim': lookup_dim,
+        })
+        _summary_log(summary, 'train_tdr_end', 'completed', embedding_path=emb_cache, latent_dim=embeddings.shape[1], embedding_source='external_dataset_embeddings')
+        return model, embeddings, emb_cache, 'external_dataset_embeddings'
+
+    _summary_log(summary, 'train_tdr_start', 'running')
+    with phase_timer(profile_logger, 'pipeline', 'train_tdr'):
+        tdr_model = train_tdr(dataset, cfg, run_dir, device, train_logger, stopper)
+    with phase_timer(profile_logger, 'pipeline', 'embed_dataset'):
+        embeddings = embed_dataset(
+            tdr_model,
+            dataset,
+            device,
+            batch_size=int(cfg.get('tdr', {}).get('embed_batch_size', 8192)),
+            cache_path=emb_cache,
+            force=bool(cfg.get('tdr', {}).get('force_reembed', False)),
+        )
+    _summary_log(summary, 'train_tdr_end', 'completed', embedding_path=emb_cache, latent_dim=embeddings.shape[1], embedding_source='bars_tdr')
+    return tdr_model, embeddings, emb_cache, 'bars_tdr'
+
+
 def _summary_log(summary: CSVLogger, phase: str, status: str, **kwargs) -> None:
     summary.log({'phase': phase, 'status': status, **kwargs})
 
@@ -90,6 +165,11 @@ def _apply_routeb_backbone_config(cfg: Dict) -> Dict:
             eg['dataset_embeddings_path'] = rb['dataset_embeddings_path']
         if 'rescore_edges' in rb:
             eg['rescore_edges'] = rb['rescore_edges']
+        for key in ['bidirectional_edges', 'normalize_cost']:
+            if key in rb:
+                eg[key] = rb[key]
+        if rb.get('dataset_embeddings_path'):
+            cfg.setdefault('embedding', {})['dataset_embeddings_path'] = rb['dataset_embeddings_path']
     elif mode in {'hiql', 'hiql_external', 'external_hiql'}:
         cfg.setdefault('policy', {})['type'] = 'external'
         ep = cfg.setdefault('external_policy', {})
@@ -295,20 +375,9 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
             status = 'terminated'
             return run_dir
 
-        _summary_log(summary, 'train_tdr_start', 'running')
-        with phase_timer(loggers.get('profile'), 'pipeline', 'train_tdr'):
-            tdr_model = train_tdr(dataset, cfg, run_dir, device, loggers['train'], stopper)
-        emb_cache = os.path.join(run_dir, 'cache', 'embeddings.npy')
-        with phase_timer(loggers.get('profile'), 'pipeline', 'embed_dataset'):
-            embeddings = embed_dataset(
-                tdr_model,
-                dataset,
-                device,
-                batch_size=int(cfg.get('tdr', {}).get('embed_batch_size', 8192)),
-                cache_path=emb_cache,
-                force=bool(cfg.get('tdr', {}).get('force_reembed', False)),
-            )
-        _summary_log(summary, 'train_tdr_end', 'completed', embedding_path=emb_cache, latent_dim=embeddings.shape[1])
+        tdr_model, embeddings, emb_cache, embedding_source = _load_or_train_embeddings(
+            cfg, dataset, run_dir, device, loggers['train'], summary, loggers.get('profile'), stopper
+        )
         if _stop_requested(stopper, summary, 'after_train_tdr'):
             status = 'terminated'
             return run_dir
@@ -339,7 +408,7 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
             gas_keygraph_path = str(external_gas_cfg.get('keygraph_path', '') or '').strip()
             if bool(external_gas_cfg.get('enabled', False)) and gas_keygraph_path and os.path.exists(gas_keygraph_path):
                 with phase_timer(loggers.get('profile'), 'graph_build', 'import_gas_keygraph'):
-                    graph = convert_gas_keygraph_to_bars_graph(gas_keygraph_path, embeddings, cfg, loggers['graph'])
+                    graph = convert_gas_keygraph_to_bars_graph(gas_keygraph_path, embeddings, cfg, loggers['graph'], dataset=dataset)
                 if bool(external_gas_cfg.get('rescore_edges', True)):
                     with phase_timer(loggers.get('profile'), 'graph_build', 'rescore_external_graph'):
                         graph = _rescore_graph_edges_with_reachability(graph, reach_model, cfg, device, loggers['graph'])

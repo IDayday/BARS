@@ -22,6 +22,7 @@ which mapping source is used and exposes missing-artifact warnings.
 
 from dataclasses import dataclass
 from pathlib import Path
+import os
 from typing import Any, Dict, Iterable, Tuple
 import pickle
 
@@ -236,43 +237,85 @@ def _extract_graph_edges(data: Any, n_nodes: int, node_embeddings: np.ndarray) -
     return src, dst, cost
 
 
-def _load_node_indices_from_payload_or_file(data: Any, cfg: Dict, n_nodes: int) -> np.ndarray | None:
+def _compact_raw_indices(dataset: OfflineDataset) -> np.ndarray:
+    raw = []
+    for sl in dataset.traj_slices:
+        raw.extend(range(int(sl.raw_start), max(int(sl.raw_start), int(sl.raw_end) - 1)))
+    return np.asarray(raw, dtype=np.int64)
+
+
+def _align_external_dataset_embeddings(raw_embeddings: np.ndarray, dataset: OfflineDataset | None) -> np.ndarray:
+    raw_embeddings = np.asarray(raw_embeddings, dtype=np.float32)
+    if dataset is None or len(raw_embeddings) == dataset.size:
+        return raw_embeddings
+    raw_idx = _compact_raw_indices(dataset)
+    if len(raw_idx) == dataset.size and len(raw_idx) and int(raw_idx.max()) < len(raw_embeddings):
+        return raw_embeddings[raw_idx].astype(np.float32)
+    raise ValueError(
+        f"external_gas.dataset_embeddings_path has length {len(raw_embeddings)}, but BARS compact dataset has "
+        f"size {dataset.size}; could not align via raw trajectory indices. Provide compact embeddings or node_indices_path."
+    )
+
+
+def _raw_to_compact_node_indices(node_indices: np.ndarray, dataset: OfflineDataset | None) -> np.ndarray:
+    node_indices = np.asarray(node_indices, dtype=np.int64).reshape(-1)
+    if dataset is None or len(node_indices) == 0 or int(node_indices.max()) < dataset.size:
+        return node_indices
+    raw_idx = _compact_raw_indices(dataset)
+    mapping = {int(r): int(i) for i, r in enumerate(raw_idx)}
+    missing = [int(x) for x in node_indices if int(x) not in mapping]
+    if missing:
+        raise ValueError(f"node_indices_path appears to contain raw indices, but {len(missing)} are not in the compact BARS dataset; first_missing={missing[:5]}")
+    return np.asarray([mapping[int(x)] for x in node_indices], dtype=np.int64)
+
+
+def _load_node_indices_from_payload_or_file(data: Any, cfg: Dict, n_nodes: int, dataset: OfflineDataset | None = None) -> np.ndarray | None:
     d = _as_dict(data)
     for key in ['node_indices', 'raw_indices', 'dataset_indices', 'keynode_indices']:
         if key in d:
             arr = np.asarray(d[key], dtype=np.int64).reshape(-1)
             if len(arr) == n_nodes:
-                return arr
+                return _raw_to_compact_node_indices(arr, dataset)
     ecfg = cfg.get('external_gas', {})
-    path = ecfg.get('node_indices_path')
-    if path:
+    path = os.path.expandvars(str(ecfg.get('node_indices_path') or '')).strip()
+    if path and os.path.exists(path):
         arr = np.asarray(np.load(str(path)), dtype=np.int64).reshape(-1)
         if len(arr) != n_nodes:
             raise ValueError(f'external_gas.node_indices_path length {len(arr)} != num keygraph nodes {n_nodes}')
-        return arr
+        return _raw_to_compact_node_indices(arr, dataset)
     return None
 
 
-def convert_gas_keygraph_to_bars_graph(path: str | Path, embeddings: np.ndarray, cfg: Dict, logger: CSVLogger | None = None) -> BARSGraph:
+def convert_gas_keygraph_to_bars_graph(path: str | Path, embeddings: np.ndarray, cfg: Dict, logger: CSVLogger | None = None, dataset: OfflineDataset | None = None) -> BARSGraph:
     data = load_gas_keygraph_pickle(path)
     nodes = _extract_nodes(data)
     n_nodes = len(nodes)
-    node_indices = _load_node_indices_from_payload_or_file(data, cfg, n_nodes)
+    node_indices = _load_node_indices_from_payload_or_file(data, cfg, n_nodes, dataset=dataset)
     mapping_source = 'payload_or_node_indices_path'
     if node_indices is None:
         ecfg = cfg.get('external_gas', {})
         map_embeddings = embeddings
-        if ecfg.get('dataset_embeddings_path'):
-            map_embeddings = np.asarray(np.load(str(ecfg['dataset_embeddings_path'])), dtype=np.float32)
-            mapping_source = 'external_gas.dataset_embeddings_path'
+        emb_path = os.path.expandvars(str(ecfg.get('dataset_embeddings_path') or '')).strip()
+        if emb_path:
+            map_embeddings = _align_external_dataset_embeddings(np.load(emb_path), dataset)
+            mapping_source = 'external_gas.dataset_embeddings_path_aligned'
         else:
             mapping_source = 'current_bars_embeddings_warning_not_exact_if_gas_tdr_differs'
         ann = KNNIndex.from_config(map_embeddings.astype(np.float32), cfg, prefix='ann')
         node_indices = ann.kneighbors(nodes.astype(np.float32), 1, return_distance=False)[:, 0].astype(np.int64)
     node_embeddings = embeddings[node_indices].astype(np.float32)
     src, dst, cost = _extract_graph_edges(data, n_nodes, nodes.astype(np.float32))
-    scale = float(np.median(cost) + 1e-6)
-    cost = (cost / scale).astype(np.float32)
+    ecfg = cfg.get('external_gas', {})
+    if bool(ecfg.get('bidirectional_edges', False)):
+        src0, dst0, cost0 = src.copy(), dst.copy(), cost.copy()
+        src = np.concatenate([src0, dst0]).astype(np.int64)
+        dst = np.concatenate([dst0, src0]).astype(np.int64)
+        cost = np.concatenate([cost0, cost0]).astype(np.float32)
+    if bool(ecfg.get('normalize_cost', True)):
+        scale = float(np.median(cost) + 1e-6)
+        cost = (cost / scale).astype(np.float32)
+    else:
+        cost = cost.astype(np.float32)
     p_exec = np.ones(len(src), dtype=np.float32)
     risk = np.zeros(len(src), dtype=np.float32)
     kind = np.full(len(src), EDGE_KIND_KNN, dtype=np.int32)

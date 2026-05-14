@@ -28,6 +28,11 @@ class GASPolicyWrapper:
     def eval(self):
         return self
 
+    def embed(self, obs: np.ndarray) -> np.ndarray:
+        obs = np.asarray(obs, dtype=np.float32)
+        phi = np.asarray(self.agent.get_phi(obs[None]), dtype=np.float32)
+        return phi[0] if phi.ndim > 1 else phi
+
     def _skill_from_goal(self, obs: np.ndarray, goal: np.ndarray) -> np.ndarray:
         obs = np.asarray(obs, dtype=np.float32)[None]
         goal = np.asarray(goal, dtype=np.float32)[None]

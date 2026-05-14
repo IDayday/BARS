@@ -12,12 +12,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 import importlib
+import os
 import sys
 
 import numpy as np
 
 
+def _expand_path(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = os.path.expandvars(str(value))
+    return str(Path(value).expanduser()) if value else value
+
+
 def _import_from_path(repo_path: str | None, dotted: str):
+    repo_path = _expand_path(repo_path)
     if repo_path:
         p = str(Path(repo_path).expanduser().resolve())
         if p not in sys.path:
@@ -42,6 +51,27 @@ class ExternalPolicyAdapter:
 
     def _maybe_norm(self, x: np.ndarray, normalizer, enabled: bool) -> np.ndarray:
         return normalizer.encode(x[None])[0] if enabled and normalizer is not None else x
+
+    def embed(self, obs_np: np.ndarray) -> np.ndarray:
+        """Return a backbone embedding for online graph-node lookup when available."""
+        obs_np = np.asarray(obs_np, dtype=np.float32)
+        for name in ['embed', 'encode', 'encode_obs', 'get_phi']:
+            method = getattr(self.policy, name, None)
+            if method is None:
+                continue
+            errors = []
+            for call in [lambda: method(obs_np), lambda: method(obs_np[None])]:
+                try:
+                    z = call()
+                    if isinstance(z, tuple):
+                        z = z[0]
+                    z = np.asarray(z, dtype=np.float32)
+                    if z.ndim > 1:
+                        z = z[0]
+                    return z.astype(np.float32)
+                except Exception as exc:
+                    errors.append(type(exc).__name__)
+        raise AttributeError('External policy does not expose an embedding method.')
 
     def act(self, obs_np: np.ndarray, goal_np: np.ndarray, obs_normalizer, action_low: Optional[np.ndarray] = None, action_high: Optional[np.ndarray] = None, device: str = 'cuda') -> np.ndarray:
         obs_np = np.asarray(obs_np, dtype=np.float32)
@@ -84,10 +114,10 @@ class ExternalPolicyAdapter:
 def build_external_policy_from_config(cfg: dict, dataset, device=None) -> ExternalPolicyAdapter:
     pcfg = cfg.get('policy', {})
     ecfg = cfg.get('external_policy', pcfg.get('external', {}))
-    repo_path = ecfg.get('repo_path')
+    repo_path = _expand_path(ecfg.get('repo_path'))
     factory_path = ecfg.get('factory') or ecfg.get('factory_path')
     object_path = ecfg.get('object') or ecfg.get('object_path')
-    checkpoint_path = ecfg.get('checkpoint_path')
+    checkpoint_path = _expand_path(ecfg.get('checkpoint_path'))
     kwargs = dict(ecfg.get('kwargs', {}))
     kwargs.setdefault('obs_dim', dataset.obs_dim)
     kwargs.setdefault('action_dim', dataset.action_dim)
