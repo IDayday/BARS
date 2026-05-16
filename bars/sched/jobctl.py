@@ -74,29 +74,96 @@ def _load_all_states(log_root: str) -> List[Dict]:
         except Exception: pass
     return states
 
-def _assign_gpu(gpu_indices: Optional[List[int]], running: List[Dict], max_jobs_per_gpu: int, mem_mb: int, reserved: Dict[int,int]) -> Optional[int]:
+def _parse_int_map(raw: str) -> Dict[int, int]:
+    out: Dict[int, int] = {}
+    if not raw:
+        return out
+    for item in raw.split(','):
+        item = item.strip()
+        if not item:
+            continue
+        if ':' not in item:
+            raise ValueError(f'Expected GPU map item like 0:16, got {item!r}')
+        key, value = item.split(':', 1)
+        out[int(key.strip())] = int(value.strip())
+    return out
+
+def _reconcile_dead_running_states(log_root: str) -> None:
+    terminal_status = {'completed', 'failed', 'terminated', 'stopped', 'force_killed'}
+    for st in _load_all_states(log_root):
+        if st.get('status') in terminal_status:
+            continue
+        pid = int(st.get('pid', 0) or 0)
+        if pid > 0 and _pid_alive(pid):
+            continue
+        run_dir = st.get('run_dir', '')
+        last = read_last_csv_row(os.path.join(run_dir, 'logs', 'summary.csv')) if run_dir else {}
+        completed = (
+            last.get('status') == 'completed'
+            or last.get('phase') == 'completed'
+            or _archive_exists(run_dir)
+        )
+        st.update({
+            'status': 'completed' if completed else 'stopped',
+            'returncode': 0 if completed else st.get('returncode', ''),
+            'ended_at': st.get('ended_at', time.time()),
+            'reconciled_at': time.time(),
+        })
+        _write_state(log_root, st)
+        if run_dir:
+            try: save_json(st, os.path.join(run_dir, 'job.json'))
+            except Exception: pass
+
+def _assign_gpu(
+    gpu_indices: Optional[List[int]],
+    running: List[Dict],
+    max_jobs_per_gpu: int,
+    mem_mb: int,
+    reserved: Dict[int,int],
+    reserve_free_mb: int = 0,
+    max_jobs_per_gpu_map: Optional[Dict[int, int]] = None,
+) -> Optional[int]:
     infos=query_gpus(gpu_indices)
     if not infos: return 0
     counts={g.index:0 for g in infos}
     for st in running:
         if st.get('status')=='running' and st.get('gpu') in counts: counts[int(st['gpu'])]+=1
-    infos.sort(key=lambda g:g.memory_free_mb-reserved.get(g.index,0), reverse=True)
+    infos.sort(key=lambda g:(counts.get(g.index,0), -(g.memory_free_mb-reserved.get(g.index,0))))
     for g in infos:
-        if counts[g.index] < max_jobs_per_gpu and g.memory_free_mb - reserved.get(g.index,0) >= mem_mb: reserved[g.index]=reserved.get(g.index,0)+mem_mb; return g.index
+        limit = (max_jobs_per_gpu_map or {}).get(g.index, max_jobs_per_gpu)
+        effective_free = g.memory_free_mb - reserved.get(g.index, 0)
+        if counts[g.index] < limit and effective_free - mem_mb >= reserve_free_mb:
+            reserved[g.index]=reserved.get(g.index,0)+mem_mb
+            return g.index
     return None
 
 def _launch_one(task: Dict, log_root: str, gpu: int) -> subprocess.Popen:
     cmd,run_dir=_build_cmd(task,log_root); Path(run_dir).mkdir(parents=True,exist_ok=True); env=os.environ.copy(); env['CUDA_VISIBLE_DEVICES']=str(gpu)
     env.setdefault('D4RL_SUPPRESS_IMPORT_ERROR','1')
+    env.setdefault('BARS_DISABLE_TQDM','1')
+    env.setdefault('BARS_TQDM_MININTERVAL','10')
     # Avoid CPU oversubscription when many GPU jobs construct SciPy/sklearn graphs concurrently.
+    thread_count = str(env.get('BARS_JOB_NUM_THREADS', '1'))
     for _k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','VECLIB_MAXIMUM_THREADS','NUMEXPR_NUM_THREADS']:
-        env.setdefault(_k, '1')
+        env[_k] = thread_count
     stdout=open(os.path.join(run_dir,'stdout.log'),'a',buffering=1,encoding='utf-8'); stderr=open(os.path.join(run_dir,'stderr.log'),'a',buffering=1,encoding='utf-8')
     state={'run_id':task['run_id'],'status':'launching','gpu':gpu,'mem_mb':task['mem_mb'],'run_dir':run_dir,'cmd':cmd,'created_at':time.time(),'env':task.get('env'),'seed':task.get('seed'),'variant':task.get('variant'),'node_method':task.get('node_method')}; save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state)
     proc=subprocess.Popen(cmd,stdout=stdout,stderr=stderr,env=env,preexec_fn=os.setsid); state.update({'status':'running','pid':proc.pid,'pgid':os.getpgid(proc.pid),'started_at':time.time()}); save_json(state,os.path.join(run_dir,'job.json')); _write_state(log_root,state); return proc
 
 def scheduler_loop(args) -> None:
-    tasks=_expand_sweep(args.sweep,overrides=args.set); gpu_indices=parse_gpu_list(args.gpus); pending=list(tasks); procs={}; _jobs_dir(args.log_root)
+    tasks=_expand_sweep(args.sweep,overrides=args.set)
+    if args.min_task_mem_mb > 0:
+        raised = 0
+        for task in tasks:
+            if int(task.get('mem_mb', 0) or 0) < args.min_task_mem_mb:
+                task['mem_mb'] = args.min_task_mem_mb
+                raised += 1
+        if raised:
+            print(f'raised mem_mb to min_task_mem_mb={args.min_task_mem_mb} for {raised} tasks', flush=True)
+    gpu_indices=parse_gpu_list(args.gpus); gpu_limit_map=_parse_int_map(args.max_jobs_per_gpu_map); existing={str(st.get('run_id')) for st in _load_all_states(args.log_root) if st.get('run_id')}; pending=[t for t in tasks if str(t.get('run_id')) not in existing]; procs={}; _jobs_dir(args.log_root)
+    if existing:
+        print(f'skipping {len(existing)} existing job states in {args.log_root}', flush=True)
+    print(f'scheduler limits max_jobs_per_gpu={args.max_jobs_per_gpu} max_jobs_per_gpu_map={gpu_limit_map} reserve_free_mb={args.reserve_free_mb}', flush=True)
     with open(_scheduler_pid_path(args.log_root),'w',encoding='utf-8') as f: f.write(str(os.getpid()))
     while pending or procs:
         for run_id,proc in list(procs.items()):
@@ -108,13 +175,15 @@ def scheduler_loop(args) -> None:
                 except Exception: pass
             print(f'job finished run_id={run_id} status={status} rc={ret} run_dir={st.get("run_dir","")}', flush=True)
             del procs[run_id]
+        _reconcile_dead_running_states(args.log_root)
         running_states=_load_all_states(args.log_root); reserved={}; launched=0
         for task in list(pending):
-            gpu=_assign_gpu(gpu_indices,running_states,args.max_jobs_per_gpu,task['mem_mb'],reserved)
+            gpu=_assign_gpu(gpu_indices,running_states,args.max_jobs_per_gpu,task['mem_mb'],reserved,args.reserve_free_mb,gpu_limit_map)
             if gpu is None: continue
             if args.dry_run:
                 cmd,run_dir=_build_cmd(task,args.log_root); print('DRY-RUN',gpu,task['mem_mb'],' '.join(cmd),'->',run_dir); pending.remove(task); continue
             proc=_launch_one(task,args.log_root,gpu); procs[task['run_id']]=proc; pending.remove(task); launched+=1
+            running_states.append({'status': 'running', 'gpu': gpu})
             print(f'launched run_id={task["run_id"]} gpu={gpu} mem_mb={task["mem_mb"]} env={task.get("env")} seed={task.get("seed")} variant={task.get("variant")} node_method={task.get("node_method")} run_dir={_build_cmd(task,args.log_root)[1]}', flush=True)
             if launched >= max(1,args.launch_burst): break
         if args.dry_run and not pending: break
@@ -122,6 +191,8 @@ def scheduler_loop(args) -> None:
 
 def launch_background(args) -> None:
     cmd=[sys.executable,'-m','bars.sched.jobctl','scheduler','--sweep',args.sweep,'--log-root',args.log_root,'--gpus',args.gpus,'--max-jobs-per-gpu',str(args.max_jobs_per_gpu),'--poll-seconds',str(args.poll_seconds),'--launch-burst',str(args.launch_burst)]
+    cmd += ['--reserve-free-mb', str(args.reserve_free_mb), '--min-task-mem-mb', str(args.min_task_mem_mb)]
+    if args.max_jobs_per_gpu_map: cmd += ['--max-jobs-per-gpu-map', args.max_jobs_per_gpu_map]
     for s in args.set or []: cmd += ['--set',s]
     if args.dry_run: cmd.append('--dry-run')
     _jobs_dir(args.log_root); out=open(_jobs_dir(args.log_root)/'scheduler.out','a',buffering=1,encoding='utf-8'); proc=subprocess.Popen(cmd,stdout=out,stderr=out,preexec_fn=os.setsid)
@@ -167,8 +238,8 @@ def pack_jobs(args) -> None:
 
 def main(argv=None) -> None:
     parser=argparse.ArgumentParser(prog='barsctl'); sub=parser.add_subparsers(dest='cmd',required=True)
-    launch=sub.add_parser('launch'); launch.add_argument('--sweep',required=True); launch.add_argument('--log-root',default='runs'); launch.add_argument('--gpus',default='auto'); launch.add_argument('--max-jobs-per-gpu',type=int,default=1); launch.add_argument('--poll-seconds',type=float,default=10); launch.add_argument('--launch-burst',type=int,default=1); launch.add_argument('--background',action='store_true'); launch.add_argument('--dry-run',action='store_true'); launch.add_argument('--set',action='append',default=[])
-    sched=sub.add_parser('scheduler'); sched.add_argument('--sweep',required=True); sched.add_argument('--log-root',default='runs'); sched.add_argument('--gpus',default='auto'); sched.add_argument('--max-jobs-per-gpu',type=int,default=1); sched.add_argument('--poll-seconds',type=float,default=10); sched.add_argument('--launch-burst',type=int,default=1); sched.add_argument('--dry-run',action='store_true'); sched.add_argument('--set',action='append',default=[])
+    launch=sub.add_parser('launch'); launch.add_argument('--sweep',required=True); launch.add_argument('--log-root',default='runs'); launch.add_argument('--gpus',default='auto'); launch.add_argument('--max-jobs-per-gpu',type=int,default=1); launch.add_argument('--max-jobs-per-gpu-map',default=''); launch.add_argument('--reserve-free-mb',type=int,default=0); launch.add_argument('--min-task-mem-mb',type=int,default=0); launch.add_argument('--poll-seconds',type=float,default=10); launch.add_argument('--launch-burst',type=int,default=1); launch.add_argument('--background',action='store_true'); launch.add_argument('--dry-run',action='store_true'); launch.add_argument('--set',action='append',default=[])
+    sched=sub.add_parser('scheduler'); sched.add_argument('--sweep',required=True); sched.add_argument('--log-root',default='runs'); sched.add_argument('--gpus',default='auto'); sched.add_argument('--max-jobs-per-gpu',type=int,default=1); sched.add_argument('--max-jobs-per-gpu-map',default=''); sched.add_argument('--reserve-free-mb',type=int,default=0); sched.add_argument('--min-task-mem-mb',type=int,default=0); sched.add_argument('--poll-seconds',type=float,default=10); sched.add_argument('--launch-burst',type=int,default=1); sched.add_argument('--dry-run',action='store_true'); sched.add_argument('--set',action='append',default=[])
     status=sub.add_parser('status'); status.add_argument('--log-root',default='runs'); status.add_argument('--gpus',default='auto')
     stop=sub.add_parser('stop'); stop.add_argument('--log-root',default='runs'); stop.add_argument('--run-id',default=None); stop.add_argument('--all',action='store_true'); stop.add_argument('--force',action='store_true')
     pack=sub.add_parser('pack'); pack.add_argument('--log-root',default='runs'); pack.add_argument('--run-id',default=None); pack.add_argument('--all',action='store_true')

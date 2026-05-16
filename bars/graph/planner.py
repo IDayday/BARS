@@ -72,7 +72,7 @@ def plan_path(
         Pure temporal/progress cost.
       reachability/bars_lite/risk:
         Lagrangian node-level cost: c(e) + lambda_risk r(e).
-      full_bars/bars/boundary:
+      full_bars/bars/boundary/gas_bars:
         Lagrangian line-graph cost with edge-to-edge boundary penalty.
       constrained_bars/budget_bars/bars_budget/full_bars_budget:
         Constrained line-graph search: minimize temporal cost subject to
@@ -92,7 +92,7 @@ def plan_path(
         return _node_dijkstra(graph, start_node, goal_node, 0.0, variant, max_edges=max_edges)
     if variant in {"reachability", "bars_lite", "risk"}:
         return _node_dijkstra(graph, start_node, goal_node, lambda_risk, variant, max_edges=max_edges)
-    if variant in {"boundary", "full_bars", "bars"}:
+    if variant in {"boundary", "full_bars", "bars", "gas_bars", "gas_bars_lagrangian"}:
         if boundary is None:
             return _node_dijkstra(graph, start_node, goal_node, lambda_risk, "reachability_no_boundary", max_edges=max_edges)
         return _line_graph_dijkstra(graph, start_node, goal_node, lambda_risk, lambda_boundary, boundary, variant, max_edges=max_edges)
@@ -116,6 +116,20 @@ def _edge_weight(graph: BARSGraph, eid: int, lambda_risk: float) -> float:
     return float(graph.cost[eid] + lambda_risk * graph.risk[eid])
 
 
+def _edge_weights(graph: BARSGraph, lambda_risk: float) -> np.ndarray:
+    return (graph.cost + float(lambda_risk) * graph.risk).astype(np.float64, copy=False)
+
+
+def _boundary_costs(boundary: BoundaryIndex, prev_edge: int, next_edges: np.ndarray) -> np.ndarray:
+    if len(next_edges) == 0:
+        return np.empty(0, dtype=np.float32)
+    if hasattr(boundary, "transition_costs"):
+        return boundary.transition_costs(int(prev_edge), next_edges)
+    if hasattr(boundary, "boundary_cost_batch"):
+        return boundary.boundary_cost_batch(np.full(len(next_edges), int(prev_edge), dtype=np.int64), next_edges)
+    return np.asarray([boundary.boundary_cost(int(prev_edge), int(ne)) for ne in next_edges], dtype=np.float32)
+
+
 def _node_dijkstra(
     graph: BARSGraph,
     start_node: int,
@@ -127,6 +141,7 @@ def _node_dijkstra(
     out = graph.outgoing_edges()
     n = graph.num_nodes
     max_hops = int(max_edges) if max_edges is not None and int(max_edges) > 0 else None
+    edge_w = _edge_weights(graph, lambda_risk)
 
     # If max_edges is set, use expanded-state Dijkstra over (node, depth).
     if max_hops is not None:
@@ -146,7 +161,7 @@ def _node_dijkstra(
             for eid in out[u]:
                 eid = int(eid)
                 v = int(graph.dst[eid])
-                nd = d + _edge_weight(graph, eid, lambda_risk)
+                nd = d + float(edge_w[eid])
                 st = (v, depth + 1)
                 if nd < dist.get(st, float("inf")):
                     dist[st] = nd
@@ -182,7 +197,7 @@ def _node_dijkstra(
         for eid in out[u]:
             eid = int(eid)
             v = int(graph.dst[eid])
-            nd = d + _edge_weight(graph, eid, lambda_risk)
+            nd = d + float(edge_w[eid])
             if nd < dist_arr[v]:
                 dist_arr[v] = nd
                 prev_node[v] = u
@@ -222,6 +237,7 @@ def _line_graph_dijkstra(
         return _empty(variant)
     max_hops = int(max_edges) if max_edges is not None and int(max_edges) > 0 else None
     m = graph.num_edges
+    edge_w = _edge_weights(graph, lambda_risk)
     # Expanded depth when max_edges is set; otherwise original compact version.
     if max_hops is not None:
         dist: Dict[tuple[int, int], float] = {}
@@ -230,7 +246,7 @@ def _line_graph_dijkstra(
         for eid in start_edges:
             eid = int(eid)
             st = (eid, 1)
-            dist[st] = _edge_weight(graph, eid, lambda_risk)
+            dist[st] = float(edge_w[eid])
             prev[st] = (None, eid)
             heapq.heappush(pq, (dist[st], eid, 1))
         best: Optional[tuple[int, int]] = None
@@ -243,9 +259,11 @@ def _line_graph_dijkstra(
                 break
             if depth >= max_hops:
                 continue
-            for ne in out[int(graph.dst[eid])]:
+            next_edges = out[int(graph.dst[eid])]
+            bcost = _boundary_costs(boundary, eid, next_edges)
+            for ne, bc in zip(next_edges, bcost):
                 ne = int(ne)
-                nd = d + _edge_weight(graph, ne, lambda_risk) + lambda_boundary * boundary.boundary_cost(eid, ne)
+                nd = d + float(edge_w[ne]) + float(lambda_boundary) * float(bc)
                 st = (ne, depth + 1)
                 if nd < dist.get(st, float("inf")):
                     dist[st] = nd
@@ -272,7 +290,7 @@ def _line_graph_dijkstra(
     pq: list[tuple[float, int]] = []
     for eid in start_edges:
         eid = int(eid)
-        dist_arr[eid] = _edge_weight(graph, eid, lambda_risk)
+        dist_arr[eid] = float(edge_w[eid])
         heapq.heappush(pq, (dist_arr[eid], eid))
     best = -1
     while pq:
@@ -282,9 +300,11 @@ def _line_graph_dijkstra(
         if int(graph.dst[eid]) == goal_node:
             best = eid
             break
-        for ne in out[int(graph.dst[eid])]:
+        next_edges = out[int(graph.dst[eid])]
+        bcost = _boundary_costs(boundary, eid, next_edges)
+        for ne, bc in zip(next_edges, bcost):
             ne = int(ne)
-            nd = d + _edge_weight(graph, ne, lambda_risk) + lambda_boundary * boundary.boundary_cost(eid, ne)
+            nd = d + float(edge_w[ne]) + float(lambda_boundary) * float(bc)
             if nd < dist_arr[ne]:
                 dist_arr[ne] = nd
                 prev_edge[ne] = eid
@@ -337,6 +357,7 @@ def _constrained_line_graph_search(
         return _empty(variant, exec_budget)
     max_hops = int(max_edges) if max_edges is not None and int(max_edges) > 0 else graph.num_nodes + 1
     max_labels = max(1, int(max_labels_per_edge))
+    edge_w = graph.cost.astype(np.float64, copy=False)
 
     labels: list[_Label] = []
     labels_by_edge: dict[int, list[int]] = {}
@@ -363,7 +384,7 @@ def _constrained_line_graph_search(
     for eid in start_edges:
         eid = int(eid)
         risk = float(graph.risk[eid])
-        add_label(_Label(edge=eid, cost=float(graph.cost[eid]), exec_cost=risk, risk=risk, boundary=0.0, prev=-1, depth=1))
+        add_label(_Label(edge=eid, cost=float(edge_w[eid]), exec_cost=risk, risk=risk, boundary=0.0, prev=-1, depth=1))
 
     best_idx: Optional[int] = None
     while pq:
@@ -379,13 +400,18 @@ def _constrained_line_graph_search(
         if cur.depth >= max_hops:
             continue
         u = int(graph.dst[cur.edge])
-        for ne in out[u]:
+        next_edges = out[u]
+        if boundary is not None:
+            bcosts = _boundary_costs(boundary, cur.edge, next_edges)
+        else:
+            bcosts = np.zeros(len(next_edges), dtype=np.float32)
+        for ne, bcost in zip(next_edges, bcosts):
             ne = int(ne)
-            bcost = float(boundary.boundary_cost(cur.edge, ne)) if boundary is not None else 0.0
+            bcost = float(bcost)
             nrisk = cur.risk + float(graph.risk[ne])
             nb = cur.boundary + bcost
             nexec = nrisk + float(lambda_boundary) * nb
-            ncost = cur.cost + float(graph.cost[ne])
+            ncost = cur.cost + float(edge_w[ne])
             add_label(_Label(edge=ne, cost=ncost, exec_cost=nexec, risk=nrisk, boundary=nb, prev=idx, depth=cur.depth + 1))
 
     if best_idx is None:

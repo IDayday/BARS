@@ -1,18 +1,18 @@
 {
   "base_config": "../routeb/d4rl_antmaze_stage20_bars.json",
   "resources": {
-    "default_mem_mb": 6000
+    "default_mem_mb": 18000
   },
   "tasks": [
     {
-      "run_id": "budget2_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget2_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget2_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -24,6 +24,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -35,17 +36,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget2_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget2_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget2_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -57,6 +58,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -68,17 +70,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget4_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget4_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget4_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -90,6 +92,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -101,17 +104,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget4_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget4_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget4_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -123,6 +126,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -134,17 +138,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget6_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget6_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget6_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -156,6 +160,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -167,17 +172,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget6_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget6_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget6_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -189,6 +194,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -200,17 +206,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget8_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget8_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget8_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -222,6 +228,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -233,17 +240,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget8_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget8_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget8_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -255,6 +262,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -266,17 +274,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget10_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget10_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget10_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -288,6 +296,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -299,17 +308,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget10_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget10_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget10_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -321,6 +330,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -332,17 +342,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget12_none_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget12_none_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget12_none",
         "eval.fallback_mode": "none",
         "eval.max_steps": 1000,
@@ -354,6 +364,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -365,17 +376,17 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
     },
     {
-      "run_id": "budget12_direct_goal_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
-      "env": "antmaze-medium-play-v2",
+      "run_id": "budget12_direct_goal_after_progress_antmaze-medium-navigate-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-navigate-v0",
       "seed": 0,
       "variant": "constrained_bars",
       "node_method": "bars",
       "set": {
         "eval.enabled": true,
-        "eval.episodes": 1,
+        "eval.episodes": 100,
         "eval.condition": "budget12_direct_goal_after_progress",
         "eval.fallback_mode": "direct_goal_after_progress",
         "eval.max_steps": 1000,
@@ -387,6 +398,7 @@
         "planner.max_edges": 12,
         "eval.max_plan_edges": 12,
         "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
         "experiment.warmstart_root": "runs_stage16_full12",
         "experiment.warmstart_source_variant": "full_bars",
         "experiment.warmstart_artifacts": [
@@ -398,7 +410,415 @@
           "boundary"
         ]
       },
-      "mem_mb": 6000
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget2_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget2_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 2.0,
+        "eval.exec_budget": 2.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget2_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget2_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 2.0,
+        "eval.exec_budget": 2.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget4_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget4_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 4.0,
+        "eval.exec_budget": 4.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget4_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget4_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 4.0,
+        "eval.exec_budget": 4.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget6_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget6_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 6.0,
+        "eval.exec_budget": 6.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget6_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget6_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 6.0,
+        "eval.exec_budget": 6.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget8_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget8_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 8.0,
+        "eval.exec_budget": 8.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget8_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget8_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 8.0,
+        "eval.exec_budget": 8.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget10_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget10_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 10.0,
+        "eval.exec_budget": 10.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget10_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget10_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 10.0,
+        "eval.exec_budget": 10.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget12_none_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget12_none",
+        "eval.fallback_mode": "none",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 12.0,
+        "eval.exec_budget": 12.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
+    },
+    {
+      "run_id": "budget12_direct_goal_after_progress_antmaze-medium-stitch-v0_constrained_bars_seed0",
+      "env": "antmaze-medium-stitch-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "budget12_direct_goal_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "planner.exec_budget": 12.0,
+        "eval.exec_budget": 12.0,
+        "planner.max_edges": 12,
+        "eval.max_plan_edges": 12,
+        "diagnostics.enabled": false,
+        "graph.preserve_temporal_edges": true,
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ]
+      },
+      "mem_mb": 18000
     }
   ]
 }

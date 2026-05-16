@@ -217,20 +217,53 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# BARS runs and artifacts
-runs/
-runs_*/
+# BARS local experiment outputs
+/runs/
+/runs*/
+/runs_*/
 /analysis_packages/
+/backups/
+**/checkpoints/
+**/cache/
+**/archives/
+**/wandb/
+**/mlruns/
+**/tensorboard/
+
+# BARS local datasets and external artifacts.
+# Keep these available locally, but never push downloaded data or weights.
+/_data/
 /data/
 /datasets/
-backups/
+/d4rl_data/
+/ogbench_data/
+/external_artifacts/
+/artifacts/
+
+# BARS generated reports and packaged result bundles
+/reports/stage*/
+/reports/stage*
+/reports/runs_stage*/
+/reports/runs_stage*
+/reports/*_manifest_*.txt
+/reports/*.flag
+*.sha256
+*.zip
+*.tar
+*.tgz
+*.tar.*
+
+# Model weights, arrays, and offline RL datasets
+*.h5
 *.hdf5
 *.pt
 *.pth
 *.ckpt
+*.safetensors
 *.npz
 *.npy
-*.tar.gz
+*.pkl
+*.pkl.gz
 
 # Local vendored environments and runtime caches
 /external_envs/

@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from tqdm import trange
 from bars.common.checkpoint import load_checkpoint, save_checkpoint
 from bars.common.logging import CSVLogger
+from bars.common.progress import tqdm_kwargs
 from bars.common.stopper import Stopper
 from bars.data.trajectories import OfflineDataset
 from bars.models.tdr import TemporalDistanceModel
@@ -17,10 +18,23 @@ def train_tdr(dataset: OfflineDataset, cfg: Dict, run_dir: str, device, logger: 
     opt=torch.optim.AdamW(model.parameters(), lr=float(tcfg.get('lr',3e-4)), weight_decay=float(tcfg.get('weight_decay',1e-4)))
     batch_size=int(tcfg.get('batch_size',1024)); steps=int(tcfg.get('steps',20000)); horizon=int(tcfg.get('horizon',50)); log_every=int(tcfg.get('log_every',500)); rng=np.random.default_rng(int(cfg.get('seed',0))+17)
     scaler=torch.cuda.amp.GradScaler(enabled=bool(tcfg.get('amp',True)) and device.type=='cuda'); obs_norm=dataset.obs_normalizer.encode(dataset.observations)
-    for step in trange(steps, desc='train_tdr', dynamic_ncols=True):
+    cache_default = bool(getattr(device, 'type', str(device)) == 'cuda')
+    cache_on_device = bool(tcfg.get('cache_dataset_on_device', cache_default))
+    cache_max_mb = float(tcfg.get('cache_dataset_max_mb', 512))
+    obs_all = None
+    obs_mb = float(obs_norm.nbytes / (1024 * 1024))
+    if cache_on_device and obs_mb <= cache_max_mb:
+        obs_all = torch.as_tensor(obs_norm, dtype=torch.float32, device=device)
+        logger.log({'phase':'tdr','event':'dataset_cached_on_device','obs_mb':obs_mb,'cache_max_mb':cache_max_mb})
+    for step in trange(steps, desc='train_tdr', **tqdm_kwargs(cfg)):
         if stopper is not None and stopper.stop_requested: break
         i,j,dt=dataset.sample_future_pairs(batch_size,horizon,rng); ni=dataset.sample_indices(batch_size,rng); nj=dataset.sample_indices(batch_size,rng)
-        obs_i=torch.as_tensor(obs_norm[i],dtype=torch.float32,device=device); obs_j=torch.as_tensor(obs_norm[j],dtype=torch.float32,device=device); obs_ni=torch.as_tensor(obs_norm[ni],dtype=torch.float32,device=device); obs_nj=torch.as_tensor(obs_norm[nj],dtype=torch.float32,device=device); target=torch.as_tensor(np.log1p(dt).astype(np.float32),dtype=torch.float32,device=device)
+        if obs_all is not None:
+            i_t=torch.as_tensor(i,dtype=torch.long,device=device); j_t=torch.as_tensor(j,dtype=torch.long,device=device); ni_t=torch.as_tensor(ni,dtype=torch.long,device=device); nj_t=torch.as_tensor(nj,dtype=torch.long,device=device)
+            obs_i=obs_all[i_t]; obs_j=obs_all[j_t]; obs_ni=obs_all[ni_t]; obs_nj=obs_all[nj_t]
+        else:
+            obs_i=torch.as_tensor(obs_norm[i],dtype=torch.float32,device=device); obs_j=torch.as_tensor(obs_norm[j],dtype=torch.float32,device=device); obs_ni=torch.as_tensor(obs_norm[ni],dtype=torch.float32,device=device); obs_nj=torch.as_tensor(obs_norm[nj],dtype=torch.float32,device=device)
+        target=torch.as_tensor(np.log1p(dt).astype(np.float32),dtype=torch.float32,device=device)
         opt.zero_grad(set_to_none=True)
         with torch.cuda.amp.autocast(enabled=scaler.is_enabled()):
             _,_,pred,pos_logit=model(obs_i,obs_j); _,_,_,neg_logit=model(obs_ni,obs_nj)

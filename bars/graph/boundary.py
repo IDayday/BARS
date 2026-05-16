@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 import time
 
@@ -11,7 +11,6 @@ from bars.common.logging import CSVLogger
 from bars.data.trajectories import OfflineDataset
 
 from .ann import KNNIndex
-from .support import build_edge_lookup
 from .types import BARSGraph
 
 
@@ -26,6 +25,7 @@ class BoundaryIndex:
     direction_temperature: float = 1.0
     method: str = "unknown"
     direction_fallback_weight: float = 0.0
+    _transition_cost_cache: Dict[int, tuple[np.ndarray, np.ndarray]] = field(default_factory=dict, init=False, repr=False)
 
     def _direction_psi(self, prev_edge: int, next_edge: int) -> Optional[float]:
         if self.edge_dir is None:
@@ -50,6 +50,45 @@ class BoundaryIndex:
 
     def boundary_cost(self, prev_edge: int, next_edge: int) -> float:
         return float(-np.log(np.clip(self.psi(prev_edge, next_edge), 1e-4, 1.0)))
+
+    def psi_batch(self, prev_edges: np.ndarray, next_edges: np.ndarray) -> np.ndarray:
+        prev = np.asarray(prev_edges, dtype=np.int64).reshape(-1)
+        nxt = np.asarray(next_edges, dtype=np.int64).reshape(-1)
+        if len(prev) != len(nxt):
+            raise ValueError(f"prev_edges and next_edges must have the same length, got {len(prev)} and {len(nxt)}")
+        if len(prev) == 0:
+            return np.empty(0, dtype=np.float32)
+        val = np.full(len(prev), float(self.fallback_psi), dtype=np.float32)
+        dir_psi = None
+        if self.edge_dir is not None:
+            diff = self.edge_dir[prev] - self.edge_dir[nxt]
+            dist2 = np.sum(diff * diff, axis=1)
+            dir_psi = np.clip(np.exp(-dist2 / max(float(self.direction_temperature), 1e-6)), 1e-4, 1.0).astype(np.float32)
+            val[:] = dir_psi
+        supported = self.has_arr[prev] & self.has_dep[nxt]
+        if supported.any():
+            overlap = np.minimum(self.arr_hist[prev[supported]], self.dep_hist[nxt[supported]]).sum(axis=1)
+            overlap = np.clip(overlap, 1e-4, 1.0).astype(np.float32)
+            if dir_psi is not None and self.direction_fallback_weight > 0:
+                w = float(np.clip(self.direction_fallback_weight, 0.0, 1.0))
+                overlap = ((1.0 - w) * overlap + w * dir_psi[supported]).astype(np.float32)
+            val[supported] = overlap
+        return np.clip(val, 1e-4, 1.0).astype(np.float32)
+
+    def boundary_cost_batch(self, prev_edges: np.ndarray, next_edges: np.ndarray) -> np.ndarray:
+        return (-np.log(self.psi_batch(prev_edges, next_edges))).astype(np.float32)
+
+    def transition_costs(self, prev_edge: int, next_edges: np.ndarray) -> np.ndarray:
+        prev_edge = int(prev_edge)
+        nxt = np.asarray(next_edges, dtype=np.int64).reshape(-1)
+        cached = self._transition_cost_cache.get(prev_edge)
+        if cached is not None and np.array_equal(cached[0], nxt):
+            return cached[1]
+        prev = np.full(len(nxt), prev_edge, dtype=np.int64)
+        costs = self.boundary_cost_batch(prev, nxt)
+        if len(self._transition_cost_cache) < 200000:
+            self._transition_cost_cache[prev_edge] = (nxt.copy(), costs)
+        return costs
 
     def save_npz(self, path: str) -> None:
         import os
@@ -122,9 +161,10 @@ def _direction_boundary(graph: BARSGraph, cfg: Dict, logger: CSVLogger) -> Bound
     progress_every = max(1, graph.num_edges // 5)
     logger.log({"phase": "boundary", "event": "start", "method": "direction", "num_edges": graph.num_edges})
     for eid in range(graph.num_edges):
-        for ne in out[int(graph.dst[eid])]:
-            checked += 1
-            psi_sum += b.psi(eid, int(ne))
+        nxt = out[int(graph.dst[eid])]
+        if len(nxt):
+            checked += int(len(nxt))
+            psi_sum += float(b.psi_batch(np.full(len(nxt), eid, dtype=np.int64), nxt).sum())
         if ((eid + 1) % progress_every) == 0 or eid == graph.num_edges - 1:
             logger.log({"phase": "boundary", "event": "progress", "method": "direction", "processed_edges": eid + 1, "num_edges": graph.num_edges, "composable_pairs_checked": checked})
     logger.log({"phase": "boundary", "event": "completed", "method": "direction", "composable_pairs": checked, "psi_mean": psi_sum / max(1, checked), "direction_temperature": b.direction_temperature})
@@ -212,6 +252,60 @@ def _assign_mode(centers: List[Optional[np.ndarray]], scales: np.ndarray, graph:
     return int(np.argmin(d2))
 
 
+def _assign_modes_batch(
+    centers: List[Optional[np.ndarray]],
+    scales: np.ndarray,
+    graph: BARSGraph,
+    z: np.ndarray,
+    prev_dir: np.ndarray,
+    next_dir: np.ndarray,
+    nodes: np.ndarray,
+    idx: np.ndarray,
+) -> np.ndarray:
+    nodes = np.asarray(nodes, dtype=np.int64).reshape(-1)
+    idx = np.asarray(idx, dtype=np.int64).reshape(-1)
+    out = np.full(len(nodes), -1, dtype=np.int64)
+    if len(nodes) == 0:
+        return out
+    order = np.argsort(nodes, kind="stable")
+    nodes_s = nodes[order]
+    bounds = np.flatnonzero(np.r_[True, nodes_s[1:] != nodes_s[:-1], True])
+    for a, b in zip(bounds[:-1], bounds[1:]):
+        node = int(nodes_s[a])
+        c = centers[node]
+        if c is None:
+            continue
+        ids = order[a:b]
+        sample_idx = idx[ids]
+        rel = (z[sample_idx] - graph.node_embeddings[node]) / max(float(scales[node]), 1e-6)
+        feat = np.concatenate([rel, prev_dir[sample_idx], next_dir[sample_idx]], axis=1).astype(np.float32)
+        d2 = np.sum((feat[:, None, :] - c[None, :, :]) ** 2, axis=2)
+        out[ids] = np.argmin(d2, axis=1).astype(np.int64)
+    return out
+
+
+def _sorted_edge_lookup(graph: BARSGraph) -> tuple[np.ndarray, np.ndarray]:
+    keys = graph.src.astype(np.int64) * int(graph.num_nodes) + graph.dst.astype(np.int64)
+    order = np.argsort(keys, kind="stable")
+    return keys[order], order.astype(np.int64)
+
+
+def _lookup_edges(keys_sorted: np.ndarray, edge_ids_sorted: np.ndarray, num_nodes: int, src_node: np.ndarray, dst_node: np.ndarray) -> np.ndarray:
+    query = np.asarray(src_node, dtype=np.int64) * int(num_nodes) + np.asarray(dst_node, dtype=np.int64)
+    out = np.full(len(query), -1, dtype=np.int64)
+    if len(keys_sorted) == 0 or len(query) == 0:
+        return out
+    pos = np.searchsorted(keys_sorted, query)
+    ok = pos < len(keys_sorted)
+    if ok.any():
+        pos_ok = pos[ok]
+        q_ok = query[ok]
+        hit = keys_sorted[pos_ok] == q_ok
+        ok_idx = np.flatnonzero(ok)
+        out[ok_idx[hit]] = edge_ids_sorted[pos_ok[hit]]
+    return out
+
+
 def _normalize_hist_rows(x: np.ndarray, counts: np.ndarray) -> np.ndarray:
     y = x.astype(np.float32, copy=True)
     nz = counts > 0
@@ -246,7 +340,7 @@ def _support_mode_boundary(dataset: OfflineDataset, embeddings: np.ndarray, grap
 
     centers, scales, node_has, prev_dir, next_dir = _fit_node_mode_models(dataset, z, graph, cfg, logger)
     node_ann = KNNIndex.from_config(graph.node_embeddings, cfg, prefix="ann")
-    lookup = build_edge_lookup(graph)
+    edge_keys, edge_ids = _sorted_edge_lookup(graph)
     dep = np.zeros((graph.num_edges, num_modes), dtype=np.float32)
     arr = np.zeros((graph.num_edges, num_modes), dtype=np.float32)
     dep_count = np.zeros(graph.num_edges, dtype=np.int32)
@@ -266,23 +360,29 @@ def _support_mode_boundary(dataset: OfflineDataset, embeddings: np.ndarray, grap
             break
         src_node = node_ann.kneighbors(z[src_idx], 1, return_distance=False)[:, 0].astype(np.int64)
         dst_node = node_ann.kneighbors(z[dst_idx], 1, return_distance=False)[:, 0].astype(np.int64)
-        for i, j, u, v in zip(src_idx, dst_idx, src_node, dst_node):
-            eid = lookup.get((int(u), int(v)))
-            if eid is None:
-                continue
-            edge_hits += 1
-            if not (node_has[int(u)] and node_has[int(v)]):
-                continue
-            md = _assign_mode(centers, scales, graph, z, prev_dir, next_dir, int(u), int(i))
-            ma = _assign_mode(centers, scales, graph, z, prev_dir, next_dir, int(v), int(j))
-            if md is not None:
-                dep[eid, md] += 1.0
-                dep_count[eid] += 1
-            if ma is not None:
-                arr[eid, ma] += 1.0
-                arr_count[eid] += 1
-            if md is not None and ma is not None:
-                mode_hits += 1
+        eid = _lookup_edges(edge_keys, edge_ids, graph.num_nodes, src_node, dst_node)
+        hit = eid >= 0
+        edge_hits += int(hit.sum())
+        if hit.any():
+            hit_eid = eid[hit]
+            hit_src_node = src_node[hit]
+            hit_dst_node = dst_node[hit]
+            hit_src_idx = src_idx[hit]
+            hit_dst_idx = dst_idx[hit]
+            has_modes = node_has[hit_src_node] & node_has[hit_dst_node]
+            if has_modes.any():
+                e = hit_eid[has_modes]
+                md = _assign_modes_batch(centers, scales, graph, z, prev_dir, next_dir, hit_src_node[has_modes], hit_src_idx[has_modes])
+                ma = _assign_modes_batch(centers, scales, graph, z, prev_dir, next_dir, hit_dst_node[has_modes], hit_dst_idx[has_modes])
+                md_ok = md >= 0
+                ma_ok = ma >= 0
+                if md_ok.any():
+                    np.add.at(dep, (e[md_ok], md[md_ok]), 1.0)
+                    np.add.at(dep_count, e[md_ok], 1)
+                if ma_ok.any():
+                    np.add.at(arr, (e[ma_ok], ma[ma_ok]), 1.0)
+                    np.add.at(arr_count, e[ma_ok], 1)
+                mode_hits += int((md_ok & ma_ok).sum())
         sampled += bs
         if sampled >= next_progress:
             logger.log({"phase": "boundary", "event": "support_progress", "sampled_segments": sampled, "target_segments": num_segments, "edge_hits": edge_hits, "mode_hits": mode_hits})

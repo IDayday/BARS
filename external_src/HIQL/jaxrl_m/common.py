@@ -10,6 +10,25 @@ import functools
 nonpytree_field = functools.partial(flax.struct.field, pytree_node=False)
 
 
+def _match_pytree_container(reference, value):
+    """Coerce pytree container types to match newer Flax/Optax expectations."""
+    frozen_dict_type = getattr(flax.core, "FrozenDict", None)
+    if frozen_dict_type is None:
+        return value
+    if isinstance(reference, frozen_dict_type) and not isinstance(value, frozen_dict_type):
+        return flax.core.freeze(value)
+    if not isinstance(reference, frozen_dict_type) and isinstance(value, frozen_dict_type):
+        return flax.core.unfreeze(value)
+    return value
+
+
+def _optimizer_tree(value):
+    frozen_dict_type = getattr(flax.core, "FrozenDict", None)
+    if frozen_dict_type is not None and isinstance(value, frozen_dict_type):
+        return flax.core.unfreeze(value)
+    return value
+
+
 def shard_batch(batch):
     d = jax.local_device_count()
 
@@ -76,7 +95,7 @@ class TrainState(flax.struct.PyTreeNode):
         **kwargs,
     ) -> "TrainState":
         if tx is not None:
-            opt_state = tx.init(params)
+            opt_state = tx.init(_optimizer_tree(params))
         else:
             opt_state = None
 
@@ -137,8 +156,12 @@ class TrainState(flax.struct.PyTreeNode):
             and `opt_state` updated by applying `grads`, and additional attributes
             replaced as specified by `kwargs`.
         """
-        updates, new_opt_state = self.tx.update(grads, self.opt_state, self.params)
-        new_params = optax.apply_updates(self.params, updates)
+        grads = _match_pytree_container(self.params, grads)
+        opt_params = _optimizer_tree(self.params)
+        opt_grads = _optimizer_tree(grads)
+        updates, new_opt_state = self.tx.update(opt_grads, self.opt_state, opt_params)
+        new_params = optax.apply_updates(opt_params, updates)
+        new_params = _match_pytree_container(self.params, new_params)
 
         return self.replace(
             step=self.step + 1,

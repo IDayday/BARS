@@ -19,6 +19,7 @@ from bars.common.seed import set_seed
 from bars.common.stopper import Stopper
 from bars.data.d4rl_dataset import load_d4rl_dataset
 from bars.data.toy_dataset import make_toy_dataset
+from bars.data.ogbench_dataset import load_ogbench_dataset
 from bars.eval.rollout import evaluate_planner_policy
 from bars.eval.edge_rollout_diag import run_edge_rollout_diagnostics
 from bars.external.gas_compat import convert_gas_keygraph_to_bars_graph
@@ -31,6 +32,7 @@ from bars.models.external_policy import build_external_policy_from_config
 from bars.models.dataset_embedding import DatasetEmbeddingLookupModel
 from bars.models.reachability import ReachabilityModel
 from bars.models.policy import GoalConditionedPolicy
+from bars.models.bars_iql import BARSIQLPolicy
 from bars.training.policy_train import train_policy
 from bars.training.reach_train import train_reachability
 from bars.training.tdr_train import embed_dataset, train_tdr
@@ -58,6 +60,15 @@ def _load_data(cfg: Dict):
             cfg.get('data', {}).get('env_name', cfg.get('env_name', 'antmaze-medium-play-v2')),
             dataset_limit=int(cfg.get('data', {}).get('dataset_limit', 0)),
         )
+    if source in {'ogbench', 'gas_v0'}:
+        dc = cfg.get('data', {})
+        return load_ogbench_dataset(
+            dc.get('env_name', cfg.get('env_name', 'antmaze-medium-navigate-v0')),
+            dataset_limit=int(dc.get('dataset_limit', 0)),
+            dataset_path=dc.get('dataset_path', None),
+            dataset_dir=dc.get('dataset_dir', None),
+            compact_dataset=bool(dc.get('compact_dataset', False)),
+        )
     raise ValueError(f'Unknown data.source={source}')
 
 
@@ -65,6 +76,20 @@ def _expand_path_value(value) -> str:
     if value is None:
         return ""
     return os.path.expandvars(str(value)).strip()
+
+
+def _is_unresolved_path(value) -> bool:
+    expanded = _expand_path_value(value)
+    return bool(expanded) and '$' in expanded
+
+
+def _set_path_unless_clobbering_concrete(target: Dict, key: str, value) -> None:
+    if not value:
+        return
+    current = target.get(key, '')
+    if _is_unresolved_path(value) and current and not _is_unresolved_path(current):
+        return
+    target[key] = value
 
 
 def _compact_external_embeddings_for_dataset(raw_embeddings: np.ndarray, dataset) -> np.ndarray:
@@ -86,13 +111,14 @@ def _compact_external_embeddings_for_dataset(raw_embeddings: np.ndarray, dataset
 def _resolve_external_embedding_path(cfg: Dict) -> str:
     emb_cfg = cfg.get('embedding', {})
     path = _expand_path_value(emb_cfg.get('dataset_embeddings_path', ''))
-    if path:
+    unresolved = path if _is_unresolved_path(path) else ''
+    if path and not _is_unresolved_path(path):
         return path
     # Exact GAS same-backbone mode commonly stores the official TDR embeddings here.
     path = _expand_path_value(cfg.get('external_gas', {}).get('dataset_embeddings_path', ''))
-    if path and bool(emb_cfg.get('auto_use_external_gas_embeddings', True)):
+    if path and bool(emb_cfg.get('auto_use_external_gas_embeddings', True)) and not _is_unresolved_path(path):
         return path
-    return ''
+    return unresolved
 
 
 def _load_or_train_embeddings(cfg: Dict, dataset, run_dir: str, device, train_logger: CSVLogger, summary: CSVLogger, profile_logger: CSVLogger | None, stopper: Optional[Stopper]):
@@ -157,19 +183,15 @@ def _apply_routeb_backbone_config(cfg: Dict) -> Dict:
     elif mode in {'gas_keygraph', 'gas_official', 'official_gas'}:
         eg = cfg.setdefault('external_gas', {})
         eg['enabled'] = True
-        if rb.get('keygraph_path'):
-            eg['keygraph_path'] = rb['keygraph_path']
-        if rb.get('node_indices_path'):
-            eg['node_indices_path'] = rb['node_indices_path']
-        if rb.get('dataset_embeddings_path'):
-            eg['dataset_embeddings_path'] = rb['dataset_embeddings_path']
+        _set_path_unless_clobbering_concrete(eg, 'keygraph_path', rb.get('keygraph_path'))
+        _set_path_unless_clobbering_concrete(eg, 'node_indices_path', rb.get('node_indices_path'))
+        _set_path_unless_clobbering_concrete(eg, 'dataset_embeddings_path', rb.get('dataset_embeddings_path'))
         if 'rescore_edges' in rb:
             eg['rescore_edges'] = rb['rescore_edges']
         for key in ['bidirectional_edges', 'normalize_cost']:
             if key in rb:
                 eg[key] = rb[key]
-        if rb.get('dataset_embeddings_path'):
-            cfg.setdefault('embedding', {})['dataset_embeddings_path'] = rb['dataset_embeddings_path']
+        _set_path_unless_clobbering_concrete(cfg.setdefault('embedding', {}), 'dataset_embeddings_path', rb.get('dataset_embeddings_path'))
     elif mode in {'hiql', 'hiql_external', 'external_hiql'}:
         cfg.setdefault('policy', {})['type'] = 'external'
         ep = cfg.setdefault('external_policy', {})
@@ -235,12 +257,22 @@ def _load_reachability_if_available(cfg: Dict, run_dir: str, latent_dim: int, de
 
 def _load_policy_if_available(cfg: Dict, run_dir: str, dataset, device):
     pcfg = cfg.get('policy', {})
-    if str(pcfg.get('type', 'gcbc')).lower() in {'external', 'hiql_external', 'gas_external'}:
+    policy_type = str(pcfg.get('type', 'gcbc')).lower()
+    if policy_type in {'external', 'hiql_external', 'gas_external'}:
         return build_external_policy_from_config(cfg, dataset, device=device)
     ckpt_path = os.path.join(run_dir, 'checkpoints', 'policy.pt')
     if not os.path.exists(ckpt_path):
         return None
-    model = GoalConditionedPolicy(dataset.obs_dim, dataset.action_dim, tuple(pcfg.get('hidden_dims', [256, 256])), bool(pcfg.get('goal_delta', True))).to(device)
+    if policy_type in {'bars_iql', 'bars-low', 'bars_low', 'iql', 'bars_iql_low'}:
+        model = BARSIQLPolicy(
+            dataset.obs_dim, dataset.action_dim,
+            actor_hidden_dims=tuple(pcfg.get('actor_hidden_dims', pcfg.get('hidden_dims', [256, 256, 256]))),
+            value_hidden_dims=tuple(pcfg.get('value_hidden_dims', [256, 256])),
+            goal_delta=bool(pcfg.get('goal_delta', True)),
+            value_temperature=float(pcfg.get('value_temperature', 5.0)),
+        ).to(device)
+    else:
+        model = GoalConditionedPolicy(dataset.obs_dim, dataset.action_dim, tuple(pcfg.get('hidden_dims', [256, 256])), bool(pcfg.get('goal_delta', True))).to(device)
     load_checkpoint(ckpt_path, model, map_location=str(device))
     model.eval()
     return model
@@ -384,7 +416,7 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
 
         _summary_log(summary, 'train_policy_start', 'running')
         with phase_timer(loggers.get('profile'), 'pipeline', 'train_policy'):
-            policy = train_policy(dataset, cfg, run_dir, device, loggers['train'], stopper)
+            policy = train_policy(dataset, cfg, run_dir, device, loggers['train'], stopper, embeddings=embeddings)
         _summary_log(summary, 'train_policy_end', 'completed')
         if _stop_requested(stopper, summary, 'after_train_policy'):
             status = 'terminated'
@@ -392,7 +424,7 @@ def run_experiment(cfg: Dict, run_dir: str, stopper: Optional[Stopper] = None) -
 
         _summary_log(summary, 'train_reachability_start', 'running', enabled=int(bool(cfg.get('reachability', {}).get('enabled', True))))
         with phase_timer(loggers.get('profile'), 'pipeline', 'train_reachability'):
-            reach_model = train_reachability(dataset, embeddings, cfg, run_dir, device, loggers['train'], stopper) if bool(cfg.get('reachability', {}).get('enabled', True)) else None
+            reach_model = train_reachability(dataset, embeddings, cfg, run_dir, device, loggers['train'], stopper, policy=policy) if bool(cfg.get('reachability', {}).get('enabled', True)) else None
         _summary_log(summary, 'train_reachability_end', 'completed', enabled=int(reach_model is not None))
         if _stop_requested(stopper, summary, 'after_train_reachability'):
             status = 'terminated'

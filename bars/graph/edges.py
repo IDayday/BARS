@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import Dict, Optional, Tuple
 import time
 
@@ -14,12 +13,24 @@ from .types import BARSGraph, EDGE_KIND_KNN, EDGE_KIND_TEMPORAL
 from .ann import KNNIndex
 
 
-def _add_edge(edge_map: Dict[Tuple[int, int], int], s: int, d: int, kind: int) -> None:
-    if s == d:
-        return
-    key = (int(s), int(d))
-    # Keep the stronger semantic kind if an edge is both KNN and temporal.
-    edge_map[key] = max(edge_map.get(key, kind), kind)
+def _deduplicate_edges(src: np.ndarray, dst: np.ndarray, kind: np.ndarray, num_nodes: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    src = np.asarray(src, dtype=np.int64).reshape(-1)
+    dst = np.asarray(dst, dtype=np.int64).reshape(-1)
+    kind = np.asarray(kind, dtype=np.int32).reshape(-1)
+    if len(src) == 0:
+        return src, dst, kind
+    ok = (src != dst) & (src >= 0) & (src < num_nodes) & (dst >= 0) & (dst < num_nodes)
+    src, dst, kind = src[ok], dst[ok], kind[ok]
+    if len(src) == 0:
+        return src, dst, kind
+    keys = src * int(num_nodes) + dst
+    order = np.argsort(keys, kind="stable")
+    keys = keys[order]
+    kind = kind[order]
+    starts = np.flatnonzero(np.r_[True, keys[1:] != keys[:-1]])
+    max_kind = np.maximum.reduceat(kind, starts).astype(np.int32)
+    uniq = keys[starts]
+    return (uniq // int(num_nodes)).astype(np.int64), (uniq % int(num_nodes)).astype(np.int64), max_kind
 
 
 @torch.no_grad()
@@ -40,12 +51,65 @@ def _score_reachability(
         return np.exp(-dist / scale).astype(np.float32)
     reach_model.eval()
     probs = []
+    z_all = torch.as_tensor(node_embeddings, dtype=torch.float32, device=device)
     for st in range(0, len(src), batch_size):
         sl = slice(st, st + batch_size)
-        zu = torch.as_tensor(node_embeddings[src[sl]], dtype=torch.float32, device=device)
-        zv = torch.as_tensor(node_embeddings[dst[sl]], dtype=torch.float32, device=device)
+        src_t = torch.as_tensor(src[sl], dtype=torch.long, device=device)
+        dst_t = torch.as_tensor(dst[sl], dtype=torch.long, device=device)
+        zu = z_all[src_t]
+        zv = z_all[dst_t]
         probs.append(reach_model.prob(zu, zv).float().cpu().numpy())
     return np.concatenate(probs, 0).astype(np.float32)
+
+
+def _top_outgoing_keep_indices(
+    src: np.ndarray,
+    score: np.ndarray,
+    temporal_support: np.ndarray,
+    *,
+    num_nodes: int,
+    top_k: int,
+    min_outgoing: int,
+    preserve_temporal: bool,
+) -> Tuple[np.ndarray, int]:
+    if len(src) == 0:
+        return np.empty(0, dtype=np.int64), 0
+    limit = max(int(top_k), int(min_outgoing))
+    order = np.argsort(src, kind="stable")
+    src_sorted = src[order]
+    bounds = np.flatnonzero(np.r_[True, src_sorted[1:] != src_sorted[:-1], True])
+    keep_chunks: list[np.ndarray] = []
+    temporal_preserved = 0
+    for a, b in zip(bounds[:-1], bounds[1:]):
+        ids = order[a:b]
+        if len(ids) == 0:
+            continue
+        preserve_ids = ids[temporal_support[ids]] if preserve_temporal else np.empty(0, dtype=np.int64)
+        temporal_preserved += int(len(preserve_ids))
+        if preserve_temporal:
+            rem = ids[~temporal_support[ids]]
+        else:
+            rem = ids
+        quota = limit - len(preserve_ids)
+        if quota > 0 and len(rem):
+            if len(rem) > quota:
+                ranked = rem[np.argpartition(score[rem], quota - 1)[:quota]]
+                ranked = ranked[np.argsort(score[ranked], kind="stable")]
+            else:
+                ranked = rem[np.argsort(score[rem], kind="stable")]
+            keep = np.concatenate([preserve_ids, ranked]) if len(preserve_ids) else ranked
+        elif len(preserve_ids):
+            keep = preserve_ids
+        elif limit > 0:
+            ranked = ids[np.argsort(score[ids], kind="stable")[:limit]]
+            keep = ranked
+        else:
+            keep = np.empty(0, dtype=np.int64)
+        if len(keep):
+            keep_chunks.append(np.unique(keep).astype(np.int64))
+    if not keep_chunks:
+        return np.empty(0, dtype=np.int64), temporal_preserved
+    return np.unique(np.concatenate(keep_chunks)).astype(np.int64), temporal_preserved
 
 
 def _temporal_support_mask(dataset: OfflineDataset, node_indices: np.ndarray, src: np.ndarray, dst: np.ndarray, temporal_max_dt: int) -> np.ndarray:
@@ -66,7 +130,9 @@ def build_edges(
     gcfg = cfg.get('graph', {})
     node_emb = embeddings[node_indices].astype(np.float32)
     n = len(node_indices)
-    edge_map: Dict[Tuple[int, int], int] = {}
+    src_parts: list[np.ndarray] = []
+    dst_parts: list[np.ndarray] = []
+    kind_parts: list[np.ndarray] = []
     t_build = time.time()
     logger.log({'phase': 'edges', 'event': 'start', 'num_nodes': n, 'node_method': gcfg.get('node_method', 'bars')})
 
@@ -75,39 +141,69 @@ def build_edges(
         t_knn = time.time()
         ann = KNNIndex.from_config(node_emb, cfg, prefix='ann')
         ind = ann.kneighbors(node_emb, min(knn + 1, n), return_distance=False)
-        for i in range(n):
-            for j in ind[i, 1:]:
-                _add_edge(edge_map, i, int(j), EDGE_KIND_KNN)
-                if bool(gcfg.get('bidirectional_knn', True)):
-                    _add_edge(edge_map, int(j), i, EDGE_KIND_KNN)
-        logger.log({'phase': 'edges', 'event': 'knn_candidates_built', 'candidate_edges': len(edge_map), 'knn': knn, 'ann_backend': ann.backend, 'duration_sec': time.time() - t_knn})
+        neigh = ind[:, 1:].astype(np.int64)
+        if neigh.size:
+            rows = np.repeat(np.arange(n, dtype=np.int64), neigh.shape[1])
+            cols = neigh.reshape(-1)
+            if bool(gcfg.get('bidirectional_knn', True)):
+                src_knn = np.concatenate([rows, cols])
+                dst_knn = np.concatenate([cols, rows])
+            else:
+                src_knn, dst_knn = rows, cols
+            kind_knn = np.full(len(src_knn), EDGE_KIND_KNN, dtype=np.int32)
+            src_parts.append(src_knn); dst_parts.append(dst_knn); kind_parts.append(kind_knn)
+        cand_src, cand_dst, _ = _deduplicate_edges(
+            np.concatenate(src_parts) if src_parts else np.empty(0, dtype=np.int64),
+            np.concatenate(dst_parts) if dst_parts else np.empty(0, dtype=np.int64),
+            np.concatenate(kind_parts) if kind_parts else np.empty(0, dtype=np.int32),
+            n,
+        )
+        logger.log({'phase': 'edges', 'event': 'knn_candidates_built', 'candidate_edges': len(cand_src), 'knn': knn, 'ann_backend': ann.backend, 'duration_sec': time.time() - t_knn})
 
     temporal_connect = int(gcfg.get('temporal_connect', 4))
     temporal_max_dt = int(gcfg.get('temporal_edge_horizon', 80))
     if temporal_connect > 0:
         t_temporal = time.time()
-        by_traj: Dict[int, list[tuple[int, int, int]]] = defaultdict(list)
-        for ni, gi in enumerate(node_indices):
-            by_traj[int(dataset.traj_id[gi])].append((int(dataset.timestep[gi]), ni, int(gi)))
-        for arr in by_traj.values():
-            arr.sort()
-            for p, (_, ni, gi) in enumerate(arr):
-                for q in range(p + 1, min(len(arr), p + 1 + temporal_connect)):
-                    _, nj, gj = arr[q]
-                    dt = int(dataset.timestep[gj] - dataset.timestep[gi])
-                    if 0 < dt <= temporal_max_dt:
-                        _add_edge(edge_map, ni, nj, EDGE_KIND_TEMPORAL)
-                        if bool(gcfg.get('temporal_reverse', False)):
-                            _add_edge(edge_map, nj, ni, EDGE_KIND_TEMPORAL)
-        logger.log({'phase': 'edges', 'event': 'temporal_candidates_built', 'candidate_edges': len(edge_map), 'temporal_connect': temporal_connect, 'temporal_edge_horizon': temporal_max_dt, 'duration_sec': time.time() - t_temporal})
+        local = np.arange(n, dtype=np.int64)
+        traj = dataset.traj_id[node_indices]
+        ts = dataset.timestep[node_indices]
+        order = np.lexsort((ts, traj))
+        local_s = local[order]
+        traj_s = traj[order]
+        ts_s = ts[order]
+        temporal_src_parts: list[np.ndarray] = []
+        temporal_dst_parts: list[np.ndarray] = []
+        for offset in range(1, temporal_connect + 1):
+            if offset >= n:
+                break
+            same = traj_s[:-offset] == traj_s[offset:]
+            dt = ts_s[offset:] - ts_s[:-offset]
+            ok = same & (dt > 0) & (dt <= temporal_max_dt)
+            if ok.any():
+                temporal_src_parts.append(local_s[:-offset][ok])
+                temporal_dst_parts.append(local_s[offset:][ok])
+        if temporal_src_parts:
+            src_temporal = np.concatenate(temporal_src_parts).astype(np.int64)
+            dst_temporal = np.concatenate(temporal_dst_parts).astype(np.int64)
+            if bool(gcfg.get('temporal_reverse', False)):
+                src_temporal, dst_temporal = np.concatenate([src_temporal, dst_temporal]), np.concatenate([dst_temporal, src_temporal])
+            kind_temporal = np.full(len(src_temporal), EDGE_KIND_TEMPORAL, dtype=np.int32)
+            src_parts.append(src_temporal); dst_parts.append(dst_temporal); kind_parts.append(kind_temporal)
+        cand_src, _, _ = _deduplicate_edges(
+            np.concatenate(src_parts) if src_parts else np.empty(0, dtype=np.int64),
+            np.concatenate(dst_parts) if dst_parts else np.empty(0, dtype=np.int64),
+            np.concatenate(kind_parts) if kind_parts else np.empty(0, dtype=np.int32),
+            n,
+        )
+        logger.log({'phase': 'edges', 'event': 'temporal_candidates_built', 'candidate_edges': len(cand_src), 'temporal_connect': temporal_connect, 'temporal_edge_horizon': temporal_max_dt, 'duration_sec': time.time() - t_temporal})
 
-    if not edge_map:
+    src = np.concatenate(src_parts) if src_parts else np.empty(0, dtype=np.int64)
+    dst = np.concatenate(dst_parts) if dst_parts else np.empty(0, dtype=np.int64)
+    kind = np.concatenate(kind_parts) if kind_parts else np.empty(0, dtype=np.int32)
+    src, dst, kind = _deduplicate_edges(src, dst, kind, n)
+    if len(src) == 0:
         raise RuntimeError('No candidate edges constructed.')
 
-    pairs = np.asarray(list(edge_map.keys()), dtype=np.int64)
-    kind = np.asarray([edge_map[tuple(p)] for p in pairs], dtype=np.int32)
-    src = pairs[:, 0]
-    dst = pairs[:, 1]
     dist = np.linalg.norm(node_emb[src] - node_emb[dst], axis=1).astype(np.float32)
     dist_scale = float(np.median(dist) + 1e-6)
     cost = dist / dist_scale
@@ -145,23 +241,15 @@ def build_edges(
     if top_k > 0:
         t_prune = time.time()
         score = cost + prune_lambda * risk
-        keep_chunks: list[np.ndarray] = []
-        temporal_preserved = 0
-        for s in range(n):
-            ids = np.where(src == s)[0]
-            if not len(ids):
-                continue
-            preserve_ids = ids[temporal_support[ids]] if preserve_temporal else np.empty(0, dtype=np.int64)
-            temporal_preserved += int(len(preserve_ids))
-            remaining_ids = np.setdiff1d(ids, preserve_ids, assume_unique=False)
-            quota = max(top_k, min_outgoing) - len(preserve_ids)
-            if quota > 0 and len(remaining_ids):
-                ranked = remaining_ids[np.argsort(score[remaining_ids])[:quota]]
-                keep = np.unique(np.concatenate([preserve_ids, ranked]))
-            else:
-                keep = np.unique(preserve_ids if len(preserve_ids) else ids[np.argsort(score[ids])[:max(top_k, min_outgoing)]])
-            keep_chunks.append(keep.astype(np.int64))
-        keep_idx = np.unique(np.concatenate(keep_chunks)) if keep_chunks else np.empty(0, dtype=np.int64)
+        keep_idx, temporal_preserved = _top_outgoing_keep_indices(
+            src,
+            score,
+            temporal_support,
+            num_nodes=n,
+            top_k=top_k,
+            min_outgoing=min_outgoing,
+            preserve_temporal=preserve_temporal,
+        )
         src, dst, cost, risk, p_exec, kind, temporal_support = src[keep_idx], dst[keep_idx], cost[keep_idx], risk[keep_idx], p_exec[keep_idx], kind[keep_idx], temporal_support[keep_idx]
         logger.log({'phase': 'edges', 'event': 'pruned', 'top_outgoing': top_k, 'min_outgoing': min_outgoing, 'prune_lambda_risk': prune_lambda, 'preserve_temporal_edges': int(preserve_temporal), 'temporal_edges_preserved': temporal_preserved, 'kept_edges': len(src), 'duration_sec': time.time() - t_prune})
 

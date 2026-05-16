@@ -1,7 +1,35 @@
 # Route-B external source status
 
 ## HIQL
-b32c832cd67e4fe56ecabb49dbb96dc8d4f4c432
+7764f0a597a0339ce6d6c28bc71801e64e96b9c8
+ M ../../reports/routeb_external_source_status.md
+ M ../../scripts/make_stage20_sota_sweeps.py
+ M ../../scripts/run_stage20_sota_alignment.sh
+ M ../../scripts/setup_routeb_backbones.sh
+?? ../../_data/
+?? ../../reports/routeb_source_audit_stage20.md
+?? ../../reports/stage20_gas_artifact_candidates.txt
+?? ../../scripts/check_stage20_artifacts.sh
+?? ../../scripts/collect_stage20_results.sh
+?? ../../scripts/prepare_stage20_data.sh
+?? ../../scripts/smoke_stage20.sh
+?? ../../scripts/stage20_env.sh
+?? ../../scripts/status_stage20.sh
+?? ../../scripts/stop_stage20.sh
 
 ## GAS
-c9e590fcd6f082de677d332a84e44a1a631da5c5
+7764f0a597a0339ce6d6c28bc71801e64e96b9c8
+ M ../../reports/routeb_external_source_status.md
+ M ../../scripts/make_stage20_sota_sweeps.py
+ M ../../scripts/run_stage20_sota_alignment.sh
+ M ../../scripts/setup_routeb_backbones.sh
+?? ../../_data/
+?? ../../reports/routeb_source_audit_stage20.md
+?? ../../reports/stage20_gas_artifact_candidates.txt
+?? ../../scripts/check_stage20_artifacts.sh
+?? ../../scripts/collect_stage20_results.sh
+?? ../../scripts/prepare_stage20_data.sh
+?? ../../scripts/smoke_stage20.sh
+?? ../../scripts/stage20_env.sh
+?? ../../scripts/status_stage20.sh
+?? ../../scripts/stop_stage20.sh

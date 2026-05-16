@@ -163,6 +163,9 @@ def main(_):
 
     goal_info = None
     discrete = False
+    viz = None
+    viz_env = None
+    viz_dataset = None
     if 'antmaze' in FLAGS.env_name:
         env_name = FLAGS.env_name
 
@@ -184,10 +187,16 @@ def main(_):
             env.viewer.cam.distance = 50
             env.viewer.cam.elevation = -90
 
-            viz_env, viz_dataset = d4rl_ant.get_env_and_dataset(env_name)
-            viz = ant_diagnostics.Visualizer(env_name, viz_env, viz_dataset, discount=FLAGS.discount)
-            init_state = np.copy(viz_dataset['observations'][0])
-            init_state[:2] = (12.5, 8)
+            try:
+                viz_env, viz_dataset = d4rl_ant.get_env_and_dataset(env_name)
+                viz = ant_diagnostics.Visualizer(env_name, viz_env, viz_dataset, discount=FLAGS.discount)
+                init_state = np.copy(viz_dataset['observations'][0])
+                init_state[:2] = (12.5, 8)
+            except Exception as exc:
+                print(f"[stage20-hiql] large-antmaze diagnostics disabled for {env_name}: {type(exc).__name__}: {exc}")
+                viz = None
+                viz_env = None
+                viz_dataset = None
         elif 'ultra' in FLAGS.env_name:
             env.viewer.cam.lookat[0] = 26
             env.viewer.cam.lookat[1] = 18
@@ -366,7 +375,14 @@ def main(_):
             )
             eval_metrics['value_traj_viz'] = wandb.Image(value_viz)
 
-            if 'antmaze' in FLAGS.env_name and 'large' in FLAGS.env_name and FLAGS.env_name.startswith('antmaze'):
+            if (
+                'antmaze' in FLAGS.env_name
+                and 'large' in FLAGS.env_name
+                and FLAGS.env_name.startswith('antmaze')
+                and viz is not None
+                and viz_env is not None
+                and viz_dataset is not None
+            ):
                 traj_image = d4rl_ant.trajectory_image(viz_env, viz_dataset, trajs)
                 eval_metrics['trajectories'] = wandb.Image(traj_image)
 

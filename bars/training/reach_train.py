@@ -9,10 +9,12 @@ from tqdm import trange
 
 from bars.common.checkpoint import load_checkpoint, save_checkpoint
 from bars.common.logging import CSVLogger
+from bars.common.progress import tqdm_kwargs
 from bars.common.stopper import Stopper
 from bars.data.trajectories import OfflineDataset
 from bars.graph.ann import KNNIndex
 from bars.models.reachability import ReachabilityModel
+from bars.training.reach_policy_train import train_policy_conditioned_reachability
 
 
 def _build_latent_hard_negative_pool(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dict, rng: np.random.Generator) -> Optional[Tuple[np.ndarray, np.ndarray]]:
@@ -90,8 +92,10 @@ def _nnpu_loss(pos_logits: torch.Tensor, unl_logits: torch.Tensor, prior: float,
     return pi * loss_pos_pos + torch.clamp(neg_risk, min=0.0)
 
 
-def train_reachability(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dict, run_dir: str, device, logger: CSVLogger, stopper: Optional[Stopper] = None) -> ReachabilityModel:
+def train_reachability(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dict, run_dir: str, device, logger: CSVLogger, stopper: Optional[Stopper] = None, policy=None) -> ReachabilityModel:
     rcfg = cfg.get('reachability', {})
+    if str(rcfg.get('type', 'standard')).lower() in {'policy_conditioned', 'bars_policy', 'bars_v2'}:
+        return train_policy_conditioned_reachability(dataset, embeddings, cfg, run_dir, device, logger, stopper=stopper, policy=policy)
     ckpt_path = os.path.join(run_dir, 'checkpoints', 'reachability.pt')
     model = ReachabilityModel(embeddings.shape[1], tuple(rcfg.get('hidden_dims', [256, 256]))).to(device)
     if rcfg.get('load_if_exists', True) and os.path.exists(ckpt_path):
@@ -141,7 +145,7 @@ def train_reachability(dataset: OfflineDataset, embeddings: np.ndarray, cfg: Dic
         'hard_pool_size': 0 if hard_pool is None else len(hard_pool[0]),
     })
 
-    for step in trange(steps, desc='train_reachability', dynamic_ncols=True):
+    for step in trange(steps, desc='train_reachability', **tqdm_kwargs(cfg)):
         if stopper is not None and stopper.stop_requested:
             break
         ip, jp, _ = dataset.sample_future_pairs(n_pos, horizon, rng)

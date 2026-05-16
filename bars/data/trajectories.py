@@ -10,7 +10,7 @@ class OfflineDataset:
     def __init__(self, observations: np.ndarray, actions: np.ndarray, next_observations: np.ndarray, traj_id: np.ndarray, timestep: np.ndarray, traj_slices: List[TrajectorySlice], env_name: str = 'unknown'):
         self.observations = observations.astype(np.float32); self.actions = actions.astype(np.float32); self.next_observations = next_observations.astype(np.float32)
         self.traj_id = traj_id.astype(np.int32); self.timestep = timestep.astype(np.int32); self.traj_slices = traj_slices; self.env_name = env_name
-        self.obs_normalizer = Normalizer.fit(self.observations); self.action_normalizer = Normalizer.fit(self.actions); self._traj_to_indices: Optional[Dict[int, np.ndarray]] = None
+        self.obs_normalizer = Normalizer.fit(self.observations); self.action_normalizer = Normalizer.fit(self.actions); self._traj_to_indices: Optional[Dict[int, np.ndarray]] = None; self._valid_slice_cache: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
     @property
     def size(self) -> int: return int(self.observations.shape[0])
     @property
@@ -26,16 +26,28 @@ class OfflineDataset:
     def sample_indices(self, batch_size: int, rng: np.random.Generator) -> np.ndarray:
         return rng.integers(0, self.size, size=batch_size, endpoint=False)
     def sample_future_pairs(self, batch_size: int, horizon: int, rng: np.random.Generator, min_dt: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        valid_slices = [sl for sl in self.traj_slices if sl.end - sl.start > min_dt]
-        if not valid_slices: raise RuntimeError('Dataset has no trajectory longer than min_dt.')
-        i_out = np.empty(batch_size, dtype=np.int64); j_out = np.empty(batch_size, dtype=np.int64); dt_out = np.empty(batch_size, dtype=np.int64)
-        for b in range(batch_size):
-            sl = valid_slices[int(rng.integers(0, len(valid_slices)))]
-            i = int(rng.integers(sl.start, max(sl.start + 1, sl.end - min_dt)))
-            max_dt = min(horizon, sl.end - i - 1)
-            dt = min_dt if max_dt < min_dt else int(rng.integers(min_dt, max_dt + 1))
-            i_out[b] = i; j_out[b] = i + dt; dt_out[b] = dt
-        return i_out, j_out, dt_out
+        if batch_size <= 0:
+            empty = np.empty(0, dtype=np.int64)
+            return empty, empty, empty
+        key = int(min_dt)
+        cached = self._valid_slice_cache.get(key)
+        if cached is None:
+            starts = np.asarray([sl.start for sl in self.traj_slices if sl.end - sl.start > min_dt], dtype=np.int64)
+            ends = np.asarray([sl.end for sl in self.traj_slices if sl.end - sl.start > min_dt], dtype=np.int64)
+            cached = (starts, ends)
+            self._valid_slice_cache[key] = cached
+        starts, ends = cached
+        if len(starts) == 0: raise RuntimeError('Dataset has no trajectory longer than min_dt.')
+        choice = rng.integers(0, len(starts), size=batch_size, endpoint=False)
+        sl_start = starts[choice]
+        sl_end = ends[choice]
+        i_high = np.maximum(sl_start + 1, sl_end - min_dt)
+        i_out = rng.integers(sl_start, i_high)
+        max_dt = np.minimum(int(horizon), sl_end - i_out - 1)
+        dt_high = np.maximum(max_dt + 1, min_dt + 1)
+        dt_out = rng.integers(int(min_dt), dt_high).astype(np.int64)
+        j_out = i_out + dt_out
+        return i_out.astype(np.int64), j_out.astype(np.int64), dt_out
     def get_future_index(self, i: int, dt: int) -> Optional[int]:
         j = i + dt
         return j if j < self.size and self.traj_id[i] == self.traj_id[j] else None
