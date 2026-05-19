@@ -1,0 +1,3 @@
+variant,baseline,paired_n,success_delta,baseline_success,variant_success
+gas_boundary_budget,gas_shortest,400,-0.8775,0.8775,0.0
+gas_reachability_budget,gas_shortest,400,0.0025,0.8775,0.88

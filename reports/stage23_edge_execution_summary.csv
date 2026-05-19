@@ -1,0 +1,5 @@
+env,seed,edge_type,edges,success_rate,set_state_rate
+antmaze-large-explore-v0,0,aggressive_tdr_bridge,160,0.54375,1.0
+antmaze-large-explore-v0,0,bottleneck_bridge,160,0.5625,1.0
+antmaze-large-explore-v0,0,gas_cross,34,0.5,1.0
+antmaze-large-explore-v0,0,safe_local,120,0.9916666666666667,1.0

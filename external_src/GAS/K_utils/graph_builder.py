@@ -22,7 +22,7 @@ def build_keygraph(env, env_name, dataset, key_nodes, batch_size, task_id_list, 
     task_goal_dict = {}
     task_node_dict = {}
     for task_id in task_id_list:
-        env, observation, goal, reward, done, goal_rendered = setup_task_env(env, env_name, dataset, task_id, True, seed)
+        env, observation, goal, reward, done, goal_rendered = setup_task_env(env, env_name, task_id, True, seed)
         task_goal_dict[task_id] = goal
         task_node_dict[task_id] = get_phi_fn(goal)    
     key_graph.precompute_shortest_paths_to_all_tasks(task_goal_dict, task_node_dict)

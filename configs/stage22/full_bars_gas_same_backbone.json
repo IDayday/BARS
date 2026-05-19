@@ -1,0 +1,58 @@
+{
+  "mode": "full",
+  "envs": [
+    "antmaze-medium-stitch-v0",
+    "antmaze-medium-navigate-v0",
+    "antmaze-large-stitch-v0",
+    "antmaze-large-navigate-v0",
+    "antmaze-medium-play-v2",
+    "antmaze-medium-diverse-v2",
+    "antmaze-large-play-v2",
+    "antmaze-large-diverse-v2"
+  ],
+  "seeds": [0, 1, 2],
+  "episodes": 100,
+  "gas": {
+    "prefer_pretrained": true,
+    "train_if_missing": true,
+    "quick": false,
+    "train_steps": 1000000,
+    "log_interval": 5000,
+    "save_interval": 100000,
+    "artifact_root": "artifacts/gas"
+  },
+  "p_exec": {
+    "max_pairs": 2000000,
+    "epochs": 20,
+    "batch_size": 16384,
+    "artifact_root": "artifacts/stage22"
+  },
+  "planner": {
+    "variants": [
+      "gas_shortest",
+      "gas_reachability_soft",
+      "gas_reachability_budget",
+      "gas_boundary_soft",
+      "gas_boundary_budget",
+      "gas_lagrangian_sweep"
+    ],
+    "budgets": [1.2, 1.6, 2.0, 2.3, 3.0, 5.0],
+    "lambda_exec": 1.0,
+    "lambda_boundary": 1.0,
+    "max_edges": 80
+  },
+  "fallback_modes": ["none", "progress_stall_v2", "no_path"],
+  "logging": {
+    "prepare_root": "runs_stage22_prepare",
+    "eval_root": "runs_stage22_eval",
+    "tensorboard_root": "runs_stage22_tensorboard",
+    "report_root": "reports"
+  },
+  "expected_outputs": [
+    "reports/stage22_live_summary.md",
+    "reports/stage22_summary.md",
+    "reports/stage22_grouped.csv",
+    "reports/stage22_variant_comparison.csv",
+    "reports/stage22_edge_path_diagnostics.csv"
+  ]
+}

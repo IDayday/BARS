@@ -1,0 +1,3 @@
+variant,baseline,paired_n,success_delta,baseline_success,variant_success
+gas_reachability_budget_calibrated,gas_shortest,400,0.04,0.7725,0.8125
+gas_reachability_soft_calibrated,gas_shortest,400,0.02,0.7725,0.7925

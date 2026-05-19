@@ -72,7 +72,7 @@ def plan_path(
         Pure temporal/progress cost.
       reachability/bars_lite/risk:
         Lagrangian node-level cost: c(e) + lambda_risk r(e).
-      full_bars/bars/boundary/gas_bars:
+      full_bars/old_full_bars/lagrangian_bars/bars/boundary/gas_bars:
         Lagrangian line-graph cost with edge-to-edge boundary penalty.
       constrained_bars/budget_bars/bars_budget/full_bars_budget:
         Constrained line-graph search: minimize temporal cost subject to
@@ -92,7 +92,7 @@ def plan_path(
         return _node_dijkstra(graph, start_node, goal_node, 0.0, variant, max_edges=max_edges)
     if variant in {"reachability", "bars_lite", "risk"}:
         return _node_dijkstra(graph, start_node, goal_node, lambda_risk, variant, max_edges=max_edges)
-    if variant in {"boundary", "full_bars", "bars", "gas_bars", "gas_bars_lagrangian"}:
+    if variant in {"boundary", "full_bars", "old_full_bars", "lagrangian_bars", "bars", "gas_bars", "gas_bars_lagrangian"}:
         if boundary is None:
             return _node_dijkstra(graph, start_node, goal_node, lambda_risk, "reachability_no_boundary", max_edges=max_edges)
         return _line_graph_dijkstra(graph, start_node, goal_node, lambda_risk, lambda_boundary, boundary, variant, max_edges=max_edges)

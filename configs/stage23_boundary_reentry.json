@@ -1,0 +1,20 @@
+{
+  "envs": [
+    "antmaze-medium-stitch-v0",
+    "antmaze-medium-navigate-v0",
+    "antmaze-large-stitch-v0",
+    "antmaze-large-navigate-v0"
+  ],
+  "seeds": [0, 1, 2],
+  "episodes": 100,
+  "variants": [
+    "gas_reachability_budget_calibrated",
+    "gas_boundary_scaled_budget",
+    "gas_boundary_soft_scaled"
+  ],
+  "fallback_modes": ["none", "progress_stall_v3"],
+  "budget_source": "reports/stage22r_recommended_budgets.json",
+  "alpha_boundary_source": "reports/stage22r_recommended_budgets.json",
+  "gate": "GO_BOUNDARY_REENTRY",
+  "max_parallel_eval": 4
+}

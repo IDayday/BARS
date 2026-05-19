@@ -1,0 +1,4 @@
+env,seed,graph_id,node_count,edge_count,bridge_count,compared_paths,no_path_g0,no_path_graph,mean_path_cost_reduction,median_path_cost_reduction,shorter_path_rate,bridge_usage_rate
+antmaze-large-explore-v0,0,G0,2514,34616,0,1000,0,0,0.0,0.0,0.0,0.0
+antmaze-large-explore-v0,0,G3,2514,47693,13077,1000,0,0,5.110724902629852,3.9851980209350586,0.966,0.966
+antmaze-large-explore-v0,0,G_oracle,2514,34793,177,1000,0,0,0.02293892002105713,0.0,0.089,0.089

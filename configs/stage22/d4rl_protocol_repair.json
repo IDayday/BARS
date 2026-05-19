@@ -1,0 +1,43 @@
+{
+  "mode": "d4rl_protocol_repair",
+  "envs": [
+    "antmaze-medium-play-v2",
+    "antmaze-medium-diverse-v2",
+    "antmaze-large-play-v2",
+    "antmaze-large-diverse-v2"
+  ],
+  "seeds": [0],
+  "episodes": 20,
+  "gas": {
+    "prefer_pretrained": false,
+    "train_if_missing": true,
+    "quick": true,
+    "train_steps": 100000,
+    "artifact_root": "artifacts/gas"
+  },
+  "protocol_checks": {
+    "forbid_random_dataset_goal_fallback": true,
+    "require_env_target_goal_wrapper": true,
+    "repair_env_naming_between_d4rl_and_ogbench": true
+  },
+  "p_exec": {
+    "max_pairs": 250000,
+    "epochs": 3,
+    "batch_size": 8192,
+    "artifact_root": "artifacts/stage22"
+  },
+  "planner": {
+    "variants": ["gas_shortest", "gas_reachability_budget", "gas_boundary_budget"],
+    "budgets": [2.0, 3.0],
+    "max_edges": 80
+  },
+  "fallback_modes": ["none", "progress_stall_v2"],
+  "logging": {
+    "eval_root": "runs_stage22_eval",
+    "tensorboard_root": "runs_stage22_tensorboard",
+    "report_root": "reports"
+  },
+  "expected_outputs": [
+    "reports/stage22_summary.md"
+  ]
+}

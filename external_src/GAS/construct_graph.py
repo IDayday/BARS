@@ -14,7 +14,7 @@ print(f"\033[38;5;208m{'=' * 14}\n Using GPU: {gpu_index}\n{'=' * 14}\033[0m")
 if 'mac' in platform.platform():
     pass
 else:
-    os.environ['MUJOCO_GL'] = 'egl'
+    os.environ.setdefault('MUJOCO_GL', 'egl')
     if 'SLURM_STEP_GPUS' in os.environ:
         os.environ['EGL_DEVICE_ID'] = os.environ['SLURM_STEP_GPUS']
        

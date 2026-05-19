@@ -14,12 +14,11 @@ print(f"\033[38;5;208m{'=' * 14}\n Using GPU: {gpu_index}\n{'=' * 14}\033[0m")
 if 'mac' in platform.platform():
     pass
 else:
-    os.environ['MUJOCO_GL'] = 'egl'
+    os.environ.setdefault('MUJOCO_GL', 'egl')
     if 'SLURM_STEP_GPUS' in os.environ:
         os.environ['EGL_DEVICE_ID'] = os.environ['SLURM_STEP_GPUS']
        
 import time
-import wandb
 import random
 import numpy as np
 
@@ -31,7 +30,7 @@ from D_utils.d4rl_env_utils import d4rl_make_env_and_dataset
 
 from O_utils.datasets import Dataset, GCDataset
 from O_utils.env_utils import make_env_and_datasets
-from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger
+from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger, wandb
 
 from M_utils.agents import agents_dict
 from M_utils.flax_utils import save_agent

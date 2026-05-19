@@ -1,1 +1,1 @@
-"""Helpers for integrating vendored external policy code."""
+"""Helpers for vendored external policy code and GAS-aligned backbones."""

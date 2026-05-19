@@ -1,6 +1,5 @@
 import os
 import json
-import wandb
 import tempfile
 import numpy as np
 import ml_collections
@@ -8,6 +7,94 @@ import absl.flags as flags
 
 from datetime import datetime
 from PIL import Image, ImageEnhance
+
+
+class _CompatMedia:
+    def __init__(self, data=None, **kwargs):
+        self.data = data
+        self.kwargs = kwargs
+
+
+class _CompatSettings:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+class _TensorBoardRun:
+    def __init__(self, log_dir, config=None):
+        self.log_dir = log_dir
+        self.config = config or {}
+        self._writer = None
+        try:
+            from torch.utils.tensorboard import SummaryWriter
+
+            self._writer = SummaryWriter(log_dir=log_dir)
+        except Exception as exc:
+            print(f"[GAS logging] TensorBoard unavailable ({exc!r}); keeping CSV/stdout only.")
+
+    def log(self, metrics, step=None):
+        if self._writer is None:
+            return
+        step = int(step or 0)
+        for key, value in metrics.items():
+            if isinstance(value, _CompatMedia):
+                continue
+            try:
+                arr = np.asarray(value)
+                if arr.shape == ():
+                    self._writer.add_scalar(key, float(arr), step)
+                elif arr.size > 0:
+                    self._writer.add_histogram(key, arr.reshape(-1), step)
+            except Exception:
+                continue
+        self._writer.flush()
+
+    def finish(self):
+        if self._writer is not None:
+            self._writer.flush()
+            self._writer.close()
+
+
+class _TensorBoardWandbCompat:
+    Image = _CompatMedia
+    Video = _CompatMedia
+    Histogram = _CompatMedia
+    Settings = _CompatSettings
+
+    def __init__(self):
+        self.run = None
+
+    def init(self, **kwargs):
+        root = os.environ.get("TENSORBOARD_LOGDIR", "runs_stage22_tensorboard")
+        project = kwargs.get("project") or "gas"
+        group = kwargs.get("group") or "default"
+        name = kwargs.get("name") or "run"
+        log_dir = os.path.join(root, project, group, name)
+        os.makedirs(log_dir, exist_ok=True)
+        self.run = _TensorBoardRun(log_dir=log_dir, config=kwargs.get("config"))
+        print(f"[GAS logging] Using TensorBoard log dir: {log_dir}")
+        return self.run
+
+    def log(self, metrics, step=None):
+        if self.run is not None:
+            self.run.log(metrics, step=step)
+
+
+def _load_logging_backend():
+    use_tb = os.environ.get("BARS_USE_TENSORBOARD", "").lower() in {"1", "true", "yes"}
+    disable_wandb = os.environ.get("WANDB_DISABLED", "").lower() in {"1", "true", "yes"}
+    if use_tb or disable_wandb:
+        return _TensorBoardWandbCompat()
+    try:
+        import wandb as _wandb
+
+        return _wandb
+    except Exception as exc:
+        print(f"[GAS logging] wandb unavailable ({exc!r}); falling back to TensorBoard/CSV.")
+        return _TensorBoardWandbCompat()
+
+
+wandb = _load_logging_backend()
 
 
 class CsvLogger:
@@ -63,7 +150,14 @@ def setup_save_directory(exp_name, env_name, run_group, save_dir):
 
 def get_flag_dict():
     """Return the dictionary of flags."""
-    flag_dict = {k: getattr(flags.FLAGS, k) for k in flags.FLAGS if '.' not in k}
+    flag_dict = {}
+    for k in flags.FLAGS:
+        if '.' in k:
+            continue
+        try:
+            flag_dict[k] = getattr(flags.FLAGS, k)
+        except Exception:
+            continue
     for k in flag_dict:
         if isinstance(flag_dict[k], ml_collections.ConfigDict):
             flag_dict[k] = flag_dict[k].to_dict()
@@ -71,7 +165,15 @@ def get_flag_dict():
 
 
 def setup_wandb(project, group, name, entity=None, mode='online'):
-    """Set up Weights & Biases for logging."""
+    """Set up the GAS logging backend.
+
+    Stage22 disables external WandB monitoring by default and routes the
+    small scalar stream through a WandB-compatible TensorBoard shim.  The
+    public function name is kept so the official GAS scripts remain intact.
+    """
+    env_mode = os.environ.get('WANDB_MODE', '').lower()
+    if os.environ.get('WANDB_DISABLED', '').lower() in {'1', 'true', 'yes'} or env_mode in {'disabled', 'offline'}:
+        mode = 'disabled'
     tags = [group]
     wandb_output_dir = tempfile.mkdtemp()
     name = name.format(**get_flag_dict())

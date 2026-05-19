@@ -1,0 +1,170 @@
+diff --git a/K_utils/graph_builder.py b/K_utils/graph_builder.py
+index 503b77f..475c830 100644
+--- a/K_utils/graph_builder.py
++++ b/K_utils/graph_builder.py
+@@ -25 +25 @@ def build_keygraph(env, env_name, dataset, key_nodes, batch_size, task_id_list,
+-        env, observation, goal, reward, done, goal_rendered = setup_task_env(env, env_name, dataset, task_id, True, seed)
++        env, observation, goal, reward, done, goal_rendered = setup_task_env(env, env_name, task_id, True, seed)
+diff --git a/O_utils/log_utils.py b/O_utils/log_utils.py
+index 1a613a3..27d0245 100644
+--- a/O_utils/log_utils.py
++++ b/O_utils/log_utils.py
+@@ -3 +2,0 @@ import json
+-import wandb
+@@ -12,0 +12,88 @@ from PIL import Image, ImageEnhance
++class _CompatMedia:
++    def __init__(self, data=None, **kwargs):
++        self.data = data
++        self.kwargs = kwargs
++
++
++class _CompatSettings:
++    def __init__(self, **kwargs):
++        self.kwargs = kwargs
++
++
++class _TensorBoardRun:
++    def __init__(self, log_dir, config=None):
++        self.log_dir = log_dir
++        self.config = config or {}
++        self._writer = None
++        try:
++            from torch.utils.tensorboard import SummaryWriter
++
++            self._writer = SummaryWriter(log_dir=log_dir)
++        except Exception as exc:
++            print(f"[GAS logging] TensorBoard unavailable ({exc!r}); keeping CSV/stdout only.")
++
++    def log(self, metrics, step=None):
++        if self._writer is None:
++            return
++        step = int(step or 0)
++        for key, value in metrics.items():
++            if isinstance(value, _CompatMedia):
++                continue
++            try:
++                arr = np.asarray(value)
++                if arr.shape == ():
++                    self._writer.add_scalar(key, float(arr), step)
++                elif arr.size > 0:
++                    self._writer.add_histogram(key, arr.reshape(-1), step)
++            except Exception:
++                continue
++        self._writer.flush()
++
++    def finish(self):
++        if self._writer is not None:
++            self._writer.flush()
++            self._writer.close()
++
++
++class _TensorBoardWandbCompat:
++    Image = _CompatMedia
++    Video = _CompatMedia
++    Histogram = _CompatMedia
++    Settings = _CompatSettings
++
++    def __init__(self):
++        self.run = None
++
++    def init(self, **kwargs):
++        root = os.environ.get("TENSORBOARD_LOGDIR", "runs_stage22_tensorboard")
++        project = kwargs.get("project") or "gas"
++        group = kwargs.get("group") or "default"
++        name = kwargs.get("name") or "run"
++        log_dir = os.path.join(root, project, group, name)
++        os.makedirs(log_dir, exist_ok=True)
++        self.run = _TensorBoardRun(log_dir=log_dir, config=kwargs.get("config"))
++        print(f"[GAS logging] Using TensorBoard log dir: {log_dir}")
++        return self.run
++
++    def log(self, metrics, step=None):
++        if self.run is not None:
++            self.run.log(metrics, step=step)
++
++
++def _load_logging_backend():
++    use_tb = os.environ.get("BARS_USE_TENSORBOARD", "").lower() in {"1", "true", "yes"}
++    disable_wandb = os.environ.get("WANDB_DISABLED", "").lower() in {"1", "true", "yes"}
++    if use_tb or disable_wandb:
++        return _TensorBoardWandbCompat()
++    try:
++        import wandb as _wandb
++
++        return _wandb
++    except Exception as exc:
++        print(f"[GAS logging] wandb unavailable ({exc!r}); falling back to TensorBoard/CSV.")
++        return _TensorBoardWandbCompat()
++
++
++wandb = _load_logging_backend()
++
++
+@@ -66 +153,8 @@ def get_flag_dict():
+-    flag_dict = {k: getattr(flags.FLAGS, k) for k in flags.FLAGS if '.' not in k}
++    flag_dict = {}
++    for k in flags.FLAGS:
++        if '.' in k:
++            continue
++        try:
++            flag_dict[k] = getattr(flags.FLAGS, k)
++        except Exception:
++            continue
+@@ -74 +168,9 @@ def setup_wandb(project, group, name, entity=None, mode='online'):
+-    """Set up Weights & Biases for logging."""
++    """Set up the GAS logging backend.
++
++    Stage22 disables external WandB monitoring by default and routes the
++    small scalar stream through a WandB-compatible TensorBoard shim.  The
++    public function name is kept so the official GAS scripts remain intact.
++    """
++    env_mode = os.environ.get('WANDB_MODE', '').lower()
++    if os.environ.get('WANDB_DISABLED', '').lower() in {'1', 'true', 'yes'} or env_mode in {'disabled', 'offline'}:
++        mode = 'disabled'
+@@ -129 +231 @@ def get_wandb_video(renders=None, n_cols=None, fps=15):
+-    return wandb.Video(renders, fps=fps, format='mp4')
+\ No newline at end of file
++    return wandb.Video(renders, fps=fps, format='mp4')
+diff --git a/construct_graph.py b/construct_graph.py
+index 9ab76f6..21c11ad 100644
+--- a/construct_graph.py
++++ b/construct_graph.py
+@@ -17 +17 @@ else:
+-    os.environ['MUJOCO_GL'] = 'egl'
++    os.environ.setdefault('MUJOCO_GL', 'egl')
+diff --git a/evaluate_gas.py b/evaluate_gas.py
+index 41a402b..f43aee8 100644
+--- a/evaluate_gas.py
++++ b/evaluate_gas.py
+@@ -17 +17 @@ else:
+-    os.environ['MUJOCO_GL'] = 'egl'
++    os.environ.setdefault('MUJOCO_GL', 'egl')
+@@ -21 +20,0 @@ else:
+-import wandb
+@@ -35 +34 @@ from O_utils.env_utils import make_env_and_datasets
+-from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, get_wandb_video, CsvLogger
++from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, get_wandb_video, CsvLogger, wandb
+diff --git a/pretrain_tdr.py b/pretrain_tdr.py
+index c1b48ca..46d2c0b 100644
+--- a/pretrain_tdr.py
++++ b/pretrain_tdr.py
+@@ -17 +17 @@ else:
+-    os.environ['MUJOCO_GL'] = 'egl'
++    os.environ.setdefault('MUJOCO_GL', 'egl')
+@@ -22 +21,0 @@ import time
+-import wandb
+@@ -34 +33 @@ from O_utils.env_utils import make_env_and_datasets
+-from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger
++from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger, wandb
+diff --git a/train_policy.py b/train_policy.py
+index d0ca64c..2ec4dd2 100644
+--- a/train_policy.py
++++ b/train_policy.py
+@@ -17 +17 @@ else:
+-    os.environ['MUJOCO_GL'] = 'egl'
++    os.environ.setdefault('MUJOCO_GL', 'egl')
+@@ -22 +21,0 @@ import time
+-import wandb
+@@ -34 +33 @@ from O_utils.env_utils import make_env_and_datasets
+-from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger
++from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger, wandb
