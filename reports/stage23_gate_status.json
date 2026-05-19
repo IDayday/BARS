@@ -2,9 +2,12 @@
   "boundary": "HOLD_BOUNDARY",
   "bridge_existence": "PASS_BRIDGE_EXISTENCE",
   "integrated": "unknown",
-  "jobs": {},
+  "jobs": {
+    "completed": 2,
+    "recovered": 1
+  },
   "oracle": "NO_ORACLE_UPPER_BOUND",
   "p_bridge": "PARTIAL_P_BRIDGE_HOLD_FP_REDUCTION",
   "repro": "GO_REPRO_REPAIRED",
-  "updated": "2026-05-19 14:27:44"
+  "updated": "2026-05-19 16:10:58"
 }

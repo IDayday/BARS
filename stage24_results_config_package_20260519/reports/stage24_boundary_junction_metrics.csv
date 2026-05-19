@@ -1,0 +1,9 @@
+env,seed,junction_class,junction_count,coverage,supported_success_rate,unsupported_success_rate,supported_gap,psi_AUROC
+antmaze-giant-stitch-v0,0,virtual_start_goal_connector_pairs,1294,5.015710977030994e-05,,0.0,,
+antmaze-giant-stitch-v0,0,local_local_edge_junctions,0,5.015710977030994e-05,,0.0,,
+antmaze-giant-stitch-v0,0,bridge_entry_exit_junctions,298605,5.015710977030994e-05,,0.0,,
+antmaze-giant-stitch-v0,0,bridge_bridge_junctions,40330,5.015710977030994e-05,,0.0,,
+antmaze-giant-navigate-v0,0,virtual_start_goal_connector_pairs,846,0.0002707756877279,,0.0625,,0.95
+antmaze-giant-navigate-v0,0,local_local_edge_junctions,0,0.0002707756877279,,0.0625,,0.95
+antmaze-giant-navigate-v0,0,bridge_entry_exit_junctions,80882,0.0002707756877279,,0.0625,,0.95
+antmaze-giant-navigate-v0,0,bridge_bridge_junctions,37297,0.0002707756877279,,0.0625,,0.95

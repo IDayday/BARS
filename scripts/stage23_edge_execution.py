@@ -15,6 +15,21 @@ from bars.gas_bars.bridge_graph import load_bridge_graph
 from bars.gas_bars.edge_execution import run_edge_execution
 
 
+def _merge_report(existing_path: Path, df: pd.DataFrame, key_cols: list[str]) -> pd.DataFrame:
+    if existing_path.exists() and len(df):
+        try:
+            old = pd.read_csv(existing_path)
+            if set(key_cols).issubset(old.columns) and set(key_cols).issubset(df.columns):
+                old_key = old[key_cols].astype(str).agg("\t".join, axis=1)
+                new_key = df[key_cols].astype(str).agg("\t".join, axis=1)
+                old = old.loc[~old_key.isin(set(new_key))].copy()
+                df = pd.concat([old, df], ignore_index=True)
+                df = df.sort_values(key_cols).reset_index(drop=True)
+        except Exception:
+            pass
+    return df
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--envs", required=True)
@@ -59,6 +74,7 @@ def main() -> None:
     report_df = pd.concat(summaries, ignore_index=True) if summaries else pd.DataFrame()
     reports = Path(args.reports_root)
     reports.mkdir(parents=True, exist_ok=True)
+    report_df = _merge_report(reports / "stage23_edge_execution_summary.csv", report_df, ["env", "seed", "edge_type"])
     report_df.to_csv(reports / "stage23_edge_execution_summary.csv", index=False)
     lines = ["# Stage23 Edge Execution", ""]
     if len(report_df):

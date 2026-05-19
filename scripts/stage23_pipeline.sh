@@ -160,6 +160,23 @@ run_analyze() {
     --out "$REPORTS_ROOT/stage23_summary.md"
 }
 
+refresh_gates() {
+  run_analyze || true
+}
+
+gate_value() {
+  local key="$1"
+  python - "$REPORTS_ROOT/stage23_gate_status.json" "$key" <<'PY'
+import json, sys
+path, key = sys.argv[1], sys.argv[2]
+try:
+    data = json.load(open(path))
+except Exception:
+    data = {}
+print(data.get(key, "unknown"))
+PY
+}
+
 case "$MODE" in
   repro) run_repro ;;
   atlas) run_atlas ;;
@@ -172,6 +189,12 @@ case "$MODE" in
   fallback) python scripts/stage23_fallback_causal_ablation.py --reports-root "$REPORTS_ROOT" ;;
   all_adaptive)
     run_repro || true
+    refresh_gates
+    repro_gate="$(gate_value repro)"
+    if [[ "$repro_gate" != "GO_REPRO" && "$repro_gate" != "GO_REPRO_REPAIRED" ]]; then
+      echo "[stage23_pipeline] HOLD_REPRO: skipping atlas/bridge/integrated until reproduction is repaired."
+      exit 0
+    fi
     run_atlas || true
     OLD_ENVS="$ENVS"
     ENVS="$OLD_ENVS"
@@ -181,16 +204,34 @@ case "$MODE" in
       run_bridge || true
       run_edge_exec || true
       run_oracle || true
+      refresh_gates
+      oracle_gate="$(gate_value oracle)"
+      if [[ "$oracle_gate" != "PASS_ORACLE" ]]; then
+        echo "[stage23_pipeline] $oracle_gate: skipping p_bridge, boundary, integrated, and fallback for these envs."
+        ENVS="$OLD_ENVS"
+        run_analyze
+        exit 0
+      fi
       run_train_p_bridge || true
       run_boundary || true
-      if [[ -f "$REPORTS_ROOT/stage23_gas_reproduction_matrix.csv" ]] && ! grep -Eq ',(failed|skipped),' "$REPORTS_ROOT/stage23_gas_reproduction_matrix.csv"; then
+      refresh_gates
+      p_bridge_gate="$(gate_value p_bridge)"
+      if [[ "$p_bridge_gate" == "PASS_P_BRIDGE" ]]; then
         run_integrated || true
       else
-        echo "[stage23_pipeline] HOLD_REPRO: skipping integrated BARS-v3."
+        echo "[stage23_pipeline] $p_bridge_gate: skipping integrated BARS-v3 until bridge verifier passes."
       fi
     fi
     ENVS="$OLD_ENVS"
-    python scripts/stage23_fallback_causal_ablation.py --reports-root "$REPORTS_ROOT" || true
+    integrated_rows=0
+    if [[ -f "$REPORTS_ROOT/stage23_integrated_results.csv" ]]; then
+      integrated_rows="$(($(wc -l < "$REPORTS_ROOT/stage23_integrated_results.csv") - 1))"
+    fi
+    if [[ "$integrated_rows" -gt 0 ]]; then
+      python scripts/stage23_fallback_causal_ablation.py --reports-root "$REPORTS_ROOT" || true
+    else
+      echo "[stage23_pipeline] HOLD_FALLBACK: no integrated mechanism rows; skipping fallback causal ablation."
+    fi
     run_analyze
     ;;
   *)

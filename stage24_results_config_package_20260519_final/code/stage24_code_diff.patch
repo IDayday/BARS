@@ -1,0 +1,1710 @@
+diff --git a/bars/external/gas_artifacts.py b/bars/external/gas_artifacts.py
+index fe13966..7bfe20c 100644
+--- a/bars/external/gas_artifacts.py
++++ b/bars/external/gas_artifacts.py
+@@ -15,7 +15,8 @@ from typing import Dict, Iterable, Optional
+ 
+ 
+ REPO_ID = "qortmdgh4141/GAS"
+-HF_BASE = f"https://huggingface.co/{REPO_ID}/resolve/main"
++HF_ENDPOINT = os.environ.get("HF_ENDPOINT") or os.environ.get("BARS_HF_ENDPOINT") or "https://huggingface.co"
++HF_BASE = f"{HF_ENDPOINT.rstrip('/')}/{REPO_ID}/resolve/main"
+ OFFICIAL_PRETRAINED_SLUGS = {
+     "antmaze-giant-navigate",
+     "antmaze-giant-stitch",
+@@ -146,6 +147,27 @@ def file_sha256(path: str | os.PathLike[str], block_size: int = 1 << 20) -> str:
+ def _download_file(url: str, dst: Path, timeout: int = 15) -> bool:
+     dst.parent.mkdir(parents=True, exist_ok=True)
+     tmp = dst.with_suffix(dst.suffix + ".tmp")
++    if os.environ.get("BARS_DOWNLOAD_WITH_CURL", "1") != "0" and shutil.which("curl"):
++        cmd = [
++            "curl",
++            "-L",
++            "--fail",
++            "--retry",
++            "3",
++            "--connect-timeout",
++            str(timeout),
++            "-o",
++            str(tmp),
++            url,
++        ]
++        if tmp.exists() and tmp.stat().st_size > 0:
++            cmd[1:1] = ["-C", "-"]
++        try:
++            subprocess.run(cmd, check=True)
++            tmp.replace(dst)
++            return True
++        except Exception:
++            pass
+     try:
+         with urllib.request.urlopen(url, timeout=timeout) as r, open(tmp, "wb") as f:
+             shutil.copyfileobj(r, f)
+diff --git a/bars/external/gas_prepare.py b/bars/external/gas_prepare.py
+index 086cc6f..ebc2936 100644
+--- a/bars/external/gas_prepare.py
++++ b/bars/external/gas_prepare.py
+@@ -35,6 +35,8 @@ def main(argv: Optional[list[str]] = None) -> None:
+     if args.export_embeddings and artifacts.dataset_embeddings is None and artifacts.complete:
+         bb.export_dataset_embeddings(artifacts.features_dir / "dataset_embeddings.npy")
+         artifacts = resolve_gas_artifacts(args.env, args.seed, args.artifact_root)
++    if not artifacts.complete:
++        raise RuntimeError(f"Incomplete GAS artifacts for {args.env} seed {args.seed}: {artifacts.to_dict()}")
+     print(json.dumps(artifacts.to_dict(), indent=2, sort_keys=True))
+ 
+ 
+diff --git a/bars/gas_bars/evaluate.py b/bars/gas_bars/evaluate.py
+index 481952d..6e72857 100644
+--- a/bars/gas_bars/evaluate.py
++++ b/bars/gas_bars/evaluate.py
+@@ -229,6 +229,45 @@ def _should_trigger_progress_stall_v3(
+     return False, ""
+ 
+ 
++def _local_drift_metrics(
++    debug_rows: list[dict[str, Any]],
++    window: int = 16,
++    stall_frac: float = 0.03,
++) -> dict[str, float | int]:
++    target = np.asarray([float(r.get("target_dist_phi", np.nan)) for r in debug_rows], dtype=np.float64)
++    target = target[np.isfinite(target)]
++    if target.size < 2:
++        return {"local_drift_score": 0.0, "progress_stall_count": 0, "oscillation_score": 0.0}
++    w = int(max(2, min(window, target.size)))
++    drift_scores = []
++    stall_count = 0
++    for start in range(0, target.size - w + 1):
++        seg = target[start : start + w]
++        denom = max(float(seg[0]), 1e-6)
++        drift_scores.append(float((seg[-1] - seg[0]) / denom))
++        progress = float((seg[0] - np.min(seg)) / denom)
++        if progress < stall_frac:
++            stall_count += 1
++    deltas = np.diff(target)
++    path_motion = float(np.sum(np.abs(deltas)))
++    net_improvement = float(max(target[0] - target[-1], 0.0))
++    oscillation = float(max(path_motion - net_improvement, 0.0) / max(path_motion, 1e-6))
++    return {
++        "local_drift_score": float(max(0.0, max(drift_scores) if drift_scores else 0.0)),
++        "progress_stall_count": int(stall_count),
++        "oscillation_score": oscillation,
++    }
++
++
++def _write_debug_trace(path: Path, rows: list[dict[str, Any]], extra: dict[str, Any]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with open(path, "w") as f:
++        for row in rows:
++            out = dict(extra)
++            out.update(row)
++            f.write(json.dumps(out, default=str) + "\n")
++
++
+ def run_episode(
+     backbone: GASBackbone,
+     env: Any,
+@@ -252,6 +291,10 @@ def run_episode(
+     progress_frac: float = 0.40,
+     close_goal_phi_dist: float = 2.0,
+     stall_k: int = 3,
++    debug_trace_path: Optional[Path] = None,
++    local_drift_window: int = 16,
++    local_drift_threshold: float = 0.10,
++    progress_stall_frac: float = 0.03,
+ ) -> dict[str, Any]:
+     start_time = time.time()
+     eval_seed = seed + episode_id
+@@ -284,6 +327,14 @@ def run_episode(
+     base_graph = {"nodes": export_nodes(key_graph), "edges": export_edges(key_graph), "way_steps": getattr(key_graph, "way_steps", 8.0)}
+     active_subgoals: list[np.ndarray] = []
+     active_subgoal_idx = 0
++    requested_variant = variant.lower()
++    replan_on_local_drift = requested_variant in {
++        "gas_shortest_replan_on_local_drift",
++        "gas_reachability_budget_replan_on_local_drift",
++    }
++    adaptive_subgoal_horizon = requested_variant == "gas_shortest_adaptive_subgoal_horizon"
++    drift_triggered_replans = 0
++    last_local_drift_score = 0.0
+ 
+     while not done and replans < max_steps and (len(debug_rows) < max_steps):
+         phi_obs = np.asarray(backbone.get_phi(observation))
+@@ -386,16 +437,21 @@ def run_episode(
+ 
+         if use_direct:
+             target_phi = phi_goal
+-            chunk = max(1, int(getattr(key_graph, "way_steps", 8)))
++            chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
+         else:
+             if not active_subgoals or active_subgoal_idx >= len(active_subgoals):
+                 target_phi = phi_goal
+             else:
+                 target_phi = np.asarray(active_subgoals[active_subgoal_idx])
+                 subgoals_attempted += 1
+-            chunk = max(1, int(getattr(key_graph, "way_steps", 8)))
++            chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
++        if adaptive_subgoal_horizon and not use_direct and (subgoal_failures > 0 or no_improve_replans > 0):
++            chunk = max(1, chunk_base // 2)
++        else:
++            chunk = chunk_base
+ 
+         reached_this = False
++        chunk_target_dists: list[float] = []
+         for _ in range(chunk):
+             action = backbone.sample_action(observation, target_phi, final_goal=use_direct)
+             observation, reward, done, info = backbone.step_env(env, env_name, action)
+@@ -408,6 +464,7 @@ def run_episode(
+             if cur_goal_dist < best_goal_dist:
+                 best_goal_dist = cur_goal_dist
+             target_dist = float(np.linalg.norm(np.asarray(target_phi) - phi_obs))
++            chunk_target_dists.append(target_dist)
+             ep_success, _ = _episode_success(info if isinstance(info, dict) else {})
+             success = success or ep_success
+             debug_rows.append(
+@@ -429,6 +486,20 @@ def run_episode(
+                 break
+             if done or len(debug_rows) >= max_steps:
+                 break
++        if not use_direct and chunk_target_dists:
++            start_target_dist = max(float(chunk_target_dists[0]), 1e-6)
++            end_target_dist = float(chunk_target_dists[-1])
++            best_target_dist = float(min(chunk_target_dists))
++            chunk_drift_score = (end_target_dist - start_target_dist) / start_target_dist
++            chunk_progress = (start_target_dist - best_target_dist) / start_target_dist
++            last_local_drift_score = max(last_local_drift_score, chunk_drift_score)
++            local_stall = chunk_progress < progress_stall_frac and len(chunk_target_dists) >= min(local_drift_window, chunk)
++            should_refresh = not reached_this and (chunk_drift_score > local_drift_threshold or local_stall)
++            if (replan_on_local_drift or adaptive_subgoal_horizon) and should_refresh:
++                active_subgoals = []
++                active_subgoal_idx = 0
++                subgoal_failures = max(subgoal_failures, stall_k)
++                drift_triggered_replans += 1
+         if not use_direct and not reached_this:
+             subgoal_failures += 1
+         if len(debug_rows) >= max_steps:
+@@ -439,6 +510,23 @@ def run_episode(
+     final_dist = float(np.linalg.norm(phi_goal - final_phi))
+     first = first_plan or PlanResult(variant=variant, budget=budget)
+     last = last_plan or first
++    drift_metrics = _local_drift_metrics(debug_rows, window=local_drift_window, stall_frac=progress_stall_frac)
++    if last_local_drift_score > drift_metrics["local_drift_score"]:
++        drift_metrics["local_drift_score"] = float(last_local_drift_score)
++    trace_path_str = str(debug_trace_path) if debug_trace_path is not None else ""
++    if debug_trace_path is not None:
++        _write_debug_trace(
++            debug_trace_path,
++            debug_rows,
++            {
++                "env": env_name,
++                "seed": seed,
++                "task_id": task_id,
++                "episode_id": episode_id,
++                "variant": variant,
++                "fallback_mode": fallback_mode,
++            },
++        )
+     row = {
+         "env": env_name,
+         "seed": seed,
+@@ -483,6 +571,11 @@ def run_episode(
+         "edge_fail_position": "",
+         "path_node_ids": _compact(first.node_ids),
+         "path_edge_ids": _compact(first.edge_ids),
++        "local_drift_score": drift_metrics["local_drift_score"],
++        "progress_stall_count": drift_metrics["progress_stall_count"],
++        "oscillation_score": drift_metrics["oscillation_score"],
++        "drift_triggered_replans": drift_triggered_replans,
++        "debug_trace_path": trace_path_str,
+     }
+     return row
+ 
+@@ -617,6 +710,11 @@ def run_episode_official_control(
+         "edge_fail_position": "",
+         "path_node_ids": "",
+         "path_edge_ids": "",
++        "local_drift_score": 0.0,
++        "progress_stall_count": 0,
++        "oscillation_score": 0.0,
++        "drift_triggered_replans": 0,
++        "debug_trace_path": "",
+     }
+ 
+ 
+@@ -720,6 +818,7 @@ def main(argv: Optional[list[str]] = None) -> None:
+                 args.final_goal_threshold,
+             )
+         else:
++            debug_trace_path = run_dir / "debug_traces" / f"task{task_id}_episode{ep}.jsonl" if args.debug_jsonl else None
+             row = run_episode(
+                 backbone,
+                 env,
+@@ -740,6 +839,7 @@ def main(argv: Optional[list[str]] = None) -> None:
+                 args.max_plan_edges,
+                 args.subgoal_threshold,
+                 args.final_goal_threshold,
++                debug_trace_path=debug_trace_path,
+             )
+         _csv_append(eval_csv, row)
+         print(json.dumps({k: row[k] for k in ["env", "task_id", "episode_id", "variant", "budget", "success", "steps", "fallback_used"]}))
+diff --git a/bars/gas_bars/planner.py b/bars/gas_bars/planner.py
+index 3a289b7..19b02da 100644
+--- a/bars/gas_bars/planner.py
++++ b/bars/gas_bars/planner.py
+@@ -452,6 +452,9 @@ def plan(
+     alias = {
+         "gas_reachability_budget_calibrated": "gas_reachability_budget",
+         "gas_reachability_soft_calibrated": "gas_reachability_soft",
++        "gas_shortest_replan_on_local_drift": "gas_shortest",
++        "gas_shortest_adaptive_subgoal_horizon": "gas_shortest",
++        "gas_reachability_budget_replan_on_local_drift": "gas_reachability_budget",
+         "gas_boundary_scaled_budget": "gas_boundary_budget",
+         "gas_boundary_soft_scaled": "gas_boundary_soft",
+     }
+diff --git a/configs/stage24_oracle_scan.json b/configs/stage24_oracle_scan.json
+new file mode 100644
+index 0000000..d8000b9
+--- /dev/null
++++ b/configs/stage24_oracle_scan.json
+@@ -0,0 +1,23 @@
++{
++  "stage": "stage24",
++  "track": "oracle_headroom_scan",
++  "envs": ["scene-play-v0"],
++  "seeds": [0],
++  "graph_id": "G3",
++  "top_k_bridge": 4,
++  "max_sources": 200,
++  "edge_exec_pilot": true,
++  "fallback_as_planner_evidence": false,
++  "run_integrated_before_oracle_gate": false,
++  "artifact_root": "artifacts/stage24",
++  "gas_artifact_root": "artifacts/gas",
++  "reports_root": "reports",
++  "gates": {
++    "min_set_state_rate": 0.95,
++    "min_safe_local_success_rate": 0.85,
++    "min_oracle_bridge_count": 50,
++    "min_oracle_shorter_path_rate": 0.2,
++    "min_oracle_mean_path_cost_reduction": 1.0,
++    "min_oracle_bridge_usage_rate": 0.2
++  }
++}
+diff --git a/configs/stage24_reachability_confirm.json b/configs/stage24_reachability_confirm.json
+new file mode 100644
+index 0000000..ecafdc4
+--- /dev/null
++++ b/configs/stage24_reachability_confirm.json
+@@ -0,0 +1,41 @@
++{
++  "stage": "stage24",
++  "track": "reachability_confirm_and_local_drift",
++  "envs": [
++    "antmaze-medium-navigate-v0",
++    "antmaze-medium-stitch-v0"
++  ],
++  "seeds": [0, 1, 2],
++  "episodes": 100,
++  "fallback_modes": ["none"],
++  "variants": [
++    "gas_shortest",
++    "gas_reachability_budget_calibrated",
++    "gas_reachability_soft_calibrated"
++  ],
++  "repair_variants": [
++    "gas_shortest_replan_on_local_drift",
++    "gas_shortest_adaptive_subgoal_horizon",
++    "gas_reachability_budget_replan_on_local_drift"
++  ],
++  "budget_source": "reports/stage22r_recommended_budgets.json",
++  "budget_selection": "stage22r_recommended",
++  "same_backbone_required": true,
++  "official_control_adapter_required": true,
++  "fallback_as_planner_evidence": false,
++  "max_parallel_eval": 4,
++  "max_plan_edges": 20,
++  "local_drift": {
++    "window": 16,
++    "drift_threshold": 0.1,
++    "progress_stall_frac": 0.03,
++    "debug_jsonl": true
++  },
++  "gates": {
++    "reachability_min_mean_delta": 0.02,
++    "reachability_min_wins": 4,
++    "reachability_cells": 6,
++    "max_steps_inflation": 0.1,
++    "local_drift_failure_reduction": 0.3
++  }
++}
+diff --git a/scripts/stage24_analyze.py b/scripts/stage24_analyze.py
+new file mode 100755
+index 0000000..199b848
+--- /dev/null
++++ b/scripts/stage24_analyze.py
+@@ -0,0 +1,782 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++
++import argparse
++import json
++import sys
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import pandas as pd
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++
++from stage24_local_drift_diagnostic import OUT_COLUMNS as DRIFT_COLUMNS
++from stage24_local_drift_diagnostic import build_drift_table
++
++
++MEDIUM_ENVS = ["antmaze-medium-navigate-v0", "antmaze-medium-stitch-v0"]
++REACHABILITY_VARIANTS = [
++    "gas_shortest",
++    "gas_reachability_budget_calibrated",
++    "gas_reachability_soft_calibrated",
++]
++REPAIR_VARIANTS = [
++    "gas_shortest_replan_on_local_drift",
++    "gas_shortest_adaptive_subgoal_horizon",
++    "gas_reachability_budget_replan_on_local_drift",
++]
++
++REACH_COLUMNS = [
++    "env",
++    "seed",
++    "fallback_mode",
++    "variant",
++    "episodes",
++    "success",
++    "steps",
++    "success_delta_vs_shortest",
++    "steps_inflation_vs_shortest",
++    "paired_episode_n",
++    "paired_episode_success_delta",
++    "no_path_rate",
++    "budget_reject_rate",
++    "no_path_delta_vs_shortest",
++    "budget_reject_delta_vs_shortest",
++    "first_plan_edges_mean",
++    "first_plan_edge_distribution",
++    "subgoal_reach_rate",
++    "env_mean_success",
++    "env_std_success",
++    "primary_variant",
++    "paired_cell_result",
++    "source",
++]
++
++ORACLE_COLUMNS = [
++    "env",
++    "seed",
++    "graph_id",
++    "node_count",
++    "edge_count",
++    "bridge_count",
++    "shorter_path_rate",
++    "bridge_usage_rate",
++    "mean_path_cost_reduction",
++    "oracle_bridge_count",
++    "oracle_bridge_fraction",
++    "oracle_shorter_path_rate",
++    "oracle_bridge_usage_rate",
++    "oracle_mean_path_cost_reduction",
++    "safe_local_success_rate",
++    "risky_bridge_success_rate",
++    "gas_cross_success_rate",
++    "set_state_rate",
++    "gate",
++]
++
++BOUNDARY_COLUMNS = [
++    "env",
++    "seed",
++    "junction_class",
++    "junction_count",
++    "coverage",
++    "supported_success_rate",
++    "unsupported_success_rate",
++    "supported_gap",
++    "psi_AUROC",
++]
++
++
++def _read_csv(path: Path) -> pd.DataFrame:
++    try:
++        return pd.read_csv(path) if path.exists() and path.stat().st_size else pd.DataFrame()
++    except Exception:
++        return pd.DataFrame()
++
++
++def _write_csv(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
++    if len(df) == 0:
++        df = pd.DataFrame(columns=columns)
++    for col in columns:
++        if col not in df:
++            df[col] = np.nan
++    path.parent.mkdir(parents=True, exist_ok=True)
++    df[columns].to_csv(path, index=False)
++
++
++def _num(df: pd.DataFrame, col: str, default: float = 0.0) -> pd.Series:
++    if len(df) == 0 or col not in df:
++        return pd.Series([default] * len(df), index=df.index, dtype=float)
++    return pd.to_numeric(df[col], errors="coerce").fillna(default)
++
++
++def _scalar(row: pd.Series | None, col: str, default: float = 0.0) -> float:
++    if row is None:
++        return default
++    try:
++        val = row.get(col, default)
++        if val == "" or pd.isna(val):
++            return default
++        return float(val)
++    except Exception:
++        return default
++
++
++def _collect_eval_roots(roots: list[Path]) -> pd.DataFrame:
++    frames = []
++    for root in roots:
++        if root.is_file():
++            df = _read_csv(root)
++            if len(df):
++                df["eval_path"] = str(root)
++                frames.append(df)
++            continue
++        if not root.exists():
++            continue
++        for path in root.rglob("eval.csv"):
++            df = _read_csv(path)
++            if len(df) == 0 or not {"env", "seed", "variant", "success"}.issubset(df.columns):
++                continue
++            df["eval_path"] = str(path)
++            if "fallback_mode" not in df:
++                for part in path.parts:
++                    if part.startswith("fallback_"):
++                        df["fallback_mode"] = part.replace("fallback_", "")
++                        break
++            frames.append(df)
++    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
++
++
++def _edge_distribution(values: pd.Series) -> str:
++    vals = pd.to_numeric(values, errors="coerce").dropna()
++    if len(vals) == 0:
++        return ""
++    bins = [
++        ("0", vals.eq(0)),
++        ("1", vals.eq(1)),
++        ("2-3", vals.between(2, 3, inclusive="both")),
++        ("4-5", vals.between(4, 5, inclusive="both")),
++        ("6-10", vals.between(6, 10, inclusive="both")),
++        ("11-20", vals.between(11, 20, inclusive="both")),
++        (">20", vals.gt(20)),
++    ]
++    total = max(len(vals), 1)
++    return ";".join(f"{name}:{float(mask.sum() / total):.3f}" for name, mask in bins)
++
++
++def _group_eval(df: pd.DataFrame, source: str) -> pd.DataFrame:
++    if len(df) == 0:
++        return pd.DataFrame()
++    out = df.copy()
++    if "fallback_mode" not in out:
++        out["fallback_mode"] = ""
++    if "first_plan_edges" not in out:
++        out["first_plan_edges"] = np.nan
++    if "subgoal_reach_rate" not in out:
++        out["subgoal_reach_rate"] = np.nan
++    if "no_path_count" not in out:
++        out["no_path_count"] = 0
++    if "budget_reject_count" not in out:
++        out["budget_reject_count"] = 0
++    if "steps" not in out:
++        out["steps"] = np.nan
++    keys = [c for c in ["env", "seed", "variant", "fallback_mode"] if c in out.columns]
++    grouped = out.groupby(keys, dropna=False).agg(
++        episodes=("success", "count"),
++        success=("success", "mean"),
++        steps=("steps", "mean"),
++        no_path_rate=("no_path_count", lambda x: float((pd.to_numeric(x, errors="coerce").fillna(0) > 0).mean())),
++        budget_reject_rate=("budget_reject_count", lambda x: float((pd.to_numeric(x, errors="coerce").fillna(0) > 0).mean())),
++        first_plan_edges_mean=("first_plan_edges", "mean"),
++        first_plan_edge_distribution=("first_plan_edges", _edge_distribution),
++        subgoal_reach_rate=("subgoal_reach_rate", "mean"),
++    ).reset_index()
++    grouped["source"] = source
++    return grouped
++
++
++def _stage23_reachability_prior(stage23_reports: Path) -> pd.DataFrame:
++    prior = _read_csv(stage23_reports / "stage23_grouped.csv")
++    if len(prior) == 0:
++        return pd.DataFrame()
++    prior = prior[
++        prior.get("env", "").astype(str).isin(MEDIUM_ENVS)
++        & prior.get("variant", "").astype(str).isin(REACHABILITY_VARIANTS)
++        & prior.get("fallback_mode", "").astype(str).eq("none")
++    ].copy()
++    if len(prior) == 0:
++        return pd.DataFrame()
++    prior["source"] = "stage23_seed0_prior"
++    if "first_plan_edges_mean" not in prior:
++        prior["first_plan_edges_mean"] = np.nan
++    if "first_plan_edge_distribution" not in prior:
++        prior["first_plan_edge_distribution"] = ""
++    if "subgoal_reach_rate" not in prior:
++        prior["subgoal_reach_rate"] = np.nan
++    return prior
++
++
++def _paired_episode_deltas(eval_df: pd.DataFrame) -> pd.DataFrame:
++    if len(eval_df) == 0 or "variant" not in eval_df:
++        return pd.DataFrame()
++    df = eval_df.copy()
++    if "fallback_mode" not in df:
++        df["fallback_mode"] = ""
++    df = df[
++        df.get("env", "").astype(str).isin(MEDIUM_ENVS)
++        & df.get("variant", "").astype(str).isin(REACHABILITY_VARIANTS + REPAIR_VARIANTS)
++        & df.get("fallback_mode", "").astype(str).eq("none")
++    ].copy()
++    keys = [c for c in ["env", "seed", "fallback_mode", "task_id", "episode_id"] if c in df.columns]
++    if not keys or "gas_shortest" not in set(df["variant"].astype(str)):
++        return pd.DataFrame()
++    piv = df.pivot_table(index=keys, columns="variant", values="success", aggfunc="mean").reset_index()
++    rows = []
++    for (env, seed, fallback), sub in piv.groupby(["env", "seed", "fallback_mode"], dropna=False):
++        if "gas_shortest" not in sub:
++            continue
++        for variant in [c for c in sub.columns if c not in keys and c != "gas_shortest"]:
++            diff = pd.to_numeric(sub[variant], errors="coerce") - pd.to_numeric(sub["gas_shortest"], errors="coerce")
++            rows.append(
++                {
++                    "env": env,
++                    "seed": seed,
++                    "fallback_mode": fallback,
++                    "variant": variant,
++                    "paired_episode_n": int(diff.notna().sum()),
++                    "paired_episode_success_delta": float(diff.mean()) if diff.notna().any() else np.nan,
++                }
++            )
++    return pd.DataFrame(rows)
++
++
++def analyze_reachability(eval_df: pd.DataFrame, stage23_reports: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
++    stage24 = _group_eval(eval_df, "stage24_run")
++    prior = _stage23_reachability_prior(stage23_reports)
++    grouped = pd.concat([prior, stage24], ignore_index=True) if len(stage24) or len(prior) else pd.DataFrame()
++    if len(grouped) == 0:
++        return pd.DataFrame(columns=REACH_COLUMNS), {
++            "gate": "HOLD_REACHABILITY_WEAK_EFFECT",
++            "primary_variant": "",
++            "completed_cells": 0,
++        }
++    grouped = grouped[
++        grouped["env"].astype(str).isin(MEDIUM_ENVS)
++        & grouped["variant"].astype(str).isin(REACHABILITY_VARIANTS + REPAIR_VARIANTS)
++        & grouped["fallback_mode"].astype(str).eq("none")
++    ].copy()
++    key_cols = ["env", "seed", "variant", "fallback_mode"]
++    if len(grouped):
++        grouped["_source_rank"] = np.where(grouped["source"].astype(str).eq("stage24_run"), 1, 0)
++        grouped = grouped.sort_values("_source_rank").drop_duplicates(key_cols, keep="last").drop(columns=["_source_rank"])
++    rows = []
++    reach_rows = grouped[grouped["variant"].astype(str).isin(REACHABILITY_VARIANTS)].copy()
++    for (env, seed, fallback), sub in reach_rows.groupby(["env", "seed", "fallback_mode"], dropna=False):
++        base_rows = sub[sub["variant"].astype(str).eq("gas_shortest")]
++        base = base_rows.iloc[0] if len(base_rows) else None
++        for _, row in sub.iterrows():
++            delta = np.nan
++            steps_infl = np.nan
++            no_path_delta = np.nan
++            budget_delta = np.nan
++            if base is not None and row["variant"] != "gas_shortest":
++                delta = _scalar(row, "success", np.nan) - _scalar(base, "success", np.nan)
++                base_steps = max(_scalar(base, "steps", 0.0), 1e-6)
++                steps_infl = (_scalar(row, "steps", np.nan) - _scalar(base, "steps", np.nan)) / base_steps
++                no_path_delta = _scalar(row, "no_path_rate", 0.0) - _scalar(base, "no_path_rate", 0.0)
++                budget_delta = _scalar(row, "budget_reject_rate", 0.0) - _scalar(base, "budget_reject_rate", 0.0)
++            out = row.to_dict()
++            out.update(
++                {
++                    "success_delta_vs_shortest": delta,
++                    "steps_inflation_vs_shortest": steps_infl,
++                    "no_path_delta_vs_shortest": no_path_delta,
++                    "budget_reject_delta_vs_shortest": budget_delta,
++                }
++            )
++            rows.append(out)
++    out = pd.DataFrame(rows)
++    if len(out) == 0:
++        return pd.DataFrame(columns=REACH_COLUMNS), {
++            "gate": "HOLD_REACHABILITY_WEAK_EFFECT",
++            "primary_variant": "",
++            "completed_cells": 0,
++        }
++    paired = _paired_episode_deltas(eval_df)
++    if len(paired):
++        out = out.merge(paired, on=["env", "seed", "fallback_mode", "variant"], how="left")
++        out["success_delta_vs_shortest"] = out["paired_episode_success_delta"].where(out["paired_episode_success_delta"].notna(), out["success_delta_vs_shortest"])
++    if "paired_episode_n" not in out:
++        out["paired_episode_n"] = np.nan
++    if "paired_episode_success_delta" not in out:
++        out["paired_episode_success_delta"] = np.nan
++    env_stats = (
++        out.groupby(["env", "variant"], dropna=False)["success"]
++        .agg(env_mean_success="mean", env_std_success="std")
++        .reset_index()
++    )
++    out = out.merge(env_stats, on=["env", "variant"], how="left")
++    candidate = out[out["variant"].astype(str).isin(REACHABILITY_VARIANTS[1:])].copy()
++    primary = ""
++    if len(candidate):
++        means = candidate.groupby("variant")["success_delta_vs_shortest"].mean(numeric_only=True).sort_values(ascending=False)
++        primary = str(means.index[0]) if len(means) else ""
++    out["primary_variant"] = primary
++    out["paired_cell_result"] = ""
++    primary_rows = out[out["variant"].astype(str).eq(primary)].copy() if primary else pd.DataFrame()
++    if len(primary_rows):
++        deltas = pd.to_numeric(primary_rows["success_delta_vs_shortest"], errors="coerce")
++        out.loc[deltas.index[deltas > 1e-12], "paired_cell_result"] = "win"
++        out.loc[deltas.index[deltas.abs() <= 1e-12], "paired_cell_result"] = "tie"
++        out.loc[deltas.index[deltas < -1e-12], "paired_cell_result"] = "loss"
++    paired_primary = primary_rows[pd.to_numeric(primary_rows.get("success_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce").notna()] if len(primary_rows) else pd.DataFrame()
++    completed_cells = int(paired_primary[["env", "seed"]].drop_duplicates().shape[0]) if len(paired_primary) else 0
++    primary_delta = float(pd.to_numeric(primary_rows.get("success_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce").mean()) if len(primary_rows) else float("nan")
++    primary_steps_infl = float(pd.to_numeric(primary_rows.get("steps_inflation_vs_shortest", pd.Series(dtype=float)), errors="coerce").mean()) if len(primary_rows) else float("nan")
++    no_path_delta = float(pd.to_numeric(primary_rows.get("no_path_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce").fillna(0).mean()) if len(primary_rows) else 0.0
++    budget_delta = float(pd.to_numeric(primary_rows.get("budget_reject_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce").fillna(0).mean()) if len(primary_rows) else 0.0
++    wins = int((pd.to_numeric(primary_rows.get("success_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce") > 1e-12).sum()) if len(primary_rows) else 0
++    ties = int((pd.to_numeric(primary_rows.get("success_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce").abs() <= 1e-12).sum()) if len(primary_rows) else 0
++    losses = int((pd.to_numeric(primary_rows.get("success_delta_vs_shortest", pd.Series(dtype=float)), errors="coerce") < -1e-12).sum()) if len(primary_rows) else 0
++    regression = (
++        (np.isfinite(primary_delta) and primary_delta < -0.005)
++        or (np.isfinite(primary_steps_infl) and primary_steps_infl > 0.10)
++        or no_path_delta > 0.02
++        or budget_delta > 0.02
++    )
++    passes = (
++        completed_cells >= 6
++        and np.isfinite(primary_delta)
++        and primary_delta >= 0.02
++        and wins >= 4
++        and (not np.isfinite(primary_steps_infl) or primary_steps_infl <= 0.10)
++        and no_path_delta <= 0.02
++        and budget_delta <= 0.02
++    )
++    if passes:
++        gate = "PASS_REACHABILITY_CONFIRM"
++    elif regression and completed_cells >= 6:
++        gate = "FAIL_REACHABILITY_REGRESSION"
++    else:
++        gate = "HOLD_REACHABILITY_WEAK_EFFECT"
++    summary = {
++        "gate": gate,
++        "primary_variant": primary,
++        "completed_cells": completed_cells,
++        "mean_delta": primary_delta,
++        "mean_steps_inflation": primary_steps_infl,
++        "wins": wins,
++        "ties": ties,
++        "losses": losses,
++        "no_path_delta": no_path_delta,
++        "budget_reject_delta": budget_delta,
++    }
++    return out, summary
++
++
++def analyze_local_drift(
++    eval_df: pd.DataFrame,
++    stage23_reports: Path,
++    reports_root: Path,
++    local_drift_roots: list[Path],
++) -> tuple[pd.DataFrame, dict[str, Any]]:
++    evals = eval_df
++    if len(evals) == 0:
++        evals = _collect_eval_roots(local_drift_roots)
++    atlas = _read_csv(stage23_reports / "stage23_failure_atlas.csv")
++    drift = build_drift_table(evals, atlas)
++    if len(drift) == 0:
++        drift = _read_csv(reports_root / "stage24_local_drift.csv")
++    repair_rows = drift[drift.get("variant", pd.Series(dtype=str)).astype(str).isin(REPAIR_VARIANTS)] if len(drift) else pd.DataFrame()
++    if len(drift) == 0 or len(repair_rows) == 0:
++        return drift, {"gate": "HOLD_LOCAL_DRIFT_REPAIR", "best_variant": "", "best_reduction": np.nan}
++    baseline_map = {
++        "gas_shortest_replan_on_local_drift": "gas_shortest",
++        "gas_shortest_adaptive_subgoal_horizon": "gas_shortest",
++        "gas_reachability_budget_replan_on_local_drift": "gas_reachability_budget_calibrated",
++    }
++    best = {"variant": "", "reduction": -np.inf, "success_delta": -np.inf}
++    for repair_variant, baseline_variant in baseline_map.items():
++        rep = drift[drift["variant"].astype(str).eq(repair_variant)]
++        base = drift[drift["variant"].astype(str).eq(baseline_variant)]
++        if len(rep) == 0 or len(base) == 0:
++            continue
++        keys = [c for c in ["env", "seed"] if c in drift.columns]
++        for key_vals, rep_sub in rep.groupby(keys, dropna=False):
++            if not isinstance(key_vals, tuple):
++                key_vals = (key_vals,)
++            mask = pd.Series(True, index=base.index)
++            for c, v in zip(keys, key_vals):
++                mask &= base[c].astype(str).eq(str(v))
++            base_sub = base[mask]
++            if len(base_sub) == 0:
++                continue
++            base_f4 = float(base_sub["primary_failure_type"].astype(str).eq("F4_LOCAL_EXECUTION_DRIFT").mean())
++            rep_f4 = float(rep_sub["primary_failure_type"].astype(str).eq("F4_LOCAL_EXECUTION_DRIFT").mean())
++            if base_f4 <= 0:
++                continue
++            reduction = (base_f4 - rep_f4) / base_f4
++            success_delta = float(rep_sub["success"].mean() - base_sub["success"].mean())
++            if reduction > best["reduction"]:
++                best = {"variant": repair_variant, "reduction": reduction, "success_delta": success_delta}
++    gate = "PASS_LOCAL_DRIFT_REPAIR" if best["reduction"] >= 0.30 and best["success_delta"] >= -1e-12 else "HOLD_LOCAL_DRIFT_REPAIR"
++    return drift, {"gate": gate, "best_variant": best["variant"], "best_reduction": best["reduction"], "success_delta": best["success_delta"]}
++
++
++def _weighted_rate(df: pd.DataFrame, edge_types: set[str]) -> float:
++    if len(df) == 0 or "edge_type" not in df:
++        return float("nan")
++    sub = df[df["edge_type"].astype(str).isin(edge_types)]
++    if len(sub) == 0:
++        return float("nan")
++    weights = pd.to_numeric(sub.get("edges", 1), errors="coerce").fillna(1.0)
++    rates = pd.to_numeric(sub.get("success_rate", 0), errors="coerce").fillna(0.0)
++    return float(np.average(rates, weights=weights))
++
++
++def _weighted_set_state(df: pd.DataFrame) -> float:
++    if len(df) == 0 or "set_state_rate" not in df:
++        return float("nan")
++    weights = pd.to_numeric(df.get("edges", 1), errors="coerce").fillna(1.0)
++    rates = pd.to_numeric(df["set_state_rate"], errors="coerce").fillna(0.0)
++    return float(np.average(rates, weights=weights))
++
++
++def analyze_oracle(oracle_reports_root: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
++    bridge = _read_csv(oracle_reports_root / "stage23_bridge_graph_summary.csv")
++    oracle = _read_csv(oracle_reports_root / "stage23_oracle_bridge_summary.csv")
++    edge = _read_csv(oracle_reports_root / "stage23_edge_execution_summary.csv")
++    source = oracle if len(oracle) else bridge
++    if len(source) == 0:
++        return pd.DataFrame(columns=ORACLE_COLUMNS), {"gate": "PENDING_ORACLE_HEADROOM_SCAN", "pass_pairs": []}
++    rows = []
++    pairs = source[["env", "seed"]].drop_duplicates() if {"env", "seed"}.issubset(source.columns) else pd.DataFrame()
++    for _, pair in pairs.iterrows():
++        env = pair["env"]
++        seed = pair["seed"]
++        g3_sub = source[(source["env"].astype(str).eq(str(env))) & (source["seed"].astype(str).eq(str(seed))) & (source["graph_id"].astype(str).eq("G3"))]
++        if len(g3_sub) == 0 and len(bridge):
++            g3_sub = bridge[(bridge["env"].astype(str).eq(str(env))) & (bridge["seed"].astype(str).eq(str(seed))) & (bridge["graph_id"].astype(str).eq("G3"))]
++        oracle_sub = oracle[(oracle["env"].astype(str).eq(str(env))) & (oracle["seed"].astype(str).eq(str(seed))) & (oracle["graph_id"].astype(str).eq("G_oracle"))] if len(oracle) else pd.DataFrame()
++        g3 = g3_sub.iloc[0] if len(g3_sub) else None
++        go = oracle_sub.iloc[0] if len(oracle_sub) else None
++        edge_sub = edge[(edge.get("env", "").astype(str).eq(str(env))) & (edge.get("seed", "").astype(str).eq(str(seed)))] if len(edge) else pd.DataFrame()
++        safe_rate = _weighted_rate(edge_sub, {"safe_local", "same_traj_temporal"})
++        risky_rate = _weighted_rate(edge_sub, {"aggressive_tdr_bridge", "bottleneck_bridge"})
++        gas_cross_rate = _weighted_rate(edge_sub, {"gas_cross"})
++        set_state_rate = _weighted_set_state(edge_sub)
++        bridge_count = int(_scalar(g3, "bridge_count", 0.0))
++        oracle_bridge_count = int(_scalar(go, "bridge_count", 0.0))
++        oracle_shorter = _scalar(go, "shorter_path_rate", 0.0)
++        oracle_usage = _scalar(go, "bridge_usage_rate", 0.0)
++        oracle_reduction = _scalar(go, "mean_path_cost_reduction", 0.0)
++        pass_gate = (
++            set_state_rate >= 0.95
++            and safe_rate >= 0.85
++            and oracle_bridge_count >= 50
++            and (oracle_shorter >= 0.20 or oracle_reduction >= 1.0)
++            and oracle_usage >= 0.20
++        )
++        if pass_gate:
++            gate = "PASS_ORACLE_HEADROOM"
++        elif g3 is not None or go is not None:
++            gate = "NO_ORACLE_UPPER_BOUND"
++        else:
++            gate = "PENDING_ORACLE_HEADROOM_SCAN"
++        rows.append(
++            {
++                "env": env,
++                "seed": seed,
++                "graph_id": "G3",
++                "node_count": int(_scalar(g3, "node_count", 0.0)),
++                "edge_count": int(_scalar(g3, "edge_count", 0.0)),
++                "bridge_count": bridge_count,
++                "shorter_path_rate": _scalar(g3, "shorter_path_rate", 0.0),
++                "bridge_usage_rate": _scalar(g3, "bridge_usage_rate", 0.0),
++                "mean_path_cost_reduction": _scalar(g3, "mean_path_cost_reduction", 0.0),
++                "oracle_bridge_count": oracle_bridge_count,
++                "oracle_bridge_fraction": oracle_bridge_count / max(bridge_count, 1),
++                "oracle_shorter_path_rate": oracle_shorter,
++                "oracle_bridge_usage_rate": oracle_usage,
++                "oracle_mean_path_cost_reduction": oracle_reduction,
++                "safe_local_success_rate": safe_rate,
++                "risky_bridge_success_rate": risky_rate,
++                "gas_cross_success_rate": gas_cross_rate,
++                "set_state_rate": set_state_rate,
++                "gate": gate,
++            }
++        )
++    out = pd.DataFrame(rows)
++    pass_pairs = out.loc[out["gate"].astype(str).eq("PASS_ORACLE_HEADROOM"), ["env", "seed"]].to_dict("records") if len(out) else []
++    gate = "PASS_ORACLE_HEADROOM" if pass_pairs else ("NO_ORACLE_UPPER_BOUND" if len(out) and (out["gate"] == "NO_ORACLE_UPPER_BOUND").all() else "PENDING_ORACLE_HEADROOM_SCAN")
++    return out, {"gate": gate, "pass_pairs": pass_pairs}
++
++
++def analyze_p_bridge(reports_root: Path, oracle_summary: dict[str, Any]) -> dict[str, Any]:
++    if not oracle_summary.get("pass_pairs"):
++        return {"gate": "SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM"}
++    pbridge = _read_csv(reports_root / "stage24_p_bridge_metrics.csv")
++    if len(pbridge) == 0:
++        return {"gate": "HOLD_P_BRIDGE_WEAK_FP_REDUCTION"}
++    best_gate = "HOLD_P_BRIDGE_WEAK_FP_REDUCTION"
++    for _, row in pbridge.iterrows():
++        auroc = _scalar(row, "selected_bridge_AUROC", 0.0)
++        auprc = _scalar(row, "selected_bridge_AUPRC", 0.0)
++        base = _scalar(row, "selected_bridge_base_success_rate", 0.0)
++        fp = _scalar(row, "false_positive_bridge_relative_reduction@0.6", 0.0)
++        coverage = _scalar(row, "accepted_bridge_coverage@0.6", 0.0)
++        accepted = _scalar(row, "accepted_bridge_success_rate@0.6", 0.0)
++        if auroc >= 0.70 and auprc >= base + 0.05 and fp >= 0.20 and coverage >= 0.30 and accepted >= base + 0.10:
++            best_gate = "PASS_P_BRIDGE"
++            break
++    return {"gate": best_gate}
++
++
++def analyze_boundary(reports_root: Path, stage23_reports: Path, artifact_root: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
++    rows = []
++    for root in [artifact_root, Path("artifacts/stage23")]:
++        if not root.exists():
++            continue
++        for path in root.rglob("boundary_junction/bridge_boundary_junctions.csv"):
++            junctions = _read_csv(path)
++            metrics = _read_csv(path.parent / "bridge_boundary_metrics.csv")
++            if len(junctions) == 0:
++                continue
++            parts = path.parts
++            try:
++                seed = [p for p in parts if p.startswith("seed")][-1].replace("seed", "")
++                env = parts[parts.index(f"seed{seed}") - 1]
++            except Exception:
++                env, seed = "", ""
++            for klass, sub in _split_junction_classes(junctions).items():
++                base = metrics.iloc[0] if len(metrics) else None
++                rows.append(
++                    {
++                        "env": env,
++                        "seed": seed,
++                        "junction_class": klass,
++                        "junction_count": int(len(sub)),
++                        "coverage": _scalar(base, "coverage", 0.0),
++                        "supported_success_rate": _scalar(base, "supported_success_rate", np.nan),
++                        "unsupported_success_rate": _scalar(base, "unsupported_success_rate", np.nan),
++                        "supported_gap": _scalar(base, "supported_gap", np.nan),
++                        "psi_AUROC": _scalar(base, "psi_AUROC_for_conditional_success", np.nan),
++                    }
++                )
++    if not rows:
++        prior = _read_csv(stage23_reports / "stage23_boundary_junction_metrics.csv")
++        for _, row in prior.iterrows():
++            rows.append(
++                {
++                    "env": row.get("env", ""),
++                    "seed": row.get("seed", ""),
++                    "junction_class": "bridge_junction_prior_unseparated",
++                    "junction_count": row.get("junction_count", 0),
++                    "coverage": row.get("coverage", 0),
++                    "supported_success_rate": row.get("supported_success_rate", np.nan),
++                    "unsupported_success_rate": row.get("unsupported_success_rate", np.nan),
++                    "supported_gap": row.get("supported_gap", np.nan),
++                    "psi_AUROC": row.get("psi_AUROC_for_conditional_success", np.nan),
++                }
++            )
++    out = pd.DataFrame(rows)
++    if len(out) == 0:
++        return pd.DataFrame(columns=BOUNDARY_COLUMNS), {"gate": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY"}
++    coverage = float(pd.to_numeric(out.get("coverage", pd.Series(dtype=float)), errors="coerce").fillna(0).max())
++    gap = float(pd.to_numeric(out.get("supported_gap", pd.Series(dtype=float)), errors="coerce").fillna(-np.inf).max())
++    auroc = float(pd.to_numeric(out.get("psi_AUROC", pd.Series(dtype=float)), errors="coerce").fillna(0).max())
++    gate = "PASS_BOUNDARY_REENTRY" if coverage >= 0.05 and gap >= 0.10 and auroc >= 0.65 else "HOLD_BOUNDARY_DIAGNOSTIC_ONLY"
++    return out, {"gate": gate, "coverage": coverage, "supported_gap": gap, "psi_AUROC": auroc}
++
++
++def _split_junction_classes(junctions: pd.DataFrame) -> dict[str, pd.DataFrame]:
++    if len(junctions) == 0:
++        return {}
++    prev_type = junctions.get("prev_edge_type", pd.Series([""] * len(junctions))).astype(str)
++    next_type = junctions.get("next_edge_type", pd.Series([""] * len(junctions))).astype(str)
++    virtual = prev_type.eq("virtual_connector") | next_type.eq("virtual_connector")
++    risky_prev = prev_type.isin(["aggressive_tdr_bridge", "bottleneck_bridge", "gas_cross"])
++    risky_next = next_type.isin(["aggressive_tdr_bridge", "bottleneck_bridge", "gas_cross"])
++    local_prev = prev_type.isin(["safe_local", "same_traj_temporal"])
++    local_next = next_type.isin(["safe_local", "same_traj_temporal"])
++    return {
++        "virtual_start_goal_connector_pairs": junctions[virtual].copy(),
++        "local_local_edge_junctions": junctions[local_prev & local_next].copy(),
++        "bridge_entry_exit_junctions": junctions[(risky_prev ^ risky_next)].copy(),
++        "bridge_bridge_junctions": junctions[(risky_prev & risky_next)].copy(),
++    }
++
++
++def write_d4rl_report(path: Path) -> str:
++    lines = [
++        "# Stage24 D4RL Protocol Report",
++        "",
++        "| Question | Stage24 status |",
++        "| --- | --- |",
++        "| Are start/goal definitions aligned with official D4RL AntMaze evaluation? | PENDING: no Stage24 D4RL protocol audit evidence yet. |",
++        "| Is success read from the same source/threshold as official baselines? | PENDING: success source and threshold still require an explicit adapter audit. |",
++        "| Are max episode steps, reset behavior, and goal sampling correct? | PENDING: do not compare D4RL scores until this is verified. |",
++        "| Is the low-level policy trained/evaluated with the expected D4RL observation and goal format? | PENDING: observation/goal adapter compatibility remains unproven. |",
++        "",
++        "Decision: HOLD_D4RL_PROTOCOL_REPAIR. Low D4RL scores must remain diagnostic until these checks are answered.",
++        "",
++    ]
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text("\n".join(lines))
++    return "HOLD_D4RL_PROTOCOL_REPAIR"
++
++
++def _table(df: pd.DataFrame, cols: list[str], max_rows: int = 8) -> str:
++    if len(df) == 0:
++        return "_No rows yet._"
++    keep = [c for c in cols if c in df.columns]
++    view = df[keep].head(max_rows)
++    try:
++        return view.to_markdown(index=False)
++    except Exception:
++        return "```csv\n" + view.to_csv(index=False).strip() + "\n```"
++
++
++def write_decisions(
++    path: Path,
++    gates: dict[str, Any],
++    reach: pd.DataFrame,
++    oracle: pd.DataFrame,
++    drift: pd.DataFrame,
++) -> None:
++    lines = [
++        "# Stage24 Decisions",
++        "",
++        "## Gates",
++        f"- reachability_confirm: {gates['reachability_confirm']}",
++        f"- local_drift_repair: {gates['local_drift_repair']}",
++        f"- oracle_headroom: {gates['oracle_headroom']}",
++        f"- p_bridge: {gates['p_bridge']}",
++        f"- boundary: {gates['boundary']}",
++        f"- integrated: {gates['integrated']}",
++        f"- d4rl_protocol: {gates['d4rl_protocol']}",
++        "",
++        "## Evidence",
++        "",
++        "Reachability confirmation:",
++        _table(
++            reach[reach.get("variant", pd.Series(dtype=str)).astype(str).isin(REACHABILITY_VARIANTS)] if len(reach) else reach,
++            ["env", "seed", "variant", "success", "steps", "success_delta_vs_shortest", "steps_inflation_vs_shortest", "source"],
++        ),
++        "",
++        "Oracle headroom:",
++        _table(
++            oracle,
++            ["env", "seed", "bridge_count", "shorter_path_rate", "oracle_bridge_count", "oracle_shorter_path_rate", "oracle_mean_path_cost_reduction", "safe_local_success_rate", "set_state_rate", "gate"],
++        ),
++        "",
++        "Local drift:",
++        _table(
++            drift,
++            ["env", "seed", "variant", "success", "primary_failure_type", "local_drift_score", "progress_stall_count", "oscillation_score"],
++        ),
++        "",
++        "## Decision",
++    ]
++    if gates["oracle_headroom"] != "PASS_ORACLE_HEADROOM":
++        lines.append("- HOLD integrated BARS-v3: oracle headroom has not passed for any Stage24 env/seed.")
++    if gates["reachability_confirm"] == "PASS_REACHABILITY_CONFIRM":
++        lines.append("- GO narrow reachability-confirmed route for no-fallback medium OGBench.")
++    else:
++        lines.append("- HOLD reachability claim until seeds 1/2 complete and paired gates pass.")
++    if gates["local_drift_repair"] == "PASS_LOCAL_DRIFT_REPAIR":
++        lines.append("- GO local-drift repair route for medium execution failures.")
++    else:
++        lines.append("- HOLD local-drift repair claim until a repair cuts F4 failures by at least 30% without success loss.")
++    lines.extend(
++        [
++            "- STOP using progress_stall_v3/direct-goal fallback as planner evidence.",
++            "- KEEP boundary diagnostic-only unless coverage, supported-gap, and psi gates pass.",
++            "",
++            "## Next commands",
++            "```bash",
++            "bash scripts/stage24_run_reachability_confirm.sh CONFIG=configs/stage24_reachability_confirm.json ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 SEEDS=0,1,2 EPISODES=100 GPUS=${GPUS:-0,1,2,3} MAX_PARALLEL_EVAL=4 WAIT=1",
++            "bash scripts/stage24_run_reachability_confirm.sh CONFIG=configs/stage24_reachability_confirm.json ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 SEEDS=0,1,2 EPISODES=100 VARIANTS=gas_shortest_replan_on_local_drift,gas_shortest_adaptive_subgoal_horizon,gas_reachability_budget_replan_on_local_drift STAGE24_ROOT=runs_stage24_local_drift LOG_ROOT=runs_stage24_local_drift_logs GPUS=${GPUS:-0,1,2,3} MAX_PARALLEL_EVAL=4 WAIT=1",
++            "bash scripts/stage24_oracle_headroom_scan.sh ENVS=scene-play-v0 SEEDS=0 GPUS=${GPUS:-0} EDGE_EXEC_PILOT=1 TOP_K_BRIDGE=4 MAX_SOURCES=200 WAIT=1",
++            "python scripts/stage24_local_drift_diagnostic.py --eval-roots runs_stage24_reachability_confirm,runs_stage24_local_drift --out reports/stage24_local_drift.csv",
++            "python scripts/stage24_analyze.py",
++            "```",
++            "",
++        ]
++    )
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text("\n".join(lines))
++
++
++def _json_safe(value: Any) -> Any:
++    if isinstance(value, dict):
++        return {str(k): _json_safe(v) for k, v in value.items()}
++    if isinstance(value, list):
++        return [_json_safe(v) for v in value]
++    if isinstance(value, tuple):
++        return [_json_safe(v) for v in value]
++    if isinstance(value, (np.integer,)):
++        return int(value)
++    if isinstance(value, (np.floating, float)):
++        v = float(value)
++        return v if np.isfinite(v) else None
++    return value
++
++
++def main() -> None:
++    p = argparse.ArgumentParser()
++    p.add_argument("--reports-root", default="reports")
++    p.add_argument("--stage23-reports-root", default="reports")
++    p.add_argument("--reachability-roots", default="runs_stage24_reachability_confirm")
++    p.add_argument("--local-drift-roots", default="runs_stage24_reachability_confirm,runs_stage24_local_drift")
++    p.add_argument("--oracle-reports-root", default="reports/stage24_oracle_scan_tmp")
++    p.add_argument("--oracle-artifact-root", default="artifacts/stage24")
++    args = p.parse_args()
++
++    reports = Path(args.reports_root)
++    reports.mkdir(parents=True, exist_ok=True)
++    stage23_reports = Path(args.stage23_reports_root)
++    reach_eval = _collect_eval_roots([Path(x) for x in args.reachability_roots.split(",") if x])
++    local_eval = _collect_eval_roots([Path(x) for x in args.local_drift_roots.split(",") if x])
++
++    reach, reach_summary = analyze_reachability(reach_eval, stage23_reports)
++    drift, drift_summary = analyze_local_drift(local_eval, stage23_reports, reports, [Path(x) for x in args.local_drift_roots.split(",") if x])
++    oracle, oracle_summary = analyze_oracle(Path(args.oracle_reports_root))
++    pbridge_summary = analyze_p_bridge(reports, oracle_summary)
++    boundary, boundary_summary = analyze_boundary(reports, stage23_reports, Path(args.oracle_artifact_root))
++    d4rl_gate = write_d4rl_report(reports / "stage24_d4rl_protocol_report.md")
++
++    _write_csv(reach, reports / "stage24_reachability_confirm.csv", REACH_COLUMNS)
++    _write_csv(oracle, reports / "stage24_oracle_headroom.csv", ORACLE_COLUMNS)
++    _write_csv(drift, reports / "stage24_local_drift.csv", DRIFT_COLUMNS)
++    _write_csv(boundary, reports / "stage24_boundary_junction_metrics.csv", BOUNDARY_COLUMNS)
++
++    integrated_gate = (
++        "READY_INTEGRATED_NO_FALLBACK"
++        if oracle_summary["gate"] == "PASS_ORACLE_HEADROOM" and pbridge_summary["gate"] == "PASS_P_BRIDGE"
++        else "SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE"
++    )
++    gates = {
++        "reachability_confirm": reach_summary["gate"],
++        "local_drift_repair": drift_summary["gate"],
++        "oracle_headroom": oracle_summary["gate"],
++        "p_bridge": pbridge_summary["gate"],
++        "boundary": boundary_summary["gate"],
++        "integrated": integrated_gate,
++        "d4rl_protocol": d4rl_gate,
++        "details": {
++            "reachability": reach_summary,
++            "local_drift": drift_summary,
++            "oracle": oracle_summary,
++            "boundary": boundary_summary,
++        },
++    }
++    (reports / "stage24_gate_status.json").write_text(json.dumps(_json_safe(gates), indent=2, sort_keys=True, allow_nan=False) + "\n")
++    write_decisions(reports / "stage24_decisions.md", gates, reach, oracle, drift)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/stage24_local_drift_diagnostic.py b/scripts/stage24_local_drift_diagnostic.py
+new file mode 100755
+index 0000000..de7ed6a
+--- /dev/null
++++ b/scripts/stage24_local_drift_diagnostic.py
+@@ -0,0 +1,220 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++
++import argparse
++import sys
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import pandas as pd
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++from bars.gas_bars.failure_atlas import enrich_failure_atlas
++
++
++OUT_COLUMNS = [
++    "env",
++    "seed",
++    "variant",
++    "fallback_mode",
++    "task_id",
++    "episode_id",
++    "success",
++    "primary_failure_type",
++    "first_failure_step",
++    "first_failed_subgoal_idx",
++    "subgoal_reach_rate",
++    "edge_fail_position",
++    "initial_goal_dist_phi",
++    "best_goal_dist_phi",
++    "final_goal_dist_phi",
++    "mean_plan_edges",
++    "last_plan_edges",
++    "replans",
++    "local_drift_score",
++    "progress_stall_count",
++    "oscillation_score",
++]
++
++
++def _read_csv(path: Path) -> pd.DataFrame:
++    try:
++        return pd.read_csv(path) if path.exists() and path.stat().st_size else pd.DataFrame()
++    except Exception:
++        return pd.DataFrame()
++
++
++def _read_evals(roots: list[Path]) -> pd.DataFrame:
++    frames = []
++    for root in roots:
++        if root.is_file():
++            df = _read_csv(root)
++            if len(df):
++                df["eval_path"] = str(root)
++                frames.append(df)
++            continue
++        if not root.exists():
++            continue
++        for path in root.rglob("eval.csv"):
++            df = _read_csv(path)
++            if len(df) == 0 or not {"env", "seed", "success"}.issubset(df.columns):
++                continue
++            df["eval_path"] = str(path)
++            if "fallback_mode" not in df:
++                for part in path.parts:
++                    if part.startswith("fallback_"):
++                        df["fallback_mode"] = part.replace("fallback_", "")
++                        break
++            frames.append(df)
++    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
++
++
++def _num(row: pd.Series, key: str, default: float = 0.0) -> float:
++    try:
++        value = row.get(key, default)
++        if value == "" or pd.isna(value):
++            return default
++        return float(value)
++    except Exception:
++        return default
++
++
++def _trace_metrics(path: Any, window: int, stall_frac: float, drift_threshold: float) -> dict[str, float | int | str]:
++    if path is None or (isinstance(path, float) and pd.isna(path)):
++        return {}
++    trace_path = Path(str(path))
++    if not trace_path.exists():
++        return {}
++    rows = []
++    try:
++        for line in trace_path.read_text().splitlines():
++            if not line.strip():
++                continue
++            import json
++
++            rows.append(json.loads(line))
++    except Exception:
++        return {}
++    target = np.asarray([float(r.get("target_dist_phi", np.nan)) for r in rows], dtype=np.float64)
++    target = target[np.isfinite(target)]
++    if target.size < 2:
++        return {}
++    w = int(max(2, min(window, target.size)))
++    drift_scores = []
++    stall_count = 0
++    first_failure_step = ""
++    for start in range(0, target.size - w + 1):
++        seg = target[start : start + w]
++        denom = max(float(seg[0]), 1e-6)
++        drift = float((seg[-1] - seg[0]) / denom)
++        progress = float((seg[0] - np.min(seg)) / denom)
++        drift_scores.append(drift)
++        is_stall = progress < stall_frac
++        if is_stall:
++            stall_count += 1
++        if first_failure_step == "" and (drift > drift_threshold or is_stall):
++            first_failure_step = int(start + w - 1)
++    deltas = np.diff(target)
++    path_motion = float(np.sum(np.abs(deltas)))
++    net_improvement = float(max(target[0] - target[-1], 0.0))
++    oscillation = float(max(path_motion - net_improvement, 0.0) / max(path_motion, 1e-6))
++    return {
++        "local_drift_score": float(max(0.0, max(drift_scores) if drift_scores else 0.0)),
++        "progress_stall_count": int(stall_count),
++        "oscillation_score": oscillation,
++        "first_failure_step": first_failure_step,
++    }
++
++
++def _merge_atlas(eval_df: pd.DataFrame, atlas: pd.DataFrame) -> pd.DataFrame:
++    if len(eval_df) == 0:
++        return atlas.copy()
++    df = eval_df.copy()
++    if "primary_failure_type" in df:
++        return df
++    if len(atlas) and "primary_failure_type" in atlas:
++        keys = [c for c in ["env", "seed", "variant", "fallback_mode", "task_id", "episode_id"] if c in df.columns and c in atlas.columns]
++        if keys:
++            cols = keys + [c for c in ["primary_failure_type", "failure_labels"] if c in atlas.columns]
++            return df.merge(atlas[cols].drop_duplicates(keys), on=keys, how="left")
++    try:
++        return enrich_failure_atlas(df)
++    except Exception:
++        df["primary_failure_type"] = np.where(pd.to_numeric(df.get("success", 0), errors="coerce").fillna(0) >= 0.5, "SUCCESS", "UNCLASSIFIED_FAILURE")
++        return df
++
++
++def build_drift_table(
++    eval_df: pd.DataFrame,
++    atlas: pd.DataFrame,
++    *,
++    window: int = 16,
++    stall_frac: float = 0.03,
++    drift_threshold: float = 0.10,
++) -> pd.DataFrame:
++    df = _merge_atlas(eval_df, atlas)
++    if len(df) == 0:
++        return pd.DataFrame(columns=OUT_COLUMNS)
++    rows = []
++    for _, row in df.iterrows():
++        success = int(_num(row, "success", 0.0) >= 0.5)
++        trace = _trace_metrics(row.get("debug_trace_path", ""), window, stall_frac, drift_threshold)
++        local_drift = max(_num(row, "local_drift_score", 0.0), float(trace.get("local_drift_score", 0.0) or 0.0))
++        stall_count = max(int(_num(row, "progress_stall_count", 0.0)), int(trace.get("progress_stall_count", 0) or 0))
++        oscillation = max(_num(row, "oscillation_score", 0.0), float(trace.get("oscillation_score", 0.0) or 0.0))
++        first_failure_step = trace.get("first_failure_step", "")
++        if first_failure_step == "" and not success:
++            first_failure_step = int(_num(row, "steps", 0.0))
++        first_failed_subgoal_idx = ""
++        if not success:
++            first_failed_subgoal_idx = int(_num(row, "subgoals_reached", 0.0)) + 1
++        rows.append(
++            {
++                "env": row.get("env", ""),
++                "seed": row.get("seed", ""),
++                "variant": row.get("variant", ""),
++                "fallback_mode": row.get("fallback_mode", ""),
++                "task_id": row.get("task_id", ""),
++                "episode_id": row.get("episode_id", ""),
++                "success": success,
++                "primary_failure_type": row.get("primary_failure_type", "SUCCESS" if success else "UNCLASSIFIED_FAILURE"),
++                "first_failure_step": first_failure_step,
++                "first_failed_subgoal_idx": first_failed_subgoal_idx,
++                "subgoal_reach_rate": _num(row, "subgoal_reach_rate", 0.0),
++                "edge_fail_position": row.get("edge_fail_position", ""),
++                "initial_goal_dist_phi": _num(row, "initial_goal_dist_phi", np.nan),
++                "best_goal_dist_phi": _num(row, "best_goal_dist_phi", np.nan),
++                "final_goal_dist_phi": _num(row, "final_goal_dist_phi", np.nan),
++                "mean_plan_edges": _num(row, "mean_plan_edges", 0.0),
++                "last_plan_edges": _num(row, "last_plan_edges", 0.0),
++                "replans": _num(row, "replans", 0.0),
++                "local_drift_score": local_drift,
++                "progress_stall_count": stall_count,
++                "oscillation_score": oscillation,
++            }
++        )
++    return pd.DataFrame(rows, columns=OUT_COLUMNS)
++
++
++def main() -> None:
++    p = argparse.ArgumentParser()
++    p.add_argument("--eval-roots", default="runs_stage24_reachability_confirm,runs_stage24_local_drift,runs_stage23_repro")
++    p.add_argument("--failure-atlas", default="reports/stage23_failure_atlas.csv")
++    p.add_argument("--out", default="reports/stage24_local_drift.csv")
++    p.add_argument("--window", type=int, default=16)
++    p.add_argument("--stall-frac", type=float, default=0.03)
++    p.add_argument("--drift-threshold", type=float, default=0.10)
++    args = p.parse_args()
++
++    eval_df = _read_evals([Path(x) for x in args.eval_roots.split(",") if x])
++    atlas = _read_csv(Path(args.failure_atlas))
++    out = build_drift_table(eval_df, atlas, window=args.window, stall_frac=args.stall_frac, drift_threshold=args.drift_threshold)
++    path = Path(args.out)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    out.to_csv(path, index=False)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/stage24_oracle_headroom_scan.sh b/scripts/stage24_oracle_headroom_scan.sh
+new file mode 100755
+index 0000000..4ae30eb
+--- /dev/null
++++ b/scripts/stage24_oracle_headroom_scan.sh
+@@ -0,0 +1,73 @@
++#!/usr/bin/env bash
++set -u
++for kv in "$@"; do
++  case "$kv" in
++    *=*) export "$kv" ;;
++  esac
++done
++
++CONFIG="${CONFIG:-configs/stage24_oracle_scan.json}"
++ENVS="${ENVS:-scene-play-v0}"
++SEEDS="${SEEDS:-0}"
++GPUS="${GPUS:-0}"
++GPU_FIRST="${GPUS%%,*}"
++WAIT="${WAIT:-1}"
++EDGE_EXEC_PILOT="${EDGE_EXEC_PILOT:-1}"
++TOP_K_BRIDGE="${TOP_K_BRIDGE:-4}"
++MAX_SOURCES="${MAX_SOURCES:-200}"
++GAS_ARTIFACT_ROOT="${GAS_ARTIFACT_ROOT:-artifacts/gas}"
++ARTIFACT_ROOT="${ARTIFACT_ROOT:-artifacts/stage24}"
++GAS_REPO_PATH="${GAS_REPO_PATH:-external_src/GAS}"
++REPORTS_ROOT="${REPORTS_ROOT:-reports}"
++ORACLE_REPORTS_ROOT="${ORACLE_REPORTS_ROOT:-reports/stage24_oracle_scan_tmp}"
++PREFER_PRETRAINED="${PREFER_PRETRAINED:-1}"
++TRAIN_IF_MISSING="${TRAIN_IF_MISSING:-1}"
++QUICK="${QUICK:-0}"
++export WANDB_MODE="${WANDB_MODE:-disabled}"
++export WANDB_DISABLED="${WANDB_DISABLED:-true}"
++export BARS_USE_TENSORBOARD="${BARS_USE_TENSORBOARD:-1}"
++export TENSORBOARD_LOGDIR="${TENSORBOARD_LOGDIR:-runs_stage24_tensorboard}"
++export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
++
++mkdir -p "$REPORTS_ROOT" "$ORACLE_REPORTS_ROOT" "$ARTIFACT_ROOT"
++overall=0
++
++echo "[stage24_oracle] prepare/load official GAS artifacts"
++ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_prepare_oracle" bash scripts/stage22_prepare_gas_backbone.sh || overall=1
++
++echo "[stage24_oracle] build bridge graphs G0/G1/G2/G3"
++python scripts/stage23_build_bridge_graphs.py \
++  --envs "$ENVS" --seeds "$SEEDS" \
++  --gas-artifact-root "$GAS_ARTIFACT_ROOT" \
++  --artifact-root "$ARTIFACT_ROOT" \
++  --reports-root "$ORACLE_REPORTS_ROOT" \
++  --top-k-bridge "$TOP_K_BRIDGE" \
++  --max-sources "$MAX_SOURCES" || overall=1
++
++echo "[stage24_oracle] run edge execution pilots"
++python scripts/stage23_edge_execution.py \
++  --envs "$ENVS" --seeds "$SEEDS" --graph-id G3 \
++  --gas-artifact-root "$GAS_ARTIFACT_ROOT" \
++  --artifact-root "$ARTIFACT_ROOT" \
++  --gas-repo-path "$GAS_REPO_PATH" \
++  --reports-root "$ORACLE_REPORTS_ROOT" \
++  --gpu "$GPU_FIRST" \
++  --pilot "$EDGE_EXEC_PILOT" \
++  --prefer-pretrained "$PREFER_PRETRAINED" \
++  --train-if-missing "$TRAIN_IF_MISSING" || overall=1
++
++echo "[stage24_oracle] build oracle graph from rollout-success bridge labels"
++python scripts/stage23_oracle_bridge.py \
++  --envs "$ENVS" --seeds "$SEEDS" --graph-id G3 \
++  --artifact-root "$ARTIFACT_ROOT" \
++  --reports-root "$ORACLE_REPORTS_ROOT" || overall=1
++
++python scripts/stage24_analyze.py \
++  --reports-root "$REPORTS_ROOT" \
++  --oracle-reports-root "$ORACLE_REPORTS_ROOT" \
++  --oracle-artifact-root "$ARTIFACT_ROOT" || true
++
++if [[ "$WAIT" == "1" ]]; then
++  echo "[stage24_oracle] reports written to $REPORTS_ROOT/stage24_oracle_headroom.csv"
++fi
++exit "$overall"
+diff --git a/scripts/stage24_run_reachability_confirm.sh b/scripts/stage24_run_reachability_confirm.sh
+new file mode 100755
+index 0000000..cb98e95
+--- /dev/null
++++ b/scripts/stage24_run_reachability_confirm.sh
+@@ -0,0 +1,172 @@
++#!/usr/bin/env bash
++set -u
++for kv in "$@"; do
++  case "$kv" in
++    *=*) export "$kv" ;;
++  esac
++done
++
++CONFIG="${CONFIG:-configs/stage24_reachability_confirm.json}"
++GPUS="${GPUS:-0}"
++WAIT="${WAIT:-1}"
++GAS_ARTIFACT_ROOT="${GAS_ARTIFACT_ROOT:-artifacts/gas}"
++ARTIFACT_ROOT="${ARTIFACT_ROOT:-artifacts/stage24}"
++GAS_REPO_PATH="${GAS_REPO_PATH:-external_src/GAS}"
++STAGE24_ROOT="${STAGE24_ROOT:-runs_stage24_reachability_confirm}"
++LOG_ROOT="${LOG_ROOT:-runs_stage24_reachability_confirm_logs}"
++PREFER_PRETRAINED="${PREFER_PRETRAINED:-1}"
++TRAIN_IF_MISSING="${TRAIN_IF_MISSING:-1}"
++QUICK="${QUICK:-0}"
++EVAL_ON_CPU="${EVAL_ON_CPU:-0}"
++REQUIRE_RECOMMENDED_BUDGET="${REQUIRE_RECOMMENDED_BUDGET:-1}"
++MAX_PLAN_EDGES="${MAX_PLAN_EDGES:-20}"
++INCLUDE_REPAIR="${INCLUDE_REPAIR:-0}"
++DEBUG_JSONL="${DEBUG_JSONL:-1}"
++REPORTS_ROOT="${REPORTS_ROOT:-reports}"
++export WANDB_MODE="${WANDB_MODE:-disabled}"
++export WANDB_DISABLED="${WANDB_DISABLED:-true}"
++export BARS_USE_TENSORBOARD="${BARS_USE_TENSORBOARD:-1}"
++export TENSORBOARD_LOGDIR="${TENSORBOARD_LOGDIR:-runs_stage24_tensorboard}"
++export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
++
++mkdir -p "$LOG_ROOT" "$STAGE24_ROOT" "$REPORTS_ROOT"
++FAILED="$LOG_ROOT/failed_jobs.csv"
++if [[ ! -f "$FAILED" ]]; then
++  echo "env,seed,variant,budget,fallback,log,error_class" > "$FAILED"
++fi
++
++classify_error() {
++  local log="$1"
++  if grep -Eiq "ModuleNotFoundError|ImportError|No module named" "$log"; then echo "dependency/import";
++  elif grep -Eiq "CUDA|cudnn|XLA|GPU|jaxlib|torch" "$log"; then echo "CUDA/JAX/MuJoCo";
++  elif grep -Eiq "MuJoCo|EGL|GLFW|mujoco" "$log"; then echo "CUDA/JAX/MuJoCo";
++  elif grep -Eiq "checkpoint|params_|keygraph|artifact|pickle" "$log"; then echo "checkpoint/artifact missing";
++  elif grep -Eiq "goal|task_id|reset" "$log"; then echo "goal protocol";
++  elif grep -Eiq "planner|budget_infeasible|no_start_connection" "$log"; then echo "planner infeasible";
++  elif grep -Eiq "actor|sample_actions|skill" "$log"; then echo "GAS adapter mismatch";
++  else echo "unknown"; fi
++}
++
++eval "$(python - "$CONFIG" "$INCLUDE_REPAIR" <<'PY'
++import json, sys
++c=json.load(open(sys.argv[1]))
++include_repair = sys.argv[2] == "1"
++variants = list(c.get("variants", []))
++if include_repair:
++    variants.extend(c.get("repair_variants", []))
++print("ENVS_CONF="+",".join(c.get("envs", [])))
++print("SEEDS_CONF="+",".join(map(str,c.get("seeds", [0]))))
++print("EPISODES_CONF="+str(c.get("episodes",100)))
++print("MAX_PARALLEL_CONF="+str(c.get("max_parallel_eval",4)))
++print("VARIANTS_CONF="+",".join(variants))
++print("FALLBACK_CONF="+",".join(c.get("fallback_modes", ["none"])))
++PY
++)"
++
++ENVS="${ENVS:-$ENVS_CONF}"
++SEEDS="${SEEDS:-$SEEDS_CONF}"
++EPISODES="${EPISODES:-$EPISODES_CONF}"
++MAX_PARALLEL_EVAL="${MAX_PARALLEL_EVAL:-$MAX_PARALLEL_CONF}"
++VARIANTS="${VARIANTS:-$VARIANTS_CONF}"
++FALLBACK_MODES="${FALLBACK_MODES:-$FALLBACK_CONF}"
++
++ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_prepare" bash scripts/stage22_prepare_gas_backbone.sh
++ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" GAS_ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ARTIFACT_ROOT="$ARTIFACT_ROOT" GAS_REPO_PATH="$GAS_REPO_PATH" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_reachability_train" bash scripts/stage22_train_reachability.sh
++
++jobs_tsv="$LOG_ROOT/jobs.tsv"
++python - "$CONFIG" "$ENVS" "$SEEDS" "$EPISODES" "$VARIANTS" "$FALLBACK_MODES" "$REQUIRE_RECOMMENDED_BUDGET" > "$jobs_tsv" <<'PY'
++import json, sys
++from pathlib import Path
++
++config, envs_s, seeds_s, episodes_s, variants_s, fallback_s, require_s = sys.argv[1:8]
++c=json.load(open(config))
++envs = [x for x in envs_s.split(",") if x]
++seeds = [int(x) for x in seeds_s.split(",") if x]
++episodes = int(episodes_s)
++variants = [x for x in variants_s.split(",") if x]
++fallback_modes = [x for x in fallback_s.split(",") if x]
++require_recommended = require_s == "1"
++rec_path=Path(c.get("budget_source","reports/stage22r_recommended_budgets.json"))
++rec=json.load(open(rec_path)) if rec_path.exists() else {"envs":{}}
++for env in envs:
++  for seed in seeds:
++    key=f"{env}/seed{seed}"
++    info=rec.get("envs",{}).get(key,{})
++    budget=info.get("recommended_reachability_budget")
++    if budget is None:
++      env_infos=[v for k,v in rec.get("envs",{}).items() if k.startswith(f"{env}/")]
++      for cand in env_infos:
++        if cand.get("recommended_reachability_budget") is not None:
++          budget=cand.get("recommended_reachability_budget")
++          break
++    for variant in variants:
++      is_reach = "reachability" in variant
++      if budget is None and is_reach:
++        if require_recommended:
++          continue
++        budget = 3.0
++      variant_budget = budget if budget is not None else 999.0
++      for fallback in fallback_modes:
++        if fallback != "none":
++          continue
++        print("\t".join(map(str,[env,seed,variant,variant_budget,fallback,episodes])))
++PY
++
++IFS=',' read -r -a GPU_ARR <<< "$GPUS"
++idx=0
++active=0
++overall=0
++while IFS=$'\t' read -r env seed variant budget fallback episodes; do
++  gpu="${GPU_ARR[$((idx % ${#GPU_ARR[@]}))]}"
++  idx=$((idx + 1))
++  run_dir="$LOG_ROOT/$env/seed$seed/$variant/budget$budget/fallback_$fallback"
++  out_dir="$STAGE24_ROOT/$env/seed$seed/$variant/budget$budget/fallback_$fallback"
++  mkdir -p "$run_dir" "$out_dir"
++  log="$run_dir/evaluate.log"
++  if [[ -f "$out_dir/eval.csv" ]]; then
++    count="$(($(wc -l < "$out_dir/eval.csv") - 1))"
++    if [[ "$count" -ge "$episodes" ]]; then
++      echo "{\"status\":\"completed\",\"env\":\"$env\",\"seed\":$seed,\"variant\":\"$variant\",\"budget\":\"$budget\",\"fallback\":\"$fallback\",\"skipped\":true}" > "$run_dir/status.json"
++      continue
++    fi
++  fi
++  (
++    echo "{\"status\":\"running\",\"env\":\"$env\",\"seed\":$seed,\"variant\":\"$variant\",\"budget\":\"$budget\",\"fallback\":\"$fallback\",\"gpu\":\"$gpu\"}" > "$run_dir/status.json"
++    python -m bars.gas_bars.evaluate \
++      --env "$env" --seed "$seed" --task-ids all --episodes "$episodes" \
++      --variant "$variant" --budget "$budget" \
++      --gas-artifact-root "$GAS_ARTIFACT_ROOT" --artifact-root "$ARTIFACT_ROOT" --stage22-root "$STAGE24_ROOT" \
++      --gas-repo-path "$GAS_REPO_PATH" --gpu "$gpu" --eval-on-cpu "$EVAL_ON_CPU" \
++      --fallback-mode "$fallback" --prefer-pretrained "$PREFER_PRETRAINED" --train-if-missing "$TRAIN_IF_MISSING" --quick "$QUICK" \
++      --max-plan-edges "$MAX_PLAN_EDGES" --debug-jsonl "$DEBUG_JSONL" \
++      > "$log" 2>&1
++    rc=$?
++    if [[ $rc -eq 0 ]]; then
++      echo "{\"status\":\"completed\",\"env\":\"$env\",\"seed\":$seed,\"variant\":\"$variant\",\"budget\":\"$budget\",\"fallback\":\"$fallback\",\"gpu\":\"$gpu\"}" > "$run_dir/status.json"
++    else
++      err="$(classify_error "$log")"
++      echo "$env,$seed,$variant,$budget,$fallback,$log,$err" >> "$FAILED"
++      echo "{\"status\":\"failed\",\"env\":\"$env\",\"seed\":$seed,\"variant\":\"$variant\",\"budget\":\"$budget\",\"fallback\":\"$fallback\",\"gpu\":\"$gpu\",\"error_class\":\"$err\"}" > "$run_dir/status.json"
++    fi
++    exit "$rc"
++  ) &
++  active=$((active + 1))
++  if [[ "$active" -ge "$MAX_PARALLEL_EVAL" ]]; then
++    wait -n || overall=1
++    active=$((active - 1))
++    python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" || true
++  fi
++done < "$jobs_tsv"
++
++while [[ "$active" -gt 0 ]]; do
++  wait -n || overall=1
++  active=$((active - 1))
++done
++
++python scripts/stage24_local_drift_diagnostic.py --eval-roots "$STAGE24_ROOT" --out "$REPORTS_ROOT/stage24_local_drift.csv" || true
++python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" --reports-root "$REPORTS_ROOT" || true
++
++if [[ "$WAIT" == "1" ]]; then
++  echo "[stage24_reachability] reports written under $REPORTS_ROOT; root=$STAGE24_ROOT"
++fi
++exit "$overall"
+diff --git a/reports/stage24_execution_status.md b/reports/stage24_execution_status.md
+new file mode 100644
+index 0000000..c8172cd
+--- /dev/null
++++ b/reports/stage24_execution_status.md
+@@ -0,0 +1,95 @@
++# Stage24 Execution Status
++
++Generated: 2026-05-19 17:40 CST
++
++## Summary
++
++Stage24 was executed as far as the available artifacts allow.
++
++- Oracle-headroom scan on `scene-play-v0/seed0`: completed.
++- Reachability confirmation on medium OGBench seeds 0/1/2: blocked by missing GAS artifacts.
++- Local-drift repair variants on medium OGBench seeds 0/1/2: blocked by the same missing GAS artifacts.
++- Integrated BARS-v3: correctly skipped because oracle headroom did not pass and p_bridge is gated behind oracle headroom.
++
++## Oracle Scan Result
++
++`scene-play-v0/seed0` completed graph construction, edge execution pilot, oracle graph construction, and Stage24 gate analysis.
++
++Key row from `reports/stage24_oracle_headroom.csv`:
++
++| env | seed | bridge_count | shorter_path_rate | oracle_bridge_count | oracle_shorter_path_rate | oracle_mean_path_cost_reduction | safe_local_success_rate | risky_bridge_success_rate | set_state_rate | gate |
++| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
++| scene-play-v0 | 0 | 812 | 0.041 | 274 | 0.017 | 0.0915 | 1.0 | 0.9013 | 0.0 | NO_ORACLE_UPPER_BOUND |
++
++Interpretation: the non-oracle G3 graph has weak path-level improvement, and the oracle-success bridge graph does not create enough path-level headroom. Because `set_state_rate=0.0`, edge labels are not strong reset labels for this family. The Stage24 oracle gate remains `NO_ORACLE_UPPER_BOUND`.
++
++## Medium Reachability Confirmation
++
++The required Stage24 reachability command was run in no-training/protocol-preserving mode:
++
++```bash
++PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD \
++bash scripts/stage24_run_reachability_confirm.sh \
++  CONFIG=configs/stage24_reachability_confirm.json \
++  ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 \
++  SEEDS=0,1,2 EPISODES=100 GPUS=1,2,3,4 \
++  MAX_PARALLEL_EVAL=4 WAIT=1 \
++  PREFER_PRETRAINED=1 TRAIN_IF_MISSING=0 QUICK=0 EVAL_ON_CPU=1
++```
++
++Result:
++
++- `runs_stage24_reachability_confirm_logs/failed_jobs.csv`: 18 failed eval jobs.
++- Failure class: `checkpoint/artifact missing`.
++- Direct evaluator error: `RuntimeError: Missing GAS keygraph`.
++
++Artifact check:
++
++- Local `artifacts/gas` has no `antmaze-medium-navigate-v0` or `antmaze-medium-stitch-v0` GAS keygraph/policy.
++- Official HF probe found no medium `keygraph.pkl`, `params_1000000.pkl`, or `params_500000.pkl` under the tested GAS paths.
++
++Decision: do not claim PASS_REACHABILITY_CONFIRM. Current reachability rows in `reports/stage24_reachability_confirm.csv` are Stage23 seed0 prior evidence only.
++
++## Local Drift Repair
++
++The Stage24 repair variants were run in the same no-training/protocol-preserving mode:
++
++```bash
++PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD \
++bash scripts/stage24_run_reachability_confirm.sh \
++  CONFIG=configs/stage24_reachability_confirm.json \
++  ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 \
++  SEEDS=0,1,2 EPISODES=100 \
++  VARIANTS=gas_shortest_replan_on_local_drift,gas_shortest_adaptive_subgoal_horizon,gas_reachability_budget_replan_on_local_drift \
++  STAGE24_ROOT=runs_stage24_local_drift \
++  LOG_ROOT=runs_stage24_local_drift_logs \
++  GPUS=1,2,3,4 MAX_PARALLEL_EVAL=4 WAIT=1 \
++  PREFER_PRETRAINED=1 TRAIN_IF_MISSING=0 QUICK=0 EVAL_ON_CPU=1
++```
++
++Result:
++
++- `runs_stage24_local_drift_logs/failed_jobs.csv`: 18 failed eval jobs.
++- Failure class: `checkpoint/artifact missing`.
++- No repair eval rows were generated, so `PASS_LOCAL_DRIFT_REPAIR` cannot be evaluated.
++
++## Final Gates
++
++From `reports/stage24_gate_status.json`:
++
++- reachability_confirm: HOLD_REACHABILITY_WEAK_EFFECT
++- local_drift_repair: HOLD_LOCAL_DRIFT_REPAIR
++- oracle_headroom: NO_ORACLE_UPPER_BOUND
++- p_bridge: SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM
++- boundary: HOLD_BOUNDARY_DIAGNOSTIC_ONLY
++- integrated: SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE
++- d4rl_protocol: HOLD_D4RL_PROTOCOL_REPAIR
++
++## Next Required Input
++
++To complete medium reachability and local-drift repair experimentally, provide or train protocol-aligned GAS artifacts for:
++
++- `antmaze-medium-navigate-v0/seed0`
++- `antmaze-medium-stitch-v0/seed0`
++
++With `PREFER_PRETRAINED=1`, the current loader can copy seed0 artifacts to seeds 1/2 for same-backbone seed-level evaluation. Without those artifacts, Stage24 cannot honestly complete the medium confirmation or repair gates.

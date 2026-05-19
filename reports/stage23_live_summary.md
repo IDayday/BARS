@@ -1,11 +1,21 @@
 # Stage23 Live Summary
 
-Updated: 2026-05-19 15:16:06
+Updated: 2026-05-19 16:10:58
 
 ## Jobs
-- completed: 12
+- completed: 2
+- recovered: 1
+
+## Gates
+- repro: GO_REPRO_REPAIRED
+- bridge_existence: PASS_BRIDGE_EXISTENCE
+- oracle: NO_ORACLE_UPPER_BOUND
+- p_bridge: PARTIAL_P_BRIDGE_HOLD_FP_REDUCTION
+- boundary: HOLD_BOUNDARY
+- integrated: unknown
 
 ## Eval
+Cached summary from `reports/stage23_live_grouped.csv`; raw run directories are not present in this checkout.
 ```csv
 env,seed,variant,budget,fallback_mode,episodes,success
 antmaze-medium-navigate-v0,0,gas_reachability_budget_calibrated,4.277040201695186,none,100,0.92
@@ -24,10 +34,10 @@ antmaze-medium-stitch-v0,0,gas_shortest,3.0509568029941887,progress_stall_v3,100
 
 ## GPU
 ```
-0, 0, 1, 24576
-1, 69, 1544, 24576
-2, 0, 1, 24576
-3, 0, 1, 24576
-4, 89, 1544, 24576
-5, 0, 1, 24576
+0, 0, 0, 24576
+1, 0, 0, 24576
+2, 0, 0, 24576
+3, 0, 0, 24576
+4, 0, 0, 24576
+5, 0, 0, 24576
 ```

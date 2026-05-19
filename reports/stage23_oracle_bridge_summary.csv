@@ -1,4 +1,10 @@
 env,seed,graph_id,node_count,edge_count,bridge_count,compared_paths,no_path_g0,no_path_graph,mean_path_cost_reduction,median_path_cost_reduction,shorter_path_rate,bridge_usage_rate
+antmaze-giant-navigate-v0,0,G0,923,6608,0,1000,0,0,0.0,0.0,0.0,0.0
+antmaze-giant-navigate-v0,0,G3,923,12914,6306,1000,0,0,10.6426924793479,9.274191887967149,0.986,0.986
+antmaze-giant-navigate-v0,0,G_oracle,923,6619,11,1000,0,0,0.0016052114048783466,0.0,0.005,0.005
+antmaze-giant-stitch-v0,0,G0,1937,31986,0,1000,0,0,0.0,0.0,0.0,0.0
+antmaze-giant-stitch-v0,0,G3,1937,43052,11066,1000,0,0,12.747188004191027,5.8131488521374735,0.975,0.975
+antmaze-giant-stitch-v0,0,G_oracle,1937,32020,34,1000,0,0,0.0026380278536111,0.0,0.007,0.007
 antmaze-large-explore-v0,0,G0,2514,34616,0,1000,0,0,0.0,0.0,0.0,0.0
 antmaze-large-explore-v0,0,G3,2514,47693,13077,1000,0,0,5.110724902629852,3.9851980209350586,0.966,0.966
-antmaze-large-explore-v0,0,G_oracle,2514,34793,177,1000,0,0,0.02293892002105713,0.0,0.089,0.089
+antmaze-large-explore-v0,0,G_oracle,2514,34793,177,1000,0,0,0.0229389200210571,0.0,0.089,0.089

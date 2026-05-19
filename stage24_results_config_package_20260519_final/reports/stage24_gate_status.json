@@ -1,0 +1,38 @@
+{
+  "boundary": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY",
+  "d4rl_protocol": "HOLD_D4RL_PROTOCOL_REPAIR",
+  "details": {
+    "boundary": {
+      "coverage": 0.0002707756877279,
+      "gate": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY",
+      "psi_AUROC": 0.95,
+      "supported_gap": null
+    },
+    "local_drift": {
+      "best_reduction": null,
+      "best_variant": "",
+      "gate": "HOLD_LOCAL_DRIFT_REPAIR"
+    },
+    "oracle": {
+      "gate": "NO_ORACLE_UPPER_BOUND",
+      "pass_pairs": []
+    },
+    "reachability": {
+      "budget_reject_delta": 0.0,
+      "completed_cells": 2,
+      "gate": "HOLD_REACHABILITY_WEAK_EFFECT",
+      "losses": 0,
+      "mean_delta": 0.030000000000000027,
+      "mean_steps_inflation": -0.0771222613623093,
+      "no_path_delta": 0.0,
+      "primary_variant": "gas_reachability_soft_calibrated",
+      "ties": 0,
+      "wins": 2
+    }
+  },
+  "integrated": "SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE",
+  "local_drift_repair": "HOLD_LOCAL_DRIFT_REPAIR",
+  "oracle_headroom": "NO_ORACLE_UPPER_BOUND",
+  "p_bridge": "SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM",
+  "reachability_confirm": "HOLD_REACHABILITY_WEAK_EFFECT"
+}

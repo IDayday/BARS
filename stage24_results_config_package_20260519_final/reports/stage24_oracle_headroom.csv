@@ -1,0 +1,2 @@
+env,seed,graph_id,node_count,edge_count,bridge_count,shorter_path_rate,bridge_usage_rate,mean_path_cost_reduction,oracle_bridge_count,oracle_bridge_fraction,oracle_shorter_path_rate,oracle_bridge_usage_rate,oracle_mean_path_cost_reduction,safe_local_success_rate,risky_bridge_success_rate,gas_cross_success_rate,set_state_rate,gate
+scene-play-v0,0,G3,736,63166,812,0.041,0.041,0.287832411534956,274,0.3374384236453202,0.017,0.017,0.0915071499509366,1.0,0.9013157894736841,,0.0,NO_ORACLE_UPPER_BOUND

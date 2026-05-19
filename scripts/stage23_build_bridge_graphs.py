@@ -49,7 +49,19 @@ def main() -> None:
     df = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
     reports = Path(args.reports_root)
     reports.mkdir(parents=True, exist_ok=True)
-    df.to_csv(reports / "stage23_bridge_graph_summary.csv", index=False)
+    summary_csv = reports / "stage23_bridge_graph_summary.csv"
+    if summary_csv.exists() and len(df):
+        try:
+            old = pd.read_csv(summary_csv)
+            key_cols = ["env", "seed", "graph_id"]
+            old_key = old[key_cols].astype(str).agg("\t".join, axis=1) if set(key_cols).issubset(old.columns) else pd.Series(dtype=str)
+            new_key = df[key_cols].astype(str).agg("\t".join, axis=1)
+            old = old.loc[~old_key.isin(set(new_key))].copy()
+            df = pd.concat([old, df], ignore_index=True)
+            df = df.sort_values(key_cols).reset_index(drop=True)
+        except Exception:
+            pass
+    df.to_csv(summary_csv, index=False)
     lines = ["# Stage23 Bridge Graph Summary", ""]
     if len(df):
         try:

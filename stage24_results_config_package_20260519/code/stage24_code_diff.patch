@@ -1,0 +1,207 @@
+diff --git a/bars/gas_bars/evaluate.py b/bars/gas_bars/evaluate.py
+index 481952d..6e72857 100644
+--- a/bars/gas_bars/evaluate.py
++++ b/bars/gas_bars/evaluate.py
+@@ -229,6 +229,45 @@ def _should_trigger_progress_stall_v3(
+     return False, ""
+ 
+ 
++def _local_drift_metrics(
++    debug_rows: list[dict[str, Any]],
++    window: int = 16,
++    stall_frac: float = 0.03,
++) -> dict[str, float | int]:
++    target = np.asarray([float(r.get("target_dist_phi", np.nan)) for r in debug_rows], dtype=np.float64)
++    target = target[np.isfinite(target)]
++    if target.size < 2:
++        return {"local_drift_score": 0.0, "progress_stall_count": 0, "oscillation_score": 0.0}
++    w = int(max(2, min(window, target.size)))
++    drift_scores = []
++    stall_count = 0
++    for start in range(0, target.size - w + 1):
++        seg = target[start : start + w]
++        denom = max(float(seg[0]), 1e-6)
++        drift_scores.append(float((seg[-1] - seg[0]) / denom))
++        progress = float((seg[0] - np.min(seg)) / denom)
++        if progress < stall_frac:
++            stall_count += 1
++    deltas = np.diff(target)
++    path_motion = float(np.sum(np.abs(deltas)))
++    net_improvement = float(max(target[0] - target[-1], 0.0))
++    oscillation = float(max(path_motion - net_improvement, 0.0) / max(path_motion, 1e-6))
++    return {
++        "local_drift_score": float(max(0.0, max(drift_scores) if drift_scores else 0.0)),
++        "progress_stall_count": int(stall_count),
++        "oscillation_score": oscillation,
++    }
++
++
++def _write_debug_trace(path: Path, rows: list[dict[str, Any]], extra: dict[str, Any]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with open(path, "w") as f:
++        for row in rows:
++            out = dict(extra)
++            out.update(row)
++            f.write(json.dumps(out, default=str) + "\n")
++
++
+ def run_episode(
+     backbone: GASBackbone,
+     env: Any,
+@@ -252,6 +291,10 @@ def run_episode(
+     progress_frac: float = 0.40,
+     close_goal_phi_dist: float = 2.0,
+     stall_k: int = 3,
++    debug_trace_path: Optional[Path] = None,
++    local_drift_window: int = 16,
++    local_drift_threshold: float = 0.10,
++    progress_stall_frac: float = 0.03,
+ ) -> dict[str, Any]:
+     start_time = time.time()
+     eval_seed = seed + episode_id
+@@ -284,6 +327,14 @@ def run_episode(
+     base_graph = {"nodes": export_nodes(key_graph), "edges": export_edges(key_graph), "way_steps": getattr(key_graph, "way_steps", 8.0)}
+     active_subgoals: list[np.ndarray] = []
+     active_subgoal_idx = 0
++    requested_variant = variant.lower()
++    replan_on_local_drift = requested_variant in {
++        "gas_shortest_replan_on_local_drift",
++        "gas_reachability_budget_replan_on_local_drift",
++    }
++    adaptive_subgoal_horizon = requested_variant == "gas_shortest_adaptive_subgoal_horizon"
++    drift_triggered_replans = 0
++    last_local_drift_score = 0.0
+ 
+     while not done and replans < max_steps and (len(debug_rows) < max_steps):
+         phi_obs = np.asarray(backbone.get_phi(observation))
+@@ -386,16 +437,21 @@ def run_episode(
+ 
+         if use_direct:
+             target_phi = phi_goal
+-            chunk = max(1, int(getattr(key_graph, "way_steps", 8)))
++            chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
+         else:
+             if not active_subgoals or active_subgoal_idx >= len(active_subgoals):
+                 target_phi = phi_goal
+             else:
+                 target_phi = np.asarray(active_subgoals[active_subgoal_idx])
+                 subgoals_attempted += 1
+-            chunk = max(1, int(getattr(key_graph, "way_steps", 8)))
++            chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
++        if adaptive_subgoal_horizon and not use_direct and (subgoal_failures > 0 or no_improve_replans > 0):
++            chunk = max(1, chunk_base // 2)
++        else:
++            chunk = chunk_base
+ 
+         reached_this = False
++        chunk_target_dists: list[float] = []
+         for _ in range(chunk):
+             action = backbone.sample_action(observation, target_phi, final_goal=use_direct)
+             observation, reward, done, info = backbone.step_env(env, env_name, action)
+@@ -408,6 +464,7 @@ def run_episode(
+             if cur_goal_dist < best_goal_dist:
+                 best_goal_dist = cur_goal_dist
+             target_dist = float(np.linalg.norm(np.asarray(target_phi) - phi_obs))
++            chunk_target_dists.append(target_dist)
+             ep_success, _ = _episode_success(info if isinstance(info, dict) else {})
+             success = success or ep_success
+             debug_rows.append(
+@@ -429,6 +486,20 @@ def run_episode(
+                 break
+             if done or len(debug_rows) >= max_steps:
+                 break
++        if not use_direct and chunk_target_dists:
++            start_target_dist = max(float(chunk_target_dists[0]), 1e-6)
++            end_target_dist = float(chunk_target_dists[-1])
++            best_target_dist = float(min(chunk_target_dists))
++            chunk_drift_score = (end_target_dist - start_target_dist) / start_target_dist
++            chunk_progress = (start_target_dist - best_target_dist) / start_target_dist
++            last_local_drift_score = max(last_local_drift_score, chunk_drift_score)
++            local_stall = chunk_progress < progress_stall_frac and len(chunk_target_dists) >= min(local_drift_window, chunk)
++            should_refresh = not reached_this and (chunk_drift_score > local_drift_threshold or local_stall)
++            if (replan_on_local_drift or adaptive_subgoal_horizon) and should_refresh:
++                active_subgoals = []
++                active_subgoal_idx = 0
++                subgoal_failures = max(subgoal_failures, stall_k)
++                drift_triggered_replans += 1
+         if not use_direct and not reached_this:
+             subgoal_failures += 1
+         if len(debug_rows) >= max_steps:
+@@ -439,6 +510,23 @@ def run_episode(
+     final_dist = float(np.linalg.norm(phi_goal - final_phi))
+     first = first_plan or PlanResult(variant=variant, budget=budget)
+     last = last_plan or first
++    drift_metrics = _local_drift_metrics(debug_rows, window=local_drift_window, stall_frac=progress_stall_frac)
++    if last_local_drift_score > drift_metrics["local_drift_score"]:
++        drift_metrics["local_drift_score"] = float(last_local_drift_score)
++    trace_path_str = str(debug_trace_path) if debug_trace_path is not None else ""
++    if debug_trace_path is not None:
++        _write_debug_trace(
++            debug_trace_path,
++            debug_rows,
++            {
++                "env": env_name,
++                "seed": seed,
++                "task_id": task_id,
++                "episode_id": episode_id,
++                "variant": variant,
++                "fallback_mode": fallback_mode,
++            },
++        )
+     row = {
+         "env": env_name,
+         "seed": seed,
+@@ -483,6 +571,11 @@ def run_episode(
+         "edge_fail_position": "",
+         "path_node_ids": _compact(first.node_ids),
+         "path_edge_ids": _compact(first.edge_ids),
++        "local_drift_score": drift_metrics["local_drift_score"],
++        "progress_stall_count": drift_metrics["progress_stall_count"],
++        "oscillation_score": drift_metrics["oscillation_score"],
++        "drift_triggered_replans": drift_triggered_replans,
++        "debug_trace_path": trace_path_str,
+     }
+     return row
+ 
+@@ -617,6 +710,11 @@ def run_episode_official_control(
+         "edge_fail_position": "",
+         "path_node_ids": "",
+         "path_edge_ids": "",
++        "local_drift_score": 0.0,
++        "progress_stall_count": 0,
++        "oscillation_score": 0.0,
++        "drift_triggered_replans": 0,
++        "debug_trace_path": "",
+     }
+ 
+ 
+@@ -720,6 +818,7 @@ def main(argv: Optional[list[str]] = None) -> None:
+                 args.final_goal_threshold,
+             )
+         else:
++            debug_trace_path = run_dir / "debug_traces" / f"task{task_id}_episode{ep}.jsonl" if args.debug_jsonl else None
+             row = run_episode(
+                 backbone,
+                 env,
+@@ -740,6 +839,7 @@ def main(argv: Optional[list[str]] = None) -> None:
+                 args.max_plan_edges,
+                 args.subgoal_threshold,
+                 args.final_goal_threshold,
++                debug_trace_path=debug_trace_path,
+             )
+         _csv_append(eval_csv, row)
+         print(json.dumps({k: row[k] for k in ["env", "task_id", "episode_id", "variant", "budget", "success", "steps", "fallback_used"]}))
+diff --git a/bars/gas_bars/planner.py b/bars/gas_bars/planner.py
+index 3a289b7..19b02da 100644
+--- a/bars/gas_bars/planner.py
++++ b/bars/gas_bars/planner.py
+@@ -452,6 +452,9 @@ def plan(
+     alias = {
+         "gas_reachability_budget_calibrated": "gas_reachability_budget",
+         "gas_reachability_soft_calibrated": "gas_reachability_soft",
++        "gas_shortest_replan_on_local_drift": "gas_shortest",
++        "gas_shortest_adaptive_subgoal_horizon": "gas_shortest",
++        "gas_reachability_budget_replan_on_local_drift": "gas_reachability_budget",
+         "gas_boundary_scaled_budget": "gas_boundary_budget",
+         "gas_boundary_soft_scaled": "gas_boundary_soft",
+     }

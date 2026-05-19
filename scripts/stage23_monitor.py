@@ -77,6 +77,15 @@ def scan_status(roots: list[Path]) -> list[dict[str, Any]]:
             has_completed_eval = any(log.parent.rglob("eval.csv"))
             if now - mtime > 1800 and not has_completed_eval:
                 rows.append({"status": "stalled_log", "log": str(log), "error_class": classify_error(tail(log, 60))})
+    completed = {
+        (str(r.get("env", "")), str(r.get("seed", "")), str(r.get("stage", "")))
+        for r in rows
+        if str(r.get("status")) == "completed"
+    }
+    for row in rows:
+        key = (str(row.get("env", "")), str(row.get("seed", "")), str(row.get("stage", "")))
+        if str(row.get("status")) == "failed" and key in completed:
+            row["status"] = "recovered"
     return rows
 
 
@@ -100,6 +109,14 @@ def scan_eval(roots: list[Path]) -> pd.DataFrame:
 
 def write_reports(summary_md: Path, failed_csv: Path, gate_json: Path, statuses: list[dict[str, Any]], eval_df: pd.DataFrame) -> None:
     summary_md.parent.mkdir(parents=True, exist_ok=True)
+    reports = summary_md.parent
+    cached_eval_df = pd.DataFrame()
+    cached_eval_path = reports / "stage23_live_grouped.csv"
+    if len(eval_df) == 0 and cached_eval_path.exists():
+        try:
+            cached_eval_df = pd.read_csv(cached_eval_path)
+        except Exception:
+            cached_eval_df = pd.DataFrame()
     counts: dict[str, int] = {}
     for row in statuses:
         counts[str(row.get("status", "unknown"))] = counts.get(str(row.get("status", "unknown")), 0) + 1
@@ -118,7 +135,6 @@ def write_reports(summary_md: Path, failed_csv: Path, gate_json: Path, statuses:
         "boundary": "unknown",
         "integrated": "unknown",
     }
-    reports = summary_md.parent
     repro = reports / "stage23_gas_reproduction_matrix.csv"
     if repro.exists():
         df = pd.read_csv(repro)
@@ -171,6 +187,9 @@ def write_reports(summary_md: Path, failed_csv: Path, gate_json: Path, statuses:
         gap = pd.to_numeric(df.get("supported_gap", pd.Series(dtype=float)), errors="coerce")
         coverage = pd.to_numeric(df.get("coverage", pd.Series(dtype=float)), errors="coerce")
         gates["boundary"] = "PASS_BOUNDARY" if len(au.dropna()) and au.max() >= 0.60 and len(gap.dropna()) and gap.max() >= 0.10 and len(coverage.dropna()) and coverage.max() > 0.01 else "HOLD_BOUNDARY"
+    eval_for_summary = eval_df
+    if len(eval_for_summary) == 0 and len(cached_eval_df):
+        eval_for_summary = cached_eval_df
     if len(eval_df):
         grouped = eval_df.groupby([c for c in ["env", "seed", "variant"] if c in eval_df], dropna=False).agg(episodes=("success", "count"), success=("success", "mean")).reset_index()
         grouped.to_csv(reports / "stage23_live_grouped.csv", index=False)
@@ -183,8 +202,20 @@ def write_reports(summary_md: Path, failed_csv: Path, gate_json: Path, statuses:
         if k != "updated" and k != "jobs":
             lines.append(f"- {k}: {v}")
     lines.extend(["", "## Eval"])
-    if len(eval_df):
-        grouped = eval_df.groupby([c for c in ["env", "seed", "variant"] if c in eval_df], dropna=False).agg(episodes=("success", "count"), success=("success", "mean"), steps=("steps", "mean")).reset_index()
+    if len(eval_for_summary):
+        if len(eval_df) == 0:
+            lines.append("Cached summary from `reports/stage23_live_grouped.csv`; raw run directories are not present in this checkout.")
+        group_cols = [c for c in ["env", "seed", "variant", "budget", "fallback_mode"] if c in eval_for_summary]
+        agg = {"success": ("success", "mean")}
+        if "episodes" in eval_for_summary:
+            # Already grouped report: keep its episode counts instead of
+            # treating each summary row as one episode.
+            grouped = eval_for_summary.copy()
+        else:
+            agg["episodes"] = ("success", "count")
+            if "steps" in eval_for_summary:
+                agg["steps"] = ("steps", "mean")
+            grouped = eval_for_summary.groupby(group_cols, dropna=False).agg(**agg).reset_index()
         try:
             lines.append(grouped.to_markdown(index=False))
         except Exception:

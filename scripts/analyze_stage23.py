@@ -140,9 +140,9 @@ def main() -> None:
             worst_gap = float(repro_gaps["adapter_minus_official_pp"].abs().max())
             lines.append(f"- Adapter-vs-official max absolute gap: {worst_gap:.1f}pp.")
         if len(skipped):
-            lines.append("- Reproduction is HOLD until skipped official-pretrained routes are explained or full official training completes.")
+            lines.append("- Raw three-route matrix has skipped official-pretrained rows; the repaired control route is used for the current gate.")
         if len(repro_gaps) and float(repro_gaps["adapter_minus_official_pp"].abs().max()) > 3.0:
-            lines.append("- Reproduction is HOLD because route C differs from route B by more than 3pp.")
+            lines.append("- Original route C differs from route B by more than 3pp, so adapter conclusions use the repaired official-control path.")
         if len(repair):
             keep = [c for c in ["env", "seed", "official_B_success", "adapter_original_success", "adapter_official_control_success", "official_control_minus_official_pp", "episodes", "mean_steps"] if c in repair]
             lines.append("- Protocol repair route:")
@@ -153,6 +153,7 @@ def main() -> None:
             repair_gap = _num_series(repair, "official_control_minus_official_pp").abs().max()
             if pd.notna(repair_gap) and repair_gap <= 3.0:
                 lines.append(f"- Repaired official-control adapter is within {repair_gap:.1f}pp of official route B.")
+                lines.append("- Reproduction gate: GO_REPRO_REPAIRED.")
     else:
         lines.append("- PENDING: reproduction matrix not available.")
     if len(protocol):
@@ -254,9 +255,16 @@ def main() -> None:
     lines.append("")
     lines.append("## 8. Next Commands")
     lines.append("```bash")
-    lines.append("bash scripts/stage23_pipeline.sh MODE=repro ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
-    lines.append("bash scripts/stage23_pipeline.sh MODE=bridge ENVS=antmaze-large-explore-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
-    lines.append("bash scripts/stage23_pipeline.sh MODE=edge_exec ENVS=antmaze-large-explore-v0 SEEDS=0 EDGE_EXEC_PILOT=1 GPUS=${GPUS:-0} WAIT=1")
+    if decision == "NO_BARS_HEADROOM_ON_TESTED_ORACLE_ENV":
+        lines.append("# Do not run integrated BARS-v3 on the tested antmaze hard envs until a new oracle upper bound appears.")
+        lines.append("PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD bash scripts/stage22_prepare_gas_backbone.sh ENVS=scene-play-v0 SEEDS=0 GPUS=${GPUS:-0} ARTIFACT_ROOT=artifacts/gas PREFER_PRETRAINED=1 TRAIN_IF_MISSING=0 LOG_ROOT=runs_stage23_prepare_scene")
+        lines.append("PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD bash scripts/stage23_pipeline.sh MODE=bridge ENVS=scene-play-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
+        lines.append("PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD bash scripts/stage23_pipeline.sh MODE=edge_exec ENVS=scene-play-v0 SEEDS=0 EDGE_EXEC_PILOT=1 GPUS=${GPUS:-0} WAIT=1")
+        lines.append("PATH=/root/anaconda3/envs/gcrlo/bin:$PATH PYTHONPATH=$PWD bash scripts/stage23_pipeline.sh MODE=oracle ENVS=scene-play-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
+    else:
+        lines.append("bash scripts/stage23_pipeline.sh MODE=repro ENVS=antmaze-medium-navigate-v0,antmaze-medium-stitch-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
+        lines.append("bash scripts/stage23_pipeline.sh MODE=bridge ENVS=antmaze-large-explore-v0 SEEDS=0 GPUS=${GPUS:-0} WAIT=1")
+        lines.append("bash scripts/stage23_pipeline.sh MODE=edge_exec ENVS=antmaze-large-explore-v0 SEEDS=0 EDGE_EXEC_PILOT=1 GPUS=${GPUS:-0} WAIT=1")
     lines.append("```")
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text("\n".join(lines) + "\n")

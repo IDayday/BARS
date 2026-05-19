@@ -1,0 +1,7 @@
+env,seed,fallback_mode,variant,episodes,success,steps,success_delta_vs_shortest,steps_inflation_vs_shortest,paired_episode_n,paired_episode_success_delta,no_path_rate,budget_reject_rate,no_path_delta_vs_shortest,budget_reject_delta_vs_shortest,first_plan_edges_mean,first_plan_edge_distribution,subgoal_reach_rate,env_mean_success,env_std_success,primary_variant,paired_cell_result,source
+antmaze-medium-navigate-v0,0,none,gas_reachability_budget_calibrated,100,0.92,341.49,0.030000000000000027,-0.03296236513465292,,,0.0,0.0,0.0,0.0,,,,0.92,,gas_reachability_soft_calibrated,,stage23_seed0_prior
+antmaze-medium-navigate-v0,0,none,gas_reachability_soft_calibrated,100,0.9,337.86,0.010000000000000009,-0.04324186560190293,,,0.0,0.0,0.0,0.0,,,,0.9,,gas_reachability_soft_calibrated,win,stage23_seed0_prior
+antmaze-medium-navigate-v0,0,none,gas_shortest,100,0.89,353.13,,,,,0.0,0.0,,,,,,0.89,,gas_reachability_soft_calibrated,,stage23_seed0_prior
+antmaze-medium-stitch-v0,0,none,gas_reachability_budget_calibrated,100,0.87,349.21,0.010000000000000009,-0.05316956781085628,,,0.0,0.0,0.0,0.0,,,,0.87,,gas_reachability_soft_calibrated,,stage23_seed0_prior
+antmaze-medium-stitch-v0,0,none,gas_reachability_soft_calibrated,100,0.91,327.88,0.050000000000000044,-0.11100265712271569,,,0.0,0.0,0.0,0.0,,,,0.91,,gas_reachability_soft_calibrated,win,stage23_seed0_prior
+antmaze-medium-stitch-v0,0,none,gas_shortest,100,0.86,368.82,,,,,0.0,0.0,,,,,,0.86,,gas_reachability_soft_calibrated,,stage23_seed0_prior

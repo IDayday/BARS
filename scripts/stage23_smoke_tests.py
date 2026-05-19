@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from bars.gas_bars.bars_v3_planner import plan_bars_v3
+from bars.gas_bars.bridge_dataset import make_bridge_table, split_bridge_dataset
+from bars.gas_bars.bridge_verifier import train_bridge_verifier
+from bars.gas_bars.edge_execution import execute_edge
 
 
 def _nodes():
@@ -70,11 +75,73 @@ def test_boundary_only_bridge_junctions() -> None:
     assert res.boundary_risk == 0.0
 
 
+def test_edge_execution_proxy_smoke() -> None:
+    nodes = _nodes()
+    edge = pd.Series(
+        {
+            "edge_id": 10,
+            "u": 0,
+            "v": 2,
+            "temporal_cost": 2.0,
+            "phi_dist": 2.0,
+            "edge_type": "aggressive_tdr_bridge",
+            "graph_id": "G1",
+        }
+    )
+    row = execute_edge(
+        backbone=None,
+        env=None,
+        nodes=nodes,
+        edge=edge,
+        node_to_obs=None,
+        observations=None,
+        horizon=8,
+        reach_threshold=1.0,
+        way_steps=1.0,
+    )
+    assert row["reset_mode"] == "weak_proxy_no_reset"
+    assert "success" in row and "final_dist" in row
+
+
+def test_p_bridge_one_epoch_smoke() -> None:
+    rng = np.random.default_rng(0)
+    rows = []
+    edge_types = ["aggressive_tdr_bridge", "bottleneck_bridge", "safe_local", "gas_cross"]
+    for i in range(64):
+        et = edge_types[i % len(edge_types)]
+        bridge_like = et in {"aggressive_tdr_bridge", "bottleneck_bridge"}
+        phi_dist = float(rng.uniform(0.5, 4.0))
+        success = int((not bridge_like and phi_dist < 3.5) or (bridge_like and phi_dist < 1.8))
+        rows.append(
+            {
+                "edge_id": i,
+                "edge_type": et,
+                "success": success,
+                "phi_dist": phi_dist,
+                "tdr_cost": phi_dist,
+                "local_support": float(not bridge_like),
+                "same_traj_support": float(et == "safe_local"),
+                "bridge_score": float(1.0 / max(phi_dist, 1e-6)),
+                "bottleneck_score": float(et == "bottleneck_bridge"),
+                "gas_weight": phi_dist,
+                "temporal_cost": phi_dist,
+            }
+        )
+    table = make_bridge_table(pd.DataFrame(rows))
+    ds = split_bridge_dataset(table, val_frac=0.25, seed=0)
+    with tempfile.TemporaryDirectory() as tmp:
+        metrics = train_bridge_verifier(ds, tmp, epochs=1, seed=0, device="cpu")
+        assert Path(tmp, "p_bridge.pt").exists()
+        assert metrics["train_size"] > 0 and metrics["val_size"] > 0
+
+
 def main() -> None:
     test_short_risky_vs_long_safe()
     test_local_edges_do_not_consume_risk()
     test_boundary_only_bridge_junctions()
-    print("stage23 smoke planner tests passed")
+    test_edge_execution_proxy_smoke()
+    test_p_bridge_one_epoch_smoke()
+    print("stage23 smoke tests passed")
 
 
 if __name__ == "__main__":
