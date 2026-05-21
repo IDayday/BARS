@@ -1,0 +1,36 @@
+{
+  "active_scientific_question": "Can BARS obtain a certified public-quality GAS backbone before diagnostics?",
+  "active_tracks": [
+    "baseline_certification",
+    "artifact_acquisition"
+  ],
+  "best_positive_signal": null,
+  "closed_tracks": [],
+  "created_at": "2026-05-19T19:23:52.736092+00:00",
+  "git_head": "7e860d7",
+  "global_decision": "CONTINUE",
+  "limits": {
+    "max_gpu_hours_per_round": 72.0,
+    "max_parallel_jobs": 12,
+    "max_rounds": 8,
+    "max_wall_hours_per_round": 12.0
+  },
+  "must_not_do": [
+    "Do not use direct-goal/progress fallback as planner evidence.",
+    "Do not train p_bridge until PASS_ORACLE_HEADROOM.",
+    "Do not run integrated BARS-v3 until PASS_ORACLE_HEADROOM and PASS_P_BRIDGE.",
+    "Keep boundary diagnostic-only until coverage/gap/AUROC gates pass.",
+    "Keep D4RL protocol/debug-only until PASS_D4RL_PROTOCOL_AUDIT."
+  ],
+  "next_round_plan": {
+    "primary_question": "Can we obtain certified public-quality GAS artifacts for the medium targets, or certify an official-artifact target?",
+    "round": 3,
+    "track": "artifact_acquisition_or_full_budget_training"
+  },
+  "project": "BARS",
+  "round": 2,
+  "stage": "autonomous_loop",
+  "stop_reason": null,
+  "strongest_negative_signal": "Stage24 found weak reachability effect, failed local drift repair, no scene-play oracle path-level headroom, boundary coverage collapse, and D4RL protocol hold.",
+  "updated_at": "2026-05-20T07:03:37.626341+00:00"
+}

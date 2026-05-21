@@ -1,0 +1,26 @@
+{
+  "complete_cells": 36,
+  "failed_rows": 400,
+  "gate": "PASS_LABEL_INTEGRITY",
+  "incomplete_cells": 0,
+  "missing_label_rate_failed_rows": 0.0,
+  "missing_primary_failure_type_failed_rows": 0,
+  "total_rows": 3600,
+  "unclassified_failure_rate": 0.0,
+  "variant_missing_label_rates": {
+    "gas_reachability_budget_calibrated": 0.0,
+    "gas_reachability_budget_replan_on_local_drift": 0.0,
+    "gas_reachability_soft_calibrated": 0.0,
+    "gas_shortest": 0.0,
+    "gas_shortest_adaptive_subgoal_horizon": 0.0,
+    "gas_shortest_replan_on_local_drift": 0.0
+  },
+  "variants": [
+    "gas_reachability_budget_calibrated",
+    "gas_reachability_budget_replan_on_local_drift",
+    "gas_reachability_soft_calibrated",
+    "gas_shortest",
+    "gas_shortest_adaptive_subgoal_horizon",
+    "gas_shortest_replan_on_local_drift"
+  ]
+}

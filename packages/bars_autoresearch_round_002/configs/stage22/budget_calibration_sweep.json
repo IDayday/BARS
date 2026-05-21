@@ -1,0 +1,36 @@
+{
+  "mode": "budget_calibration",
+  "envs": ["antmaze-medium-stitch-v0", "antmaze-medium-navigate-v0"],
+  "seeds": [0],
+  "episodes": 50,
+  "gas": {
+    "prefer_pretrained": true,
+    "train_if_missing": true,
+    "quick": true,
+    "artifact_root": "artifacts/gas"
+  },
+  "p_exec": {
+    "reuse_model": true,
+    "unsupported_penalty": 0.15,
+    "artifact_root": "artifacts/stage22"
+  },
+  "planner": {
+    "variants": ["gas_reachability_budget", "gas_boundary_budget"],
+    "budgets": [5.0, 8.0],
+    "lambda_exec": 1.0,
+    "lambda_boundary": 1.0,
+    "max_edges": 80
+  },
+  "fallback_modes": ["none", "progress_stall_v2"],
+  "logging": {
+    "prepare_root": "runs_stage22_prepare",
+    "eval_root": "runs_stage22_eval",
+    "tensorboard_root": "runs_stage22_tensorboard",
+    "report_root": "reports"
+  },
+  "expected_decisions": [
+    "REACHABILITY_GO if budget 5/8 improves both medium envs by >= 5pp over gas_shortest same fallback",
+    "BOUNDARY_SCALE_REPAIR if budget 5/8 still rejects or underperforms reachability",
+    "FALLBACK_KEEP if progress_stall_v2 improves reachability without reducing GAS shortest"
+  ]
+}

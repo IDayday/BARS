@@ -1,0 +1,9 @@
+{
+  "evidence": "Stage23 protocol repair aligned BARS adapter to official GAS, but no Stage24 BARS component passed main gates.",
+  "method": "official_control_GAS_baseline",
+  "report_files": [
+    "reports/stage24_gate_status.json",
+    "reports/stage24_decisions.md"
+  ],
+  "status": "baseline_only"
+}

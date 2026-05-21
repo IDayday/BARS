@@ -1,0 +1,41 @@
+{
+  "stage": "stage24",
+  "track": "reachability_confirm_and_local_drift",
+  "envs": [
+    "antmaze-medium-navigate-v0",
+    "antmaze-medium-stitch-v0"
+  ],
+  "seeds": [0, 1, 2],
+  "episodes": 100,
+  "fallback_modes": ["none"],
+  "variants": [
+    "gas_shortest",
+    "gas_reachability_budget_calibrated",
+    "gas_reachability_soft_calibrated"
+  ],
+  "repair_variants": [
+    "gas_shortest_replan_on_local_drift",
+    "gas_shortest_adaptive_subgoal_horizon",
+    "gas_reachability_budget_replan_on_local_drift"
+  ],
+  "budget_source": "reports/stage22r_recommended_budgets.json",
+  "budget_selection": "stage22r_recommended",
+  "same_backbone_required": true,
+  "official_control_adapter_required": true,
+  "fallback_as_planner_evidence": false,
+  "max_parallel_eval": 4,
+  "max_plan_edges": 20,
+  "local_drift": {
+    "window": 16,
+    "drift_threshold": 0.1,
+    "progress_stall_frac": 0.03,
+    "debug_jsonl": true
+  },
+  "gates": {
+    "reachability_min_mean_delta": 0.02,
+    "reachability_min_wins": 4,
+    "reachability_cells": 6,
+    "max_steps_inflation": 0.1,
+    "local_drift_failure_reduction": 0.3
+  }
+}

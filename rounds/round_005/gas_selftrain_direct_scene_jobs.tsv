@@ -1,0 +1,4 @@
+env	seed	gpu	pid	log
+scene-play-v0	0	0	57750	runs_round005_gas_selftrain/scene-play-v0/seed0/launcher.log
+scene-play-v0	1	1	57753	runs_round005_gas_selftrain/scene-play-v0/seed1/launcher.log
+scene-play-v0	2	2	57758	runs_round005_gas_selftrain/scene-play-v0/seed2/launcher.log

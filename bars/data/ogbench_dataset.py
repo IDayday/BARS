@@ -10,6 +10,8 @@ common dataset dict layouts into BARS' OfflineDataset structure.
 import fcntl
 import json
 import os
+import shutil
+import subprocess
 import time
 import urllib.request
 import zipfile
@@ -20,7 +22,8 @@ import numpy as np
 
 from .trajectories import OfflineDataset, TrajectorySlice
 
-_DEFAULT_DATASET_URL = "http://rail.eecs.berkeley.edu/datasets/ogbench"
+_DEFAULT_DATASET_URL = "https://rail.eecs.berkeley.edu/datasets/ogbench"
+_FALLBACK_DATASET_URL = "http://rail.eecs.berkeley.edu/datasets/ogbench"
 
 
 def _default_dataset_dir() -> str:
@@ -89,30 +92,264 @@ class _FileLock:
         return False
 
 
-def _download_atomic(url: str, dst: Path, retries: int = 5) -> None:
-    tmp = dst.with_name(f"{dst.name}.tmp.{os.getpid()}")
-    for attempt in range(1, retries + 1):
+def _dataset_base_urls() -> list[str]:
+    raw = os.environ.get("OGBENCH_DATASET_ENDPOINTS") or os.environ.get("OGBENCH_DATASET_URL") or ""
+    urls = [u.strip().rstrip("/") for u in raw.split(",") if u.strip()]
+    if not urls:
+        cn_raw = os.environ.get("BARS_OGBENCH_CN_ENDPOINTS", "")
+        urls = [u.strip().rstrip("/") for u in cn_raw.split(",") if u.strip()]
+        urls.extend([_DEFAULT_DATASET_URL, _FALLBACK_DATASET_URL])
+    return list(dict.fromkeys(urls))
+
+
+def _shared_dataset_dirs(dataset_dir: Path) -> list[Path]:
+    raw = os.environ.get("OGBENCH_DATASET_SHARED_DIRS", "")
+    roots = [Path(os.path.expandvars(os.path.expanduser(x.strip()))) for x in raw.split(",") if x.strip()]
+    shared_root = os.environ.get("BARS_SHARED_DATASET_ROOT")
+    if shared_root:
+        roots.append(Path(os.path.expandvars(os.path.expanduser(shared_root))) / "ogbench")
+    roots = [p for p in roots if p != dataset_dir]
+    out: list[Path] = []
+    seen = set()
+    for root in roots:
+        key = str(root)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(root)
+    return out
+
+
+def _materialize_from_shared(file_name: str, dst: Path, dataset_dir: Path) -> bool:
+    for root in _shared_dataset_dirs(dataset_dir):
+        src = root / file_name
+        if not _npz_is_ready(src):
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
         try:
-            if tmp.exists():
-                tmp.unlink()
-            print(f"Downloading OGBench dataset {dst.name} (attempt {attempt}/{retries}) from {url}", flush=True)
-            with urllib.request.urlopen(url, timeout=120) as response, open(tmp, "wb") as out:
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    out.write(chunk)
-            if not _npz_is_valid(tmp):
-                raise IOError(f"Downloaded file is not a valid npz: {tmp}")
-            os.replace(tmp, dst)
-            _write_valid_marker(dst)
-            return
-        except Exception:
-            if tmp.exists():
-                tmp.unlink()
-            if attempt >= retries:
-                raise
-            time.sleep(min(60, 5 * attempt))
+            os.link(src, dst)
+        except OSError:
+            shutil.copy2(src, dst)
+        _write_valid_marker(dst)
+        print(f"Using shared OGBench dataset {src} -> {dst}", flush=True)
+        return True
+    return False
+
+
+def _curl_download(url: str, tmp: Path) -> None:
+    curl = shutil.which("curl")
+    if curl is None:
+        raise RuntimeError("curl is not available")
+    if _curl_parallel_download(url, tmp):
+        return
+    cmd = [
+        curl,
+        "-sS",
+        "-fL",
+        "--retry",
+        os.environ.get("BARS_DOWNLOAD_RETRIES", "5"),
+        "--retry-delay",
+        os.environ.get("BARS_DOWNLOAD_RETRY_DELAY", "2"),
+        "--connect-timeout",
+        os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"),
+        "--speed-time",
+        os.environ.get("BARS_DOWNLOAD_SPEED_TIME", "60"),
+        "--speed-limit",
+        os.environ.get("BARS_DOWNLOAD_SPEED_LIMIT", "1024"),
+        "-o",
+        str(tmp),
+        url,
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def _aria2_download(url: str, tmp: Path) -> None:
+    aria2 = shutil.which("aria2c")
+    if aria2 is None:
+        raise RuntimeError("aria2c is not available")
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        aria2,
+        "--allow-overwrite=true",
+        "--auto-file-renaming=false",
+        "--continue=true",
+        "--max-tries",
+        os.environ.get("BARS_DOWNLOAD_RETRIES", "5"),
+        "--retry-wait",
+        os.environ.get("BARS_DOWNLOAD_RETRY_DELAY", "2"),
+        "--connect-timeout",
+        os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"),
+        "--timeout",
+        os.environ.get("BARS_DOWNLOAD_TIMEOUT", "120"),
+        "--min-split-size",
+        os.environ.get("BARS_ARIA2_MIN_SPLIT_SIZE", "4M"),
+        "--split",
+        os.environ.get("BARS_ARIA2_SPLIT", "16"),
+        "--max-connection-per-server",
+        os.environ.get("BARS_ARIA2_CONNECTIONS", "16"),
+        "--file-allocation",
+        os.environ.get("BARS_ARIA2_FILE_ALLOCATION", "none"),
+        "--dir",
+        str(tmp.parent),
+        "--out",
+        tmp.name,
+        url,
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def _curl_headers(url: str) -> dict[str, str]:
+    curl = shutil.which("curl")
+    if curl is None:
+        return {}
+    proc = subprocess.run(
+        [curl, "-sIL", "--connect-timeout", os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"), url],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return {}
+    headers: dict[str, str] = {}
+    for line in proc.stdout.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        headers[key.strip().lower()] = value.strip()
+    return headers
+
+
+def _curl_base_args() -> list[str]:
+    curl = shutil.which("curl")
+    if curl is None:
+        raise RuntimeError("curl is not available")
+    return [
+        curl,
+        "-sS",
+        "-fL",
+        "--retry",
+        os.environ.get("BARS_DOWNLOAD_RETRIES", "5"),
+        "--retry-delay",
+        os.environ.get("BARS_DOWNLOAD_RETRY_DELAY", "2"),
+        "--connect-timeout",
+        os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"),
+        "--speed-time",
+        os.environ.get("BARS_DOWNLOAD_SPEED_TIME", "60"),
+        "--speed-limit",
+        os.environ.get("BARS_DOWNLOAD_SPEED_LIMIT", "1024"),
+    ]
+
+
+def _curl_parallel_download(url: str, tmp: Path) -> bool:
+    chunks = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_CHUNKS", "8"))
+    min_size = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_MIN_BYTES", str(64 * 1024 * 1024)))
+    if chunks <= 1:
+        return False
+    headers = _curl_headers(url)
+    if headers.get("accept-ranges", "").lower() != "bytes":
+        return False
+    try:
+        size = int(headers.get("content-length", "0"))
+    except ValueError:
+        return False
+    if size < min_size:
+        return False
+    chunks = max(1, min(chunks, size // (8 * 1024 * 1024) or 1))
+    if chunks <= 1:
+        return False
+    parts_dir = tmp.with_name(f"{tmp.name}.parts")
+    if parts_dir.exists():
+        shutil.rmtree(parts_dir)
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    ranges: list[tuple[int, int]] = []
+    block = (size + chunks - 1) // chunks
+    for idx in range(chunks):
+        start = idx * block
+        if start >= size:
+            break
+        end = min(size - 1, start + block - 1)
+        ranges.append((start, end))
+    print(f"Parallel curl download {tmp.name}: {len(ranges)} ranges, {size} bytes", flush=True)
+    base = _curl_base_args()
+    parts: list[tuple[Path, int, int, int]] = []
+    for idx, (start, end) in enumerate(ranges):
+        parts.append((parts_dir / f"part-{idx:03d}", start, end, end - start + 1))
+    procs: list[subprocess.Popen[Any]] = []
+    try:
+        rounds = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_ROUNDS", "3"))
+        for round_idx in range(1, rounds + 1):
+            pending = [(part, start, end, expected) for part, start, end, expected in parts if not part.exists() or part.stat().st_size != expected]
+            if not pending:
+                break
+            if round_idx > 1:
+                print(f"Retrying {len(pending)} failed OGBench ranges for {tmp.name} ({round_idx}/{rounds})", flush=True)
+            procs = []
+            for part, start, end, _ in pending:
+                cmd = base + ["-r", f"{start}-{end}", "-o", str(part), url]
+                procs.append(subprocess.Popen(cmd))
+            for proc in procs:
+                proc.wait()
+        pending = [(part, expected) for part, _, _, expected in parts if not part.exists() or part.stat().st_size != expected]
+        if pending:
+            detail = ", ".join(f"{part.name}:{part.stat().st_size if part.exists() else 0}/{expected}" for part, expected in pending[:4])
+            raise RuntimeError(f"parallel range download failed for {tmp.name}: {detail}")
+        with open(tmp, "wb") as out:
+            for part, _, _, _ in parts:
+                with open(part, "rb") as fh:
+                    shutil.copyfileobj(fh, out, length=1024 * 1024)
+        return tmp.stat().st_size == size
+    finally:
+        for proc in procs:
+            if proc.poll() is None:
+                proc.terminate()
+        shutil.rmtree(parts_dir, ignore_errors=True)
+
+
+def _urllib_download(url: str, tmp: Path) -> None:
+    with urllib.request.urlopen(url, timeout=120) as response, open(tmp, "wb") as out:
+        while True:
+            chunk = response.read(1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+
+
+def _download_atomic(file_name: str, dst: Path, retries: int = 3) -> None:
+    tmp = dst.with_name(f"{dst.name}.tmp.{os.getpid()}")
+    errors: list[str] = []
+    for base_url in _dataset_base_urls():
+        url = f"{base_url}/{file_name}"
+        for attempt in range(1, retries + 1):
+            try:
+                if tmp.exists():
+                    tmp.unlink()
+                print(
+                    f"Downloading OGBench dataset {dst.name} "
+                    f"(attempt {attempt}/{retries}) from {url}",
+                    flush=True,
+                )
+                try:
+                    if os.environ.get("BARS_DOWNLOAD_WITH_ARIA2", "1") != "0":
+                        _aria2_download(url, tmp)
+                    else:
+                        _curl_download(url, tmp)
+                except Exception:
+                    try:
+                        _curl_download(url, tmp)
+                    except Exception:
+                        _urllib_download(url, tmp)
+                if not _npz_is_valid(tmp):
+                    raise IOError(f"Downloaded file is not a valid npz: {tmp}")
+                os.replace(tmp, dst)
+                _write_valid_marker(dst)
+                return
+            except Exception as exc:
+                errors.append(f"{url}: {exc}")
+                if tmp.exists():
+                    tmp.unlink()
+                if attempt < retries:
+                    time.sleep(min(60, 5 * attempt))
+    raise RuntimeError(f"Failed to download {file_name}; tried {len(errors)} attempts: {' | '.join(errors[-3:])}")
 
 
 def _dataset_file_names(env_name: str) -> tuple[str, str]:
@@ -132,7 +369,6 @@ def ensure_ogbench_dataset_files(env_name: str, dataset_dir: str | None = None) 
     dataset_dir = os.path.expandvars(os.path.expanduser(dataset_dir or os.environ.get("OGBENCH_DATASET_DIR") or _default_dataset_dir()))
     root = Path(dataset_dir)
     root.mkdir(parents=True, exist_ok=True)
-    base_url = os.environ.get("OGBENCH_DATASET_URL", _DEFAULT_DATASET_URL).rstrip("/")
     train_name, val_name = _dataset_file_names(env_name)
     lock_path = root / f"{train_name}.lock"
     with _FileLock(lock_path):
@@ -150,7 +386,13 @@ def ensure_ogbench_dataset_files(env_name: str, dataset_dir: str | None = None) 
                     stale.unlink()
                 except FileNotFoundError:
                     pass
-            _download_atomic(f"{base_url}/{file_name}", dst)
+            if not _materialize_from_shared(file_name, dst, root):
+                if os.environ.get("BARS_OGBENCH_OFFLINE", "").strip().lower() in {"1", "true", "yes", "on"}:
+                    raise FileNotFoundError(
+                        f"Missing OGBench dataset {dst}; BARS_OGBENCH_OFFLINE=1 prevents network download. "
+                        f"Copy {file_name} into {root} or one of OGBENCH_DATASET_SHARED_DIRS."
+                    )
+                _download_atomic(file_name, dst)
             paths.append(str(dst))
         return paths[0], paths[1]
 

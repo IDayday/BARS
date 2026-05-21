@@ -257,6 +257,7 @@ __marimo__/
 /reports/*_manifest_*.txt
 /reports/*.flag
 *.sha256
+!packages/**/CHECKSUMS.sha256
 *.zip
 *.tar
 *.tgz

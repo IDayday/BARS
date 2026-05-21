@@ -1,0 +1,41 @@
+{
+  "adapter_certification": "SKIP_NO_OFFICIAL_EVAL",
+  "baseline_certification": "FAIL_UNDERTRAINED_BASELINE",
+  "baseline_registry": "PASS_BASELINE_REGISTRY",
+  "boundary": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY",
+  "d4rl_protocol": "HOLD_D4RL_PROTOCOL_REPAIR",
+  "details": {
+    "adapter_compare_rows": 8,
+    "adapter_status_counts": {
+      "SKIP_BASELINE_UNCERTIFIED": 8
+    },
+    "baseline_cards": 64,
+    "baseline_certification_reason": "medium GAS official artifacts unavailable and local artifacts are undertrained relative to public 1M-step budget",
+    "non_negotiables": {
+      "integrated_bars_v3_run": false,
+      "oracle_headroom_scientific_evidence_run": false,
+      "p_bridge_run": false,
+      "planner_evidence_fallback_mode": "none_only"
+    },
+    "official_eval_rows": 8,
+    "official_eval_status_counts": {
+      "FAIL_UNDERTRAINED_BASELINE": 6,
+      "SKIP_ARTIFACT_UNAVAILABLE": 2
+    },
+    "prior_allowed_claim_level_counts": {
+      "PROTOCOL_DEBUG_ONLY": 60,
+      "SMOKE_ONLY": 276
+    },
+    "prior_reclassification_rows": 336,
+    "registry_rows": 64
+  },
+  "evidence_reclassification": "PASS_EVIDENCE_RECLASSIFICATION",
+  "integrated": "SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE",
+  "label_specificity": "SKIP_BASELINE_UNCERTIFIED",
+  "oracle_headroom": "SKIP_BASELINE_UNCERTIFIED",
+  "p_bridge": "SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM",
+  "primary_question": "Can we certify a public-quality strong baseline and BARS adapter before interpreting any BARS failure modes?",
+  "round": 2,
+  "scientific_interpretation": "HOLD_SCIENTIFIC_INTERPRETATION_BASELINE_UNCERTIFIED",
+  "secondary_question": "Which prior Stage19-Round001 results must be downgraded to smoke/protocol evidence because certification or full-budget training was missing?"
+}

@@ -1,0 +1,21 @@
+{
+  "envs": [
+    "antmaze-medium-stitch-v0",
+    "antmaze-medium-navigate-v0",
+    "antmaze-large-stitch-v0",
+    "antmaze-large-navigate-v0"
+  ],
+  "seeds": [0, 1, 2],
+  "episodes": 100,
+  "variants": [
+    "gas_shortest",
+    "gas_reachability_budget_calibrated",
+    "gas_reachability_soft_calibrated"
+  ],
+  "fallback_modes": ["none", "progress_stall_v3"],
+  "budget_source": "reports/stage22r_recommended_budgets.json",
+  "budget_selection": "q60_or_q70_nonduplicate",
+  "same_backbone_required": true,
+  "diagnostics_required": true,
+  "max_parallel_eval": 4
+}

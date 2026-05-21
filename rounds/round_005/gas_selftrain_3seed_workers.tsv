@@ -1,0 +1,7 @@
+worker_index	gpu	pid	log	status
+0	0	48737	runs_round005_gas_selftrain/_workers/gpu0.log	queue_parent_stopped_after_direct_scene_launch
+1	1	48738	runs_round005_gas_selftrain/_workers/gpu1.log	queue_parent_stopped_after_direct_scene_launch
+2	2	48739	runs_round005_gas_selftrain/_workers/gpu2.log	queue_parent_stopped_after_direct_scene_launch
+3	3	48740	runs_round005_gas_selftrain/_workers/gpu3.log	running
+4	4	48741	runs_round005_gas_selftrain/_workers/gpu4.log	running
+5	5	48742	runs_round005_gas_selftrain/_workers/gpu5.log	running

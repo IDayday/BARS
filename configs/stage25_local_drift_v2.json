@@ -1,0 +1,23 @@
+{
+  "envs": ["antmaze-medium-navigate-v0", "antmaze-medium-stitch-v0"],
+  "seeds": [0, 1, 2],
+  "episodes": 100,
+  "variants": [
+    "gas_shortest",
+    "gas_shortest_subgoal_refresh_on_target_distance_increase",
+    "gas_shortest_nearest_reachable_subgoal_on_path"
+  ],
+  "diagnostic_variants": ["gas_shortest_drift_replan_with_cooldown"],
+  "fallback_modes": ["none"],
+  "max_parallel_eval": 4,
+  "min_episodes_for_gate": 100,
+  "local_drift": {
+    "window": 16,
+    "drift_threshold": 0.10,
+    "progress_stall_frac": 0.03,
+    "min_steps_between_refresh": 25,
+    "max_refreshes_per_episode": 5,
+    "cooldown_after_refresh": 25,
+    "max_skip_nodes": 2
+  }
+}

@@ -1,0 +1,591 @@
+diff --git a/bars/data/ogbench_dataset.py b/bars/data/ogbench_dataset.py
+index 3151b3a..b7cc1ef 100644
+--- a/bars/data/ogbench_dataset.py
++++ b/bars/data/ogbench_dataset.py
+@@ -10,6 +10,8 @@ common dataset dict layouts into BARS' OfflineDataset structure.
+ import fcntl
+ import json
+ import os
++import shutil
++import subprocess
+ import time
+ import urllib.request
+ import zipfile
+@@ -20,7 +22,8 @@ import numpy as np
+ 
+ from .trajectories import OfflineDataset, TrajectorySlice
+ 
+-_DEFAULT_DATASET_URL = "http://rail.eecs.berkeley.edu/datasets/ogbench"
++_DEFAULT_DATASET_URL = "https://rail.eecs.berkeley.edu/datasets/ogbench"
++_FALLBACK_DATASET_URL = "http://rail.eecs.berkeley.edu/datasets/ogbench"
+ 
+ 
+ def _default_dataset_dir() -> str:
+@@ -89,30 +92,187 @@ class _FileLock:
+         return False
+ 
+ 
+-def _download_atomic(url: str, dst: Path, retries: int = 5) -> None:
++def _dataset_base_urls() -> list[str]:
++    raw = os.environ.get("OGBENCH_DATASET_ENDPOINTS") or os.environ.get("OGBENCH_DATASET_URL") or ""
++    urls = [u.strip().rstrip("/") for u in raw.split(",") if u.strip()]
++    if not urls:
++        urls = [_DEFAULT_DATASET_URL, _FALLBACK_DATASET_URL]
++    return list(dict.fromkeys(urls))
++
++
++def _curl_download(url: str, tmp: Path) -> None:
++    curl = shutil.which("curl")
++    if curl is None:
++        raise RuntimeError("curl is not available")
++    if _curl_parallel_download(url, tmp):
++        return
++    cmd = [
++        curl,
++        "-sS",
++        "-fL",
++        "--retry",
++        os.environ.get("BARS_DOWNLOAD_RETRIES", "5"),
++        "--retry-delay",
++        os.environ.get("BARS_DOWNLOAD_RETRY_DELAY", "2"),
++        "--connect-timeout",
++        os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"),
++        "--speed-time",
++        os.environ.get("BARS_DOWNLOAD_SPEED_TIME", "60"),
++        "--speed-limit",
++        os.environ.get("BARS_DOWNLOAD_SPEED_LIMIT", "1024"),
++        "-o",
++        str(tmp),
++        url,
++    ]
++    subprocess.run(cmd, check=True)
++
++
++def _curl_headers(url: str) -> dict[str, str]:
++    curl = shutil.which("curl")
++    if curl is None:
++        return {}
++    proc = subprocess.run(
++        [curl, "-sIL", "--connect-timeout", os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"), url],
++        check=False,
++        text=True,
++        capture_output=True,
++    )
++    if proc.returncode != 0:
++        return {}
++    headers: dict[str, str] = {}
++    for line in proc.stdout.splitlines():
++        if ":" not in line:
++            continue
++        key, value = line.split(":", 1)
++        headers[key.strip().lower()] = value.strip()
++    return headers
++
++
++def _curl_base_args() -> list[str]:
++    curl = shutil.which("curl")
++    if curl is None:
++        raise RuntimeError("curl is not available")
++    return [
++        curl,
++        "-sS",
++        "-fL",
++        "--retry",
++        os.environ.get("BARS_DOWNLOAD_RETRIES", "5"),
++        "--retry-delay",
++        os.environ.get("BARS_DOWNLOAD_RETRY_DELAY", "2"),
++        "--connect-timeout",
++        os.environ.get("BARS_DOWNLOAD_CONNECT_TIMEOUT", "30"),
++        "--speed-time",
++        os.environ.get("BARS_DOWNLOAD_SPEED_TIME", "60"),
++        "--speed-limit",
++        os.environ.get("BARS_DOWNLOAD_SPEED_LIMIT", "1024"),
++    ]
++
++
++def _curl_parallel_download(url: str, tmp: Path) -> bool:
++    chunks = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_CHUNKS", "8"))
++    min_size = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_MIN_BYTES", str(64 * 1024 * 1024)))
++    if chunks <= 1:
++        return False
++    headers = _curl_headers(url)
++    if headers.get("accept-ranges", "").lower() != "bytes":
++        return False
++    try:
++        size = int(headers.get("content-length", "0"))
++    except ValueError:
++        return False
++    if size < min_size:
++        return False
++    chunks = max(1, min(chunks, size // (8 * 1024 * 1024) or 1))
++    if chunks <= 1:
++        return False
++    parts_dir = tmp.with_name(f"{tmp.name}.parts")
++    if parts_dir.exists():
++        shutil.rmtree(parts_dir)
++    parts_dir.mkdir(parents=True, exist_ok=True)
++    ranges: list[tuple[int, int]] = []
++    block = (size + chunks - 1) // chunks
++    for idx in range(chunks):
++        start = idx * block
++        if start >= size:
++            break
++        end = min(size - 1, start + block - 1)
++        ranges.append((start, end))
++    print(f"Parallel curl download {tmp.name}: {len(ranges)} ranges, {size} bytes", flush=True)
++    base = _curl_base_args()
++    parts: list[tuple[Path, int, int, int]] = []
++    for idx, (start, end) in enumerate(ranges):
++        parts.append((parts_dir / f"part-{idx:03d}", start, end, end - start + 1))
++    procs: list[subprocess.Popen[Any]] = []
++    try:
++        rounds = int(os.environ.get("BARS_DOWNLOAD_PARALLEL_ROUNDS", "3"))
++        for round_idx in range(1, rounds + 1):
++            pending = [(part, start, end, expected) for part, start, end, expected in parts if not part.exists() or part.stat().st_size != expected]
++            if not pending:
++                break
++            if round_idx > 1:
++                print(f"Retrying {len(pending)} failed OGBench ranges for {tmp.name} ({round_idx}/{rounds})", flush=True)
++            procs = []
++            for part, start, end, _ in pending:
++                cmd = base + ["-r", f"{start}-{end}", "-o", str(part), url]
++                procs.append(subprocess.Popen(cmd))
++            for proc in procs:
++                proc.wait()
++        pending = [(part, expected) for part, _, _, expected in parts if not part.exists() or part.stat().st_size != expected]
++        if pending:
++            detail = ", ".join(f"{part.name}:{part.stat().st_size if part.exists() else 0}/{expected}" for part, expected in pending[:4])
++            raise RuntimeError(f"parallel range download failed for {tmp.name}: {detail}")
++        with open(tmp, "wb") as out:
++            for part, _, _, _ in parts:
++                with open(part, "rb") as fh:
++                    shutil.copyfileobj(fh, out, length=1024 * 1024)
++        return tmp.stat().st_size == size
++    finally:
++        for proc in procs:
++            if proc.poll() is None:
++                proc.terminate()
++        shutil.rmtree(parts_dir, ignore_errors=True)
++
++
++def _urllib_download(url: str, tmp: Path) -> None:
++    with urllib.request.urlopen(url, timeout=120) as response, open(tmp, "wb") as out:
++        while True:
++            chunk = response.read(1024 * 1024)
++            if not chunk:
++                break
++            out.write(chunk)
++
++
++def _download_atomic(file_name: str, dst: Path, retries: int = 3) -> None:
+     tmp = dst.with_name(f"{dst.name}.tmp.{os.getpid()}")
+-    for attempt in range(1, retries + 1):
+-        try:
+-            if tmp.exists():
+-                tmp.unlink()
+-            print(f"Downloading OGBench dataset {dst.name} (attempt {attempt}/{retries}) from {url}", flush=True)
+-            with urllib.request.urlopen(url, timeout=120) as response, open(tmp, "wb") as out:
+-                while True:
+-                    chunk = response.read(1024 * 1024)
+-                    if not chunk:
+-                        break
+-                    out.write(chunk)
+-            if not _npz_is_valid(tmp):
+-                raise IOError(f"Downloaded file is not a valid npz: {tmp}")
+-            os.replace(tmp, dst)
+-            _write_valid_marker(dst)
+-            return
+-        except Exception:
+-            if tmp.exists():
+-                tmp.unlink()
+-            if attempt >= retries:
+-                raise
+-            time.sleep(min(60, 5 * attempt))
++    errors: list[str] = []
++    for base_url in _dataset_base_urls():
++        url = f"{base_url}/{file_name}"
++        for attempt in range(1, retries + 1):
++            try:
++                if tmp.exists():
++                    tmp.unlink()
++                print(
++                    f"Downloading OGBench dataset {dst.name} "
++                    f"(attempt {attempt}/{retries}) from {url}",
++                    flush=True,
++                )
++                try:
++                    _curl_download(url, tmp)
++                except Exception:
++                    _urllib_download(url, tmp)
++                if not _npz_is_valid(tmp):
++                    raise IOError(f"Downloaded file is not a valid npz: {tmp}")
++                os.replace(tmp, dst)
++                _write_valid_marker(dst)
++                return
++            except Exception as exc:
++                errors.append(f"{url}: {exc}")
++                if tmp.exists():
++                    tmp.unlink()
++                if attempt < retries:
++                    time.sleep(min(60, 5 * attempt))
++    raise RuntimeError(f"Failed to download {file_name}; tried {len(errors)} attempts: {' | '.join(errors[-3:])}")
+ 
+ 
+ def _dataset_file_names(env_name: str) -> tuple[str, str]:
+@@ -132,7 +292,6 @@ def ensure_ogbench_dataset_files(env_name: str, dataset_dir: str | None = None)
+     dataset_dir = os.path.expandvars(os.path.expanduser(dataset_dir or os.environ.get("OGBENCH_DATASET_DIR") or _default_dataset_dir()))
+     root = Path(dataset_dir)
+     root.mkdir(parents=True, exist_ok=True)
+-    base_url = os.environ.get("OGBENCH_DATASET_URL", _DEFAULT_DATASET_URL).rstrip("/")
+     train_name, val_name = _dataset_file_names(env_name)
+     lock_path = root / f"{train_name}.lock"
+     with _FileLock(lock_path):
+@@ -150,7 +309,7 @@ def ensure_ogbench_dataset_files(env_name: str, dataset_dir: str | None = None)
+                     stale.unlink()
+                 except FileNotFoundError:
+                     pass
+-            _download_atomic(f"{base_url}/{file_name}", dst)
++            _download_atomic(file_name, dst)
+             paths.append(str(dst))
+         return paths[0], paths[1]
+ 
+diff --git a/bars/external/gas_artifacts.py b/bars/external/gas_artifacts.py
+index 7bfe20c..a45af0f 100644
+--- a/bars/external/gas_artifacts.py
++++ b/bars/external/gas_artifacts.py
+@@ -15,8 +15,7 @@ from typing import Dict, Iterable, Optional
+ 
+ 
+ REPO_ID = "qortmdgh4141/GAS"
+-HF_ENDPOINT = os.environ.get("HF_ENDPOINT") or os.environ.get("BARS_HF_ENDPOINT") or "https://huggingface.co"
+-HF_BASE = f"{HF_ENDPOINT.rstrip('/')}/{REPO_ID}/resolve/main"
++DEFAULT_HF_ENDPOINTS = ("https://hf-mirror.com", "https://huggingface.co")
+ OFFICIAL_PRETRAINED_SLUGS = {
+     "antmaze-giant-navigate",
+     "antmaze-giant-stitch",
+@@ -144,6 +143,31 @@ def file_sha256(path: str | os.PathLike[str], block_size: int = 1 << 20) -> str:
+     return h.hexdigest()
+ 
+ 
++def _hf_endpoints() -> list[str]:
++    configured = os.environ.get("BARS_HF_ENDPOINTS")
++    if configured:
++        raw = [x.strip() for x in configured.split(",") if x.strip()]
++    else:
++        explicit = os.environ.get("HF_ENDPOINT") or os.environ.get("BARS_HF_ENDPOINT")
++        raw = [explicit] if explicit else []
++        raw.extend(DEFAULT_HF_ENDPOINTS)
++    out: list[str] = []
++    seen = set()
++    for endpoint in raw:
++        if not endpoint:
++            continue
++        normalized = endpoint.rstrip("/")
++        if normalized in seen:
++            continue
++        seen.add(normalized)
++        out.append(normalized)
++    return out or list(DEFAULT_HF_ENDPOINTS)
++
++
++def _hf_url(endpoint: str, slug: str, name: str) -> str:
++    return f"{endpoint.rstrip('/')}/{REPO_ID}/resolve/main/{slug}/{name}"
++
++
+ def _download_file(url: str, dst: Path, timeout: int = 15) -> bool:
+     dst.parent.mkdir(parents=True, exist_ok=True)
+     tmp = dst.with_suffix(dst.suffix + ".tmp")
+@@ -154,8 +178,14 @@ def _download_file(url: str, dst: Path, timeout: int = 15) -> bool:
+             "--fail",
+             "--retry",
+             "3",
++            "--retry-delay",
++            "2",
+             "--connect-timeout",
+             str(timeout),
++            "--speed-time",
++            str(int(os.environ.get("BARS_DOWNLOAD_SPEED_TIME", "60"))),
++            "--speed-limit",
++            str(int(os.environ.get("BARS_DOWNLOAD_SPEED_LIMIT", "1024"))),
+             "-o",
+             str(tmp),
+             url,
+@@ -181,6 +211,15 @@ def _download_file(url: str, dst: Path, timeout: int = 15) -> bool:
+         return False
+ 
+ 
++def _download_hf_file(slug: str, name: str, dst: Path) -> bool:
++    for endpoint in _hf_endpoints():
++        url = _hf_url(endpoint, slug, name)
++        print(f"[gas_artifacts] download {slug}/{name} via {endpoint}", file=sys.stderr)
++        if _download_file(url, dst):
++            return True
++    return False
++
++
+ def download_official_gas_if_available(env_name: str, root: str | os.PathLike[str]) -> bool:
+     """Download official GAS graph/policy if the HF repo has this environment.
+ 
+@@ -200,14 +239,14 @@ def download_official_gas_if_available(env_name: str, root: str | os.PathLike[st
+ 
+     graph_ok = artifacts.keygraph is not None
+     if not graph_ok:
+-        graph_ok = _download_file(f"{HF_BASE}/{slug}/keygraph.pkl", artifacts.graph_dir / "keygraph.pkl")
++        graph_ok = _download_hf_file(slug, "keygraph.pkl", artifacts.graph_dir / "keygraph.pkl")
+     policy_path = None
+     if artifacts.policy_checkpoint is not None:
+         policy_path = artifacts.policy_checkpoint
+     else:
+         for name in params_names:
+             dst = artifacts.policy_dir / name
+-            if _download_file(f"{HF_BASE}/{slug}/{name}", dst):
++            if _download_hf_file(slug, name, dst):
+                 policy_path = dst
+                 break
+     if graph_ok and policy_path is not None:
+diff --git a/external_src/GAS/O_utils/env_utils.py b/external_src/GAS/O_utils/env_utils.py
+index 8bf6d29..baab4c3 100644
+--- a/external_src/GAS/O_utils/env_utils.py
++++ b/external_src/GAS/O_utils/env_utils.py
+@@ -1,3 +1,4 @@
++import os
+ import time
+ import ogbench
+ import gymnasium
+@@ -5,6 +6,11 @@ import numpy as np
+ 
+ from O_utils.datasets import Dataset
+ 
++try:
++    from bars.data.ogbench_dataset import ensure_ogbench_dataset_files
++except Exception:  # pragma: no cover - GAS can still run without BARS helpers.
++    ensure_ogbench_dataset_files = None
++
+ 
+ class EpisodeMonitor(gymnasium.Wrapper):
+     """Environment wrapper to monitor episode statistics."""
+@@ -49,11 +55,18 @@ class EpisodeMonitor(gymnasium.Wrapper):
+ 
+ def make_env_and_datasets(env_name, seed):
+     """Make OGBench environment and datasets."""
+-    env, train_dataset, val_dataset = ogbench.make_env_and_datasets(env_name, compact_dataset=False)
++    dataset_dir = os.path.expanduser(os.environ.get("OGBENCH_DATASET_DIR", "~/.ogbench/data"))
++    if ensure_ogbench_dataset_files is not None:
++        ensure_ogbench_dataset_files(env_name, dataset_dir)
++    env, train_dataset, val_dataset = ogbench.make_env_and_datasets(
++        env_name,
++        dataset_dir=dataset_dir,
++        compact_dataset=False,
++    )
+     env = EpisodeMonitor(env)
+     observation, info = env.reset(seed=seed)
+     
+     train_dataset = Dataset.create(**train_dataset)
+     val_dataset = Dataset.create(**val_dataset)
+     
+-    return env, train_dataset, val_dataset
+\ No newline at end of file
++    return env, train_dataset, val_dataset
+diff --git a/scripts/stage24_analyze.py b/scripts/stage24_analyze.py
+index 199b848..b2a7cb3 100755
+--- a/scripts/stage24_analyze.py
++++ b/scripts/stage24_analyze.py
+@@ -219,10 +219,23 @@ def _stage23_reachability_prior(stage23_reports: Path) -> pd.DataFrame:
+     return prior
+ 
+ 
+-def _paired_episode_deltas(eval_df: pd.DataFrame) -> pd.DataFrame:
++def _complete_eval_cells(eval_df: pd.DataFrame, min_episodes: int) -> pd.DataFrame:
++    if len(eval_df) == 0 or min_episodes <= 1:
++        return eval_df
++    df = eval_df.copy()
++    if "fallback_mode" not in df:
++        df["fallback_mode"] = ""
++    keys = [c for c in ["env", "seed", "variant", "fallback_mode"] if c in df.columns]
++    if not keys or "success" not in df:
++        return df
++    counts = df.groupby(keys, dropna=False)["success"].transform("count")
++    return df[counts >= int(min_episodes)].copy()
++
++
++def _paired_episode_deltas(eval_df: pd.DataFrame, min_episodes: int = 100) -> pd.DataFrame:
+     if len(eval_df) == 0 or "variant" not in eval_df:
+         return pd.DataFrame()
+-    df = eval_df.copy()
++    df = _complete_eval_cells(eval_df, min_episodes)
+     if "fallback_mode" not in df:
+         df["fallback_mode"] = ""
+     df = df[
+@@ -253,8 +266,10 @@ def _paired_episode_deltas(eval_df: pd.DataFrame) -> pd.DataFrame:
+     return pd.DataFrame(rows)
+ 
+ 
+-def analyze_reachability(eval_df: pd.DataFrame, stage23_reports: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
++def analyze_reachability(eval_df: pd.DataFrame, stage23_reports: Path, min_episodes: int = 100) -> tuple[pd.DataFrame, dict[str, Any]]:
+     stage24 = _group_eval(eval_df, "stage24_run")
++    if len(stage24) and min_episodes > 1:
++        stage24 = stage24[pd.to_numeric(stage24.get("episodes", 0), errors="coerce").fillna(0) >= int(min_episodes)].copy()
+     prior = _stage23_reachability_prior(stage23_reports)
+     grouped = pd.concat([prior, stage24], ignore_index=True) if len(stage24) or len(prior) else pd.DataFrame()
+     if len(grouped) == 0:
+@@ -305,7 +320,7 @@ def analyze_reachability(eval_df: pd.DataFrame, stage23_reports: Path) -> tuple[
+             "primary_variant": "",
+             "completed_cells": 0,
+         }
+-    paired = _paired_episode_deltas(eval_df)
++    paired = _paired_episode_deltas(eval_df, min_episodes=min_episodes)
+     if len(paired):
+         out = out.merge(paired, on=["env", "seed", "fallback_mode", "variant"], how="left")
+         out["success_delta_vs_shortest"] = out["paired_episode_success_delta"].where(out["paired_episode_success_delta"].notna(), out["success_delta_vs_shortest"])
+@@ -382,16 +397,19 @@ def analyze_local_drift(
+     stage23_reports: Path,
+     reports_root: Path,
+     local_drift_roots: list[Path],
++    min_episodes: int = 100,
+ ) -> tuple[pd.DataFrame, dict[str, Any]]:
+     evals = eval_df
+     if len(evals) == 0:
+         evals = _collect_eval_roots(local_drift_roots)
++    evals_for_gate = _complete_eval_cells(evals, min_episodes)
+     atlas = _read_csv(stage23_reports / "stage23_failure_atlas.csv")
+     drift = build_drift_table(evals, atlas)
+     if len(drift) == 0:
+         drift = _read_csv(reports_root / "stage24_local_drift.csv")
+-    repair_rows = drift[drift.get("variant", pd.Series(dtype=str)).astype(str).isin(REPAIR_VARIANTS)] if len(drift) else pd.DataFrame()
+-    if len(drift) == 0 or len(repair_rows) == 0:
++    drift_for_gate = build_drift_table(evals_for_gate, atlas) if len(evals_for_gate) else pd.DataFrame(columns=DRIFT_COLUMNS)
++    repair_rows = drift_for_gate[drift_for_gate.get("variant", pd.Series(dtype=str)).astype(str).isin(REPAIR_VARIANTS)] if len(drift_for_gate) else pd.DataFrame()
++    if len(drift_for_gate) == 0 or len(repair_rows) == 0:
+         return drift, {"gate": "HOLD_LOCAL_DRIFT_REPAIR", "best_variant": "", "best_reduction": np.nan}
+     baseline_map = {
+         "gas_shortest_replan_on_local_drift": "gas_shortest",
+@@ -400,11 +418,11 @@ def analyze_local_drift(
+     }
+     best = {"variant": "", "reduction": -np.inf, "success_delta": -np.inf}
+     for repair_variant, baseline_variant in baseline_map.items():
+-        rep = drift[drift["variant"].astype(str).eq(repair_variant)]
+-        base = drift[drift["variant"].astype(str).eq(baseline_variant)]
++        rep = drift_for_gate[drift_for_gate["variant"].astype(str).eq(repair_variant)]
++        base = drift_for_gate[drift_for_gate["variant"].astype(str).eq(baseline_variant)]
+         if len(rep) == 0 or len(base) == 0:
+             continue
+-        keys = [c for c in ["env", "seed"] if c in drift.columns]
++        keys = [c for c in ["env", "seed"] if c in drift_for_gate.columns]
+         for key_vals, rep_sub in rep.groupby(keys, dropna=False):
+             if not isinstance(key_vals, tuple):
+                 key_vals = (key_vals,)
+@@ -734,6 +752,7 @@ def main() -> None:
+     p.add_argument("--local-drift-roots", default="runs_stage24_reachability_confirm,runs_stage24_local_drift")
+     p.add_argument("--oracle-reports-root", default="reports/stage24_oracle_scan_tmp")
+     p.add_argument("--oracle-artifact-root", default="artifacts/stage24")
++    p.add_argument("--min-episodes", type=int, default=100)
+     args = p.parse_args()
+ 
+     reports = Path(args.reports_root)
+@@ -742,8 +761,14 @@ def main() -> None:
+     reach_eval = _collect_eval_roots([Path(x) for x in args.reachability_roots.split(",") if x])
+     local_eval = _collect_eval_roots([Path(x) for x in args.local_drift_roots.split(",") if x])
+ 
+-    reach, reach_summary = analyze_reachability(reach_eval, stage23_reports)
+-    drift, drift_summary = analyze_local_drift(local_eval, stage23_reports, reports, [Path(x) for x in args.local_drift_roots.split(",") if x])
++    reach, reach_summary = analyze_reachability(reach_eval, stage23_reports, min_episodes=args.min_episodes)
++    drift, drift_summary = analyze_local_drift(
++        local_eval,
++        stage23_reports,
++        reports,
++        [Path(x) for x in args.local_drift_roots.split(",") if x],
++        min_episodes=args.min_episodes,
++    )
+     oracle, oracle_summary = analyze_oracle(Path(args.oracle_reports_root))
+     pbridge_summary = analyze_p_bridge(reports, oracle_summary)
+     boundary, boundary_summary = analyze_boundary(reports, stage23_reports, Path(args.oracle_artifact_root))
+diff --git a/scripts/stage24_oracle_headroom_scan.sh b/scripts/stage24_oracle_headroom_scan.sh
+index 4ae30eb..fe5bb9b 100755
+--- a/scripts/stage24_oracle_headroom_scan.sh
++++ b/scripts/stage24_oracle_headroom_scan.sh
+@@ -20,6 +20,8 @@ ARTIFACT_ROOT="${ARTIFACT_ROOT:-artifacts/stage24}"
+ GAS_REPO_PATH="${GAS_REPO_PATH:-external_src/GAS}"
+ REPORTS_ROOT="${REPORTS_ROOT:-reports}"
+ ORACLE_REPORTS_ROOT="${ORACLE_REPORTS_ROOT:-reports/stage24_oracle_scan_tmp}"
++PREPARE_LOG_ROOT="${PREPARE_LOG_ROOT:-runs_stage24_prepare_oracle}"
++SKIP_PREPARE="${SKIP_PREPARE:-0}"
+ PREFER_PRETRAINED="${PREFER_PRETRAINED:-1}"
+ TRAIN_IF_MISSING="${TRAIN_IF_MISSING:-1}"
+ QUICK="${QUICK:-0}"
+@@ -33,7 +35,11 @@ mkdir -p "$REPORTS_ROOT" "$ORACLE_REPORTS_ROOT" "$ARTIFACT_ROOT"
+ overall=0
+ 
+ echo "[stage24_oracle] prepare/load official GAS artifacts"
+-ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_prepare_oracle" bash scripts/stage22_prepare_gas_backbone.sh || overall=1
++if [[ "$SKIP_PREPARE" != "1" ]]; then
++  ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="$PREPARE_LOG_ROOT" bash scripts/stage22_prepare_gas_backbone.sh || overall=1
++else
++  echo "[stage24_oracle] skip prepare (SKIP_PREPARE=1)"
++fi
+ 
+ echo "[stage24_oracle] build bridge graphs G0/G1/G2/G3"
+ python scripts/stage23_build_bridge_graphs.py \
+diff --git a/scripts/stage24_run_reachability_confirm.sh b/scripts/stage24_run_reachability_confirm.sh
+index cb98e95..e2b1363 100755
+--- a/scripts/stage24_run_reachability_confirm.sh
++++ b/scripts/stage24_run_reachability_confirm.sh
+@@ -20,9 +20,13 @@ QUICK="${QUICK:-0}"
+ EVAL_ON_CPU="${EVAL_ON_CPU:-0}"
+ REQUIRE_RECOMMENDED_BUDGET="${REQUIRE_RECOMMENDED_BUDGET:-1}"
+ MAX_PLAN_EDGES="${MAX_PLAN_EDGES:-20}"
++MAX_STEPS="${MAX_STEPS:-1000}"
+ INCLUDE_REPAIR="${INCLUDE_REPAIR:-0}"
+ DEBUG_JSONL="${DEBUG_JSONL:-1}"
+ REPORTS_ROOT="${REPORTS_ROOT:-reports}"
++SKIP_PREPARE="${SKIP_PREPARE:-0}"
++SKIP_REACHABILITY_TRAIN="${SKIP_REACHABILITY_TRAIN:-0}"
++ANALYZE_MIN_EPISODES="${ANALYZE_MIN_EPISODES:-100}"
+ export WANDB_MODE="${WANDB_MODE:-disabled}"
+ export WANDB_DISABLED="${WANDB_DISABLED:-true}"
+ export BARS_USE_TENSORBOARD="${BARS_USE_TENSORBOARD:-1}"
+@@ -70,8 +74,16 @@ MAX_PARALLEL_EVAL="${MAX_PARALLEL_EVAL:-$MAX_PARALLEL_CONF}"
+ VARIANTS="${VARIANTS:-$VARIANTS_CONF}"
+ FALLBACK_MODES="${FALLBACK_MODES:-$FALLBACK_CONF}"
+ 
+-ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_prepare" bash scripts/stage22_prepare_gas_backbone.sh
+-ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" GAS_ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ARTIFACT_ROOT="$ARTIFACT_ROOT" GAS_REPO_PATH="$GAS_REPO_PATH" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_reachability_train" bash scripts/stage22_train_reachability.sh
++if [[ "$SKIP_PREPARE" != "1" ]]; then
++  ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_prepare" bash scripts/stage22_prepare_gas_backbone.sh
++else
++  echo "[stage24_reachability] skip prepare (SKIP_PREPARE=1)"
++fi
++if [[ "$SKIP_REACHABILITY_TRAIN" != "1" ]]; then
++  ENVS="$ENVS" SEEDS="$SEEDS" GPUS="$GPUS" QUICK="$QUICK" GAS_ARTIFACT_ROOT="$GAS_ARTIFACT_ROOT" ARTIFACT_ROOT="$ARTIFACT_ROOT" GAS_REPO_PATH="$GAS_REPO_PATH" PREFER_PRETRAINED="$PREFER_PRETRAINED" TRAIN_IF_MISSING="$TRAIN_IF_MISSING" LOG_ROOT="runs_stage24_reachability_train" bash scripts/stage22_train_reachability.sh
++else
++  echo "[stage24_reachability] skip reachability scoring/training (SKIP_REACHABILITY_TRAIN=1)"
++fi
+ 
+ jobs_tsv="$LOG_ROOT/jobs.tsv"
+ python - "$CONFIG" "$ENVS" "$SEEDS" "$EPISODES" "$VARIANTS" "$FALLBACK_MODES" "$REQUIRE_RECOMMENDED_BUDGET" > "$jobs_tsv" <<'PY'
+@@ -138,7 +150,7 @@ while IFS=$'\t' read -r env seed variant budget fallback episodes; do
+       --gas-artifact-root "$GAS_ARTIFACT_ROOT" --artifact-root "$ARTIFACT_ROOT" --stage22-root "$STAGE24_ROOT" \
+       --gas-repo-path "$GAS_REPO_PATH" --gpu "$gpu" --eval-on-cpu "$EVAL_ON_CPU" \
+       --fallback-mode "$fallback" --prefer-pretrained "$PREFER_PRETRAINED" --train-if-missing "$TRAIN_IF_MISSING" --quick "$QUICK" \
+-      --max-plan-edges "$MAX_PLAN_EDGES" --debug-jsonl "$DEBUG_JSONL" \
++      --max-steps "$MAX_STEPS" --max-plan-edges "$MAX_PLAN_EDGES" --debug-jsonl "$DEBUG_JSONL" \
+       > "$log" 2>&1
+     rc=$?
+     if [[ $rc -eq 0 ]]; then
+@@ -154,7 +166,7 @@ while IFS=$'\t' read -r env seed variant budget fallback episodes; do
+   if [[ "$active" -ge "$MAX_PARALLEL_EVAL" ]]; then
+     wait -n || overall=1
+     active=$((active - 1))
+-    python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" || true
++    python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" --min-episodes "$ANALYZE_MIN_EPISODES" || true
+   fi
+ done < "$jobs_tsv"
+ 
+@@ -164,7 +176,7 @@ while [[ "$active" -gt 0 ]]; do
+ done
+ 
+ python scripts/stage24_local_drift_diagnostic.py --eval-roots "$STAGE24_ROOT" --out "$REPORTS_ROOT/stage24_local_drift.csv" || true
+-python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" --reports-root "$REPORTS_ROOT" || true
++python scripts/stage24_analyze.py --reachability-roots "$STAGE24_ROOT" --local-drift-roots "$STAGE24_ROOT" --reports-root "$REPORTS_ROOT" --min-episodes "$ANALYZE_MIN_EPISODES" || true
+ 
+ if [[ "$WAIT" == "1" ]]; then
+   echo "[stage24_reachability] reports written under $REPORTS_ROOT; root=$STAGE24_ROOT"

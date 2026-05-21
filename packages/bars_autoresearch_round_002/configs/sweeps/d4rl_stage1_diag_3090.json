@@ -1,0 +1,18 @@
+{
+  "base_config": "../d4rl_antmaze_quick.json",
+  "resources": {"default_mem_mb": 3500},
+  "grid": {
+    "envs": [
+      "antmaze-medium-play-v2",
+      "antmaze-medium-diverse-v2",
+      "antmaze-large-play-v2",
+      "antmaze-large-diverse-v2"
+    ],
+    "seeds": [0, 1, 2],
+    "variants": ["full_bars"],
+    "node_methods": ["bars"],
+    "set": {
+      "eval.enabled": false
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "details": {
+    "by_variant_rows": 14,
+    "complete_cells": 36,
+    "failed_rows": 400,
+    "failure_label_quality": "PASS_FAILURE_LABEL_QUALITY",
+    "label_integrity": "PASS_LABEL_INTEGRITY",
+    "missing_failed_labels": 0,
+    "total_rows": 3600,
+    "unclassified_failure_rate": 0.0,
+    "variants": [
+      "gas_reachability_budget_calibrated",
+      "gas_reachability_budget_replan_on_local_drift",
+      "gas_reachability_soft_calibrated",
+      "gas_shortest",
+      "gas_shortest_adaptive_subgoal_horizon",
+      "gas_shortest_replan_on_local_drift"
+    ]
+  },
+  "gates": {
+    "boundary": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY",
+    "d4rl": "HOLD_D4RL_PROTOCOL_AUDIT",
+    "failure_label_quality": "PASS_FAILURE_LABEL_QUALITY",
+    "integrated": "SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE",
+    "label_integrity": "PASS_LABEL_INTEGRITY",
+    "p_bridge": "SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM",
+    "planner_evidence_fallback_mode": "none_only"
+  },
+  "primary_question": "Are all Stage24 variants labeled consistently enough for autonomous decisions?",
+  "round": "round_001"
+}

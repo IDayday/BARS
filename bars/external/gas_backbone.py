@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import pickle
 import shutil
 import sys
 import time
@@ -153,14 +152,9 @@ class GASBackbone:
                 kg = KeyGraph()
                 kg.load_keygraph(str(keygraph_path.parent), keygraph_path.stem)
             except Exception:
-                with open(keygraph_path, "rb") as f:
-                    data = pickle.load(f)
-                if isinstance(data, dict):
-                    kg = type("LoadedGASKeyGraph", (), {})()
-                    for k, v in data.items():
-                        setattr(kg, k, v)
-                else:
-                    kg = data
+                from bars.gas_bars.graph_table import load_gas_keygraph
+
+                kg = load_gas_keygraph(keygraph_path)
         self.key_graph = kg
         return kg
 

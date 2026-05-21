@@ -1,0 +1,131 @@
+{
+  "seed": 0,
+  "device": "cuda",
+  "data": {
+    "source": "ogbench",
+    "env_name": "antmaze-medium-navigate-v0",
+    "dataset_limit": 0
+  },
+  "algorithm": {
+    "name": "gas_bars",
+    "description": "GAS+BARS same-backbone: import official GAS keygraph/embedding/policy, rescore with BARS reachability and boundary-aware planner."
+  },
+  "routeb": {
+    "backbone": "gas_keygraph",
+    "keygraph_path": "${GAS_KEYGRAPH_PATH}",
+    "dataset_embeddings_path": "${GAS_DATASET_EMBEDDINGS_PATH}",
+    "node_indices_path": "${GAS_NODE_INDICES_PATH}",
+    "rescore_edges": true
+  },
+  "embedding": {
+    "auto_use_external_gas_embeddings": true,
+    "dataset_embeddings_path": "${GAS_DATASET_EMBEDDINGS_PATH}",
+    "lookup_obs_dim": 2
+  },
+  "ann": {
+    "backend": "auto",
+    "use_gpu": false
+  },
+  "tdr": {
+    "latent_dim": 32,
+    "steps": 0,
+    "load_if_exists": true,
+    "embed_batch_size": 8192
+  },
+  "policy": {
+    "type": "external",
+    "horizon": 50,
+    "load_if_exists": false
+  },
+  "external_policy": {
+    "repo_path": "${GAS_REPO_PATH}",
+    "factory": "routeb_gas_policy_adapter.build_policy",
+    "checkpoint_path": "${GAS_POLICY_CHECKPOINT_PATH}",
+    "act_method": "act",
+    "kwargs": {}
+  },
+  "external_gas": {
+    "enabled": true,
+    "keygraph_path": "${GAS_KEYGRAPH_PATH}",
+    "dataset_embeddings_path": "${GAS_DATASET_EMBEDDINGS_PATH}",
+    "node_indices_path": "${GAS_NODE_INDICES_PATH}",
+    "rescore_edges": true
+  },
+  "reachability": {
+    "enabled": true,
+    "type": "policy_conditioned",
+    "hidden_dims": [256, 256],
+    "horizon": 50,
+    "steps": 25000,
+    "batch_size": 4096,
+    "lr": 0.0003,
+    "weight_decay": 0.00001,
+    "grad_clip": 10.0,
+    "log_every": 1000,
+    "load_if_exists": true,
+    "pos_frac": 0.35,
+    "unlabeled_frac": 0.25,
+    "policy_consistency_weight": 0.0,
+    "use_hard_neg": true,
+    "hard_neg_pool": 20000,
+    "hard_neg_knn": 16,
+    "hard_neg_weight": 0.75,
+    "same_neg_weight": 1.0,
+    "cross_random_weight": 0.10,
+    "far_neg_min_dt": 51,
+    "far_neg_max_dt": 200
+  },
+  "graph": {
+    "node_method": "bars",
+    "num_nodes": 500,
+    "edge_knn": 16,
+    "top_outgoing": 16,
+    "min_outgoing": 4,
+    "preserve_temporal_edges": true,
+    "load_if_exists": true,
+    "p_clip": 0.0001,
+    "score_batch_size": 65536
+  },
+  "boundary": {
+    "enabled": true,
+    "method": "support_modes",
+    "num_modes": 4,
+    "support_k": 64,
+    "segment_horizon": 50,
+    "support_segments": 200000,
+    "direction_fallback_weight": 0.15,
+    "load_if_exists": true
+  },
+  "planner": {
+    "variant": "gas_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 0.1,
+    "exec_budget": 8.0,
+    "max_edges": 12,
+    "max_labels_per_edge": 32
+  },
+  "diagnostics": {
+    "enabled": true,
+    "num_path_pairs": 256,
+    "planner_variants": ["gas", "reachability", "gas_bars", "constrained_bars"],
+    "lambda_risk_values": [0.0, 0.3, 1.0, 3.0],
+    "edge_rollout_enabled": false
+  },
+  "eval": {
+    "enabled": true,
+    "episodes": 100,
+    "variant": "gas_bars",
+    "fallback_mode": "none",
+    "max_steps": 1000,
+    "subgoal_horizon": 50,
+    "goal_dim": 2,
+    "success_threshold": 0.5,
+    "subgoal_threshold": 1.0,
+    "embedding_source": "policy",
+    "exec_budget": 8.0,
+    "max_plan_edges": 12
+  },
+  "experiment": {
+    "condition": "gas_bars_same_backbone"
+  }
+}

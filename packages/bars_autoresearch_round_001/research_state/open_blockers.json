@@ -1,0 +1,29 @@
+{
+  "blockers": [
+    {
+      "closed_in_round": 1,
+      "description": "Failure labels must cover all variants before local-drift claims are interpreted.",
+      "id": "B001",
+      "status": "closed",
+      "track": "protocol_repair"
+    },
+    {
+      "description": "No tested env has path-level oracle bridge headroom.",
+      "id": "B002",
+      "status": "open",
+      "track": "oracle_headroom"
+    },
+    {
+      "description": "Boundary coverage is far below re-entry threshold.",
+      "id": "B003",
+      "status": "open",
+      "track": "boundary"
+    },
+    {
+      "description": "D4RL remains protocol/debug-only until audit passes.",
+      "id": "B004",
+      "status": "open",
+      "track": "d4rl"
+    }
+  ]
+}

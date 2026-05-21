@@ -1,0 +1,5 @@
+env,seed,junction_class,junction_count,coverage,supported_success_rate,unsupported_success_rate,supported_gap,psi_AUROC
+antmaze-large-explore-v0,0,virtual_start_goal_connector_pairs,1458,0.0002581347130124,,0.3870967741935484,,0.6542397660818715
+antmaze-large-explore-v0,0,local_local_edge_junctions,0,0.0002581347130124,,0.3870967741935484,,0.6542397660818715
+antmaze-large-explore-v0,0,bridge_entry_exit_junctions,309686,0.0002581347130124,,0.3870967741935484,,0.6542397660818715
+antmaze-large-explore-v0,0,bridge_bridge_junctions,50591,0.0002581347130124,,0.3870967741935484,,0.6542397660818715

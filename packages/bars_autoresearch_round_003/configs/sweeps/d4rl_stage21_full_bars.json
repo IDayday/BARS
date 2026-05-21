@@ -1,0 +1,1604 @@
+{
+  "base_config": "../routeb/d4rl_antmaze_stage21_full_bars.json",
+  "resources": {
+    "default_mem_mb": 2200
+  },
+  "tasks": [
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_shortest_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_constrained_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_constrained_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_shortest_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_constrained_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_constrained_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_shortest_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-play-v2_constrained_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-play-v2_constrained_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_shortest_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_constrained_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_constrained_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_shortest_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_constrained_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_constrained_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_shortest_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-medium-diverse-v2_constrained_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-medium-diverse-v2_constrained_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_shortest_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_reachability_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_reachability_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_full_bars_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_full_bars_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_constrained_bars_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_constrained_bars_seed0",
+      "env": "antmaze-large-play-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_shortest_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_reachability_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_reachability_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_full_bars_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_full_bars_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_constrained_bars_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_constrained_bars_seed1",
+      "env": "antmaze-large-play-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_shortest_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_reachability_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_reachability_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_full_bars_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_full_bars_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-play-v2_constrained_bars_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-play-v2_constrained_bars_seed2",
+      "env": "antmaze-large-play-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_shortest_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_reachability_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_reachability_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_full_bars_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_full_bars_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_constrained_bars_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_constrained_bars_seed0",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_shortest_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_reachability_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_reachability_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_full_bars_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_full_bars_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_constrained_bars_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_constrained_bars_seed1",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 1,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_shortest_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "shortest",
+        "planner.variant": "shortest",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_reachability_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_reachability_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_full_bars_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_full_bars_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "full_bars",
+        "planner.variant": "full_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_pure_antmaze-large-diverse-v2_constrained_bars_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_pure",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    },
+    {
+      "run_id": "stage21_after_progress_antmaze-large-diverse-v2_constrained_bars_seed2",
+      "env": "antmaze-large-diverse-v2",
+      "seed": 2,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 2200,
+      "set": {
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "stage21_full_bars_after_progress",
+        "eval.fallback_mode": "direct_goal_after_progress",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "diagnostics.enabled": false,
+        "graph.load_if_exists": true,
+        "boundary.load_if_exists": true
+      }
+    }
+  ]
+}

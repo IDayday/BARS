@@ -1,0 +1,38 @@
+{
+  "adapter_certification": "PASS_ADAPTER_CERTIFICATION",
+  "baseline_certification": "PASS_BASELINE_CERTIFICATION",
+  "baseline_registry": "PASS_BASELINE_REGISTRY",
+  "boundary": "HOLD_BOUNDARY_DIAGNOSTIC_ONLY",
+  "details": {
+    "adapter_gap_pp": {
+      "antmaze-giant-stitch-v0": -92.0,
+      "antmaze-large-explore-v0": -6.3999999999999915,
+      "scene-play-v0": 1.2000000000000028
+    },
+    "adapter_pass_envs": [
+      "scene-play-v0"
+    ],
+    "audit_status_counts": {
+      "LOCAL_UNDERTRAINED": 2,
+      "OFFICIAL_FULL_BUDGET": 3,
+      "OFFICIAL_NOT_FOUND": 2,
+      "OFFICIAL_PARTIAL_LOCAL": 2
+    },
+    "baseline_certified_envs": [
+      "antmaze-giant-stitch-v0",
+      "antmaze-large-explore-v0",
+      "scene-play-v0"
+    ],
+    "git_commit": "7e860d7a4cdaefc0977574a7f1c7b49bd5a6e9b5",
+    "git_status_short": "M bars/data/ogbench_dataset.py\n M bars/external/gas_artifacts.py\n M bars/external/gas_backbone.py\n M bars/gas_bars/evaluate.py\n M bars/gas_bars/graph_table.py\n M bars/gas_bars/planner.py\n M external_src/GAS/O_utils/env_utils.py\n M scripts/stage24_analyze.py\n M scripts/stage24_oracle_headroom_scan.sh\n M scripts/stage24_run_reachability_confirm.sh\n?? AGENTS.md\n?? BARS_AUTONOMOUS_RESEARCH_LOOP_BASELINE_FIRST.md\n?? configs/stage25_local_drift_v2.json\n?? configs/stage25_oracle_scan_matrix.json\n?? configs/stage25_reachability_closing.json\n?? packages/\n?? reports/round_001_failure_atlas_all_variants.csv\n?? reports/round_001_failure_atlas_summary.csv\n?? reports/round_001_gate_status.json\n?? reports/round_001_label_integrity.json\n?? reports/round_001_metrics_summary.csv\n?? reports/round_001_next_plan.md\n?? reports/round_001_reflection.md\n?? reports/round_002_adapter_mismatch_report.md\n?? reports/round_002_bars_adapter_eval.csv\n?? reports/round_002_baseline_cards.jsonl\n?? reports/round_002_baseline_certification.json\n?? reports/round_002_baseline_certification.md\n?? reports/round_002_baseline_registry.csv\n?? reports/round_002_gas_official_eval.csv\n?? reports/round_002_gate_status.json\n?? reports/round_002_official_vs_adapter.csv\n?? reports/round_002_preflight.md\n?? reports/round_002_prior_evidence_reclassification.csv\n?? reports/round_002_prior_evidence_reclassification.md\n?? reports/round_002_public_target_lookup.md\n?? reports/round_003_adapter_certification.md\n?? reports/round_003_bars_adapter_eval.csv\n?? reports/round_003_baseline_certification.json\n?? reports/round_003_baseline_certification.md\n?? reports/round_003_dataset_cleanup.csv\n?? reports/round_003_dataset_inventory.csv\n?? reports/round_003_dataset_inventory_final.csv\n?? reports/round_003_gas_official_eval.csv\n?? reports/round_003_official_artifact_audit.csv\n?? reports/round_003_official_artifact_audit.md\n?? reports/round_003_official_vs_adapter.csv\n?? research_state/\n?? rounds/\n?? scripts/analyze_baseline_certification.py\n?? scripts/autoresearch_analyze_round.py\n?? scripts/autoresearch_init.py\n?? scripts/autoresearch_loop.sh\n?? scripts/autoresearch_package_round.sh\n?? scripts/autoresearch_plan_next.py\n?? scripts/autoresearch_run_round.py\n?? scripts/build_baseline_registry.py\n?? scripts/certify_gas_baseline.sh\n?? scripts/compare_official_vs_bars_adapter.py\n?? scripts/fetch_public_baseline_targets.py\n?? scripts/package_autoresearch_round.sh\n?? scripts/package_stage25_results.sh\n?? scripts/reclassify_prior_evidence.py\n?? scripts/round003_adapter_eval_driver.py\n?? scripts/round003_analyze_certification.py\n?? scripts/round003_audit_official_gas_artifacts.py\n?? scripts/round003_compare_official_vs_adapter.py\n?? scripts/round003_finalize.py\n?? scripts/round003_lib.py\n?? scripts/round003_official_gas_eval_driver.py\n?? scripts/round003_prefetch_ogbench_datasets.sh\n?? scripts/round003_run_bars_adapter_eval.sh\n?? scripts/round003_run_official_gas_eval.sh\n?? scripts/run_official_gas_eval.py\n?? scripts/stage24_env_mirrors.sh\n?? scripts/stage24_prefetch_ogbench_datasets.sh\n?? scripts/stage25_analyze.py\n?? scripts/stage25_boundary_coverage_repair.py\n?? scripts/stage25_d4rl_protocol_audit.py\n?? scripts/stage25_enrich_failure_atlas_all_variants.py\n?? scripts/stage25_oracle_headroom_scan_v2.sh\n?? scripts/stage25_rank_oracle_envs.py\n?? scripts/stage25_reachability_closing.sh\n?? scripts/stage25_run_local_drift_v2.sh\n?? scripts/verify_baseline_card.py\n?? stage24_results_config_package_20260520_final/"
+  },
+  "integrated": "SKIP_INTEGRATED_UNTIL_ORACLE_AND_P_BRIDGE",
+  "next_round": "CERTIFIED_ORACLE_SCAN",
+  "official_artifact_audit": "PASS_ARTIFACT_AUDIT",
+  "oracle_headroom": "READY_FOR_CERTIFIED_ORACLE_SCAN",
+  "p_bridge": "SKIP_P_BRIDGE_UNTIL_ORACLE_HEADROOM",
+  "primary_question": "Can we certify a public-quality GAS backbone using official/full-budget artifacts, then certify the BARS adapter against the official GAS evaluation loop?",
+  "round": 3,
+  "scientific_interpretation": "ALLOW_CERTIFIED_DIAGNOSTICS_ON_CERTIFIED_ENVS",
+  "secondary_question": "If medium official artifacts remain unavailable, can certification shift to official-artifact OGBench tasks without weakening the research claim?"
+}

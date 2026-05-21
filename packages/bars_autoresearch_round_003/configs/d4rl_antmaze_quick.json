@@ -1,0 +1,169 @@
+{
+  "seed": 0,
+  "device": "cuda",
+  "data": {
+    "source": "d4rl",
+    "env_name": "antmaze-medium-play-v2",
+    "dataset_limit": 0
+  },
+  "tdr": {
+    "latent_dim": 16,
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "pair_hidden_dims": [
+      128,
+      128
+    ],
+    "horizon": 50,
+    "steps": 3000,
+    "batch_size": 1024,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "bce_weight": 1.0,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 200,
+    "embed_batch_size": 8192,
+    "load_if_exists": true,
+    "force_reembed": false
+  },
+  "policy": {
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "goal_delta": true,
+    "horizon": 30,
+    "steps": 3000,
+    "batch_size": 1024,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 200,
+    "load_if_exists": true
+  },
+  "reachability": {
+    "enabled": true,
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "horizon": 30,
+    "steps": 2000,
+    "batch_size": 2048,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "log_every": 200,
+    "load_if_exists": true,
+    "use_hard_neg": true,
+    "hard_neg_pool": 10000,
+    "hard_neg_knn": 8,
+    "hard_neg_weight": 0.5,
+    "pos_frac": 0.5,
+    "same_neg_weight": 1.0,
+    "cross_random_weight": 0.25,
+    "far_neg_min_dt": 31,
+    "far_neg_max_dt": 120
+  },
+  "graph": {
+    "node_method": "bars",
+    "num_nodes": 300,
+    "num_bottleneck_nodes": 100,
+    "max_support_states": 12000,
+    "support_knn": 10,
+    "spectral_clusters": 6,
+    "anchor_exclude_quantile": 0.1,
+    "edge_knn": 12,
+    "bidirectional_knn": true,
+    "temporal_connect": 3,
+    "temporal_edge_horizon": 80,
+    "temporal_reverse": false,
+    "cost_mode": "hybrid",
+    "top_outgoing": 12,
+    "prune_lambda_risk": 0.25,
+    "p_clip": 0.0001,
+    "score_batch_size": 65536,
+    "load_if_exists": true,
+    "spectral_mode": "coarsened",
+    "spectral_coarse_nodes": 1500,
+    "spectral_eigen_solver": "lobpcg",
+    "spectral_eigen_tol": 0.001,
+    "spectral_eigen_maxiter": 200,
+    "coarse_kmeans_max_iter": 50,
+    "spectral_solver": "landmark",
+    "spectral_landmarks": 2048,
+    "spectral_full_max_nodes": 3000,
+    "spectral_eig_tol": 0.001,
+    "spectral_eig_maxiter": 1000,
+    "spectral_max_nodes": 4096,
+    "trajectory_stratified_support": true
+  },
+  "boundary": {
+    "enabled": true,
+    "num_modes": 4,
+    "support_k": 32,
+    "segment_horizon": 30,
+    "segment_min_dt": 1,
+    "fallback_psi": 0.5,
+    "load_if_exists": true,
+    "method": "support_modes",
+    "direction_temperature": 1.0,
+    "support_segments": 200000,
+    "support_batch_size": 65536,
+    "mode_fit_samples": 100000,
+    "min_edge_support_count": 1,
+    "direction_fallback": true
+  },
+  "planner": {
+    "variant": "full_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 1.0
+  },
+  "diagnostics": {
+    "enabled": true,
+    "edge_label_horizon": 30,
+    "edge_selected_threshold": 0.5,
+    "num_path_pairs": 64,
+    "path_min_dt": 50,
+    "path_max_dt": 160,
+    "planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ],
+    "balanced_edge_pairs": 2048,
+    "balanced_unlabeled_pairs": 2048,
+    "path_min_graph_edges": 1,
+    "allow_zero_edge_pairs": false,
+    "max_path_sampling_attempts": 2000,
+    "balanced_far_min_dt": 31,
+    "balanced_far_max_dt": 120,
+    "balanced_edge_diag": true,
+    "edge_support_segments": 200000,
+    "include_trivial_path_pairs": false,
+    "max_sampling_attempts": 5000,
+    "lambda_risk_values": [
+      1.0
+    ],
+    "path_include_zero_pairs": false,
+    "path_max_sampling_attempts": 1280,
+    "balanced_edge_num_pos": 4096,
+    "balanced_edge_num_neg": 4096,
+    "balanced_edge_num_unlabeled": 4096,
+    "balanced_edge_hard_neg_knn": 16
+  },
+  "eval": {
+    "enabled": false,
+    "episodes": 5,
+    "variant": "full_bars",
+    "max_steps": 700,
+    "subgoal_horizon": 30,
+    "goal_dim": 2,
+    "success_threshold": 0.5,
+    "subgoal_threshold": 0.5
+  }
+}

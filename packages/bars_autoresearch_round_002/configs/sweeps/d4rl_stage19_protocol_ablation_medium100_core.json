@@ -1,0 +1,2930 @@
+{
+  "base_config": "../d4rl_antmaze_stage16.json",
+  "resources": {
+    "default_mem_mb": 5000
+  },
+  "tasks": [
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_shortest_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_shortest_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_shortest_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_shortest_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_reachability_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_full_bars_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-play-v2_direct_goal_seed0",
+      "env": "antmaze-medium-play-v2",
+      "seed": 0,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_shortest_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_shortest_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_shortest_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_shortest_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_reachability_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_full_bars_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-play-v2_direct_goal_seed1",
+      "env": "antmaze-medium-play-v2",
+      "seed": 1,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_shortest_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_shortest_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_shortest_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_shortest_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_reachability_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-play-v2_full_bars_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-play-v2_direct_goal_seed2",
+      "env": "antmaze-medium-play-v2",
+      "seed": 2,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_shortest_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_shortest_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_shortest_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_shortest_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_reachability_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_full_bars_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-diverse-v2_direct_goal_seed0",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 0,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_shortest_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_shortest_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_shortest_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_shortest_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_reachability_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_full_bars_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-diverse-v2_direct_goal_seed1",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 1,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_shortest_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "tuned_no_fallback_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "tuned_no_fallback",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_shortest_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "planner_fallback_only_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "planner_fallback_only",
+        "eval.fallback_mode": "planner_only",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_shortest_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_fallback_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_fallback",
+        "eval.fallback_mode": "direct_goal",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest",
+          "direct_goal"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_shortest_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "shortest",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_reachability_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "reachability",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_after3_antmaze-medium-diverse-v2_full_bars_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "full_bars",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_after3",
+        "eval.fallback_mode": "direct_goal_after_k",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes",
+        "eval.direct_goal_after_k": 3
+      }
+    },
+    {
+      "run_id": "direct_goal_only_antmaze-medium-diverse-v2_direct_goal_seed2",
+      "env": "antmaze-medium-diverse-v2",
+      "seed": 2,
+      "variant": "direct_goal",
+      "node_method": "bars",
+      "set": {
+        "experiment.warmstart_root": "runs_stage16_full12",
+        "experiment.warmstart_source_variant": "full_bars",
+        "experiment.warmstart_artifacts": [
+          "tdr",
+          "policy",
+          "reachability",
+          "embeddings",
+          "graph",
+          "boundary"
+        ],
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.max_steps": 1000,
+        "eval.subgoal_horizon": 50,
+        "eval.subgoal_threshold": 1.0,
+        "eval.success_threshold": 0.5,
+        "eval.condition": "direct_goal_only",
+        "eval.fallback_mode": "none",
+        "eval.fallback_variants": [
+          "reachability",
+          "shortest"
+        ],
+        "diagnostics.enabled": false,
+        "diagnostics.edge_rollout_enabled": false,
+        "planner.lambda_risk": 1.0,
+        "planner.lambda_boundary": 0.1,
+        "boundary.enabled": true,
+        "boundary.method": "support_modes"
+      }
+    }
+  ]
+}

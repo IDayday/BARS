@@ -455,6 +455,9 @@ def plan(
         "gas_shortest_replan_on_local_drift": "gas_shortest",
         "gas_shortest_adaptive_subgoal_horizon": "gas_shortest",
         "gas_reachability_budget_replan_on_local_drift": "gas_reachability_budget",
+        "gas_shortest_subgoal_refresh_on_target_distance_increase": "gas_shortest",
+        "gas_shortest_nearest_reachable_subgoal_on_path": "gas_shortest",
+        "gas_shortest_drift_replan_with_cooldown": "gas_shortest",
         "gas_boundary_scaled_budget": "gas_boundary_budget",
         "gas_boundary_soft_scaled": "gas_boundary_soft",
     }

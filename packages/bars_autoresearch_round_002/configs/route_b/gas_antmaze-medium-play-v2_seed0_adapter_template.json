@@ -1,0 +1,21 @@
+{
+  "backend": "gas",
+  "status": "template",
+  "env_name": "antmaze-medium-play-v2",
+  "seed": 0,
+  "adapter_contract": {
+    "entrypoint": "Provide a Python wrapper with act(obs_np, goal_np, obs_normalizer, action_low=None, action_high=None, device='cuda') -> np.ndarray",
+    "observation_space": "Use full AntMaze observation; overwrite goal xy in the goal observation before calling the backbone.",
+    "normalization": "Backbone wrapper is responsible for any extra normalization beyond BARS obs_normalizer.",
+    "action_space": "Return unclipped float32 actions; BARS may clip to env bounds."
+  },
+  "expected_artifacts": {
+    "checkpoint_path": "external_backbones/gas/antmaze-medium-play-v2/seed0/checkpoint.pt",
+    "config_path": "external_backbones/gas/antmaze-medium-play-v2/seed0/config.json",
+    "wrapper_module": "external_backbones/gas/adapter.py"
+  },
+  "notes": [
+    "This template is intentionally decoupled from the current GCBC policy path so Route B work does not block Route A ablations.",
+    "Populate the wrapper module first, then wire it into BARS once checkpoint loading and action decoding are stable."
+  ]
+}

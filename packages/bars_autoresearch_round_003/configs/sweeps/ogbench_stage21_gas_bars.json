@@ -1,0 +1,104 @@
+{
+  "base_config": "../routeb/ogbench_antmaze_gas_bars.json",
+  "resources": {
+    "default_mem_mb": 1600
+  },
+  "tasks": [
+    {
+      "run_id": "stage21_gas_official_shortest_antmaze-large-explore-v0_gas_seed0",
+      "env": "antmaze-large-explore-v0",
+      "seed": 0,
+      "variant": "gas",
+      "node_method": "bars",
+      "mem_mb": 1600,
+      "set": {
+        "data.source": "ogbench",
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "gas_official_shortest",
+        "eval.fallback_mode": "none",
+        "eval.variant": "gas",
+        "planner.variant": "gas",
+        "external_policy.repo_path": "/root/remote/project/BARS/external_src/GAS",
+        "external_policy.checkpoint_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench_policy_ckpts/antmaze-large-explore-v0/seed0/policy.pkl",
+        "external_gas.keygraph_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/keygraph.pkl",
+        "external_gas.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "embedding.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "diagnostics.enabled": false,
+        "external_gas.node_indices_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/node_indices.npy"
+      }
+    },
+    {
+      "run_id": "stage21_gas_bars_same_backbone_antmaze-large-explore-v0_reachability_seed0",
+      "env": "antmaze-large-explore-v0",
+      "seed": 0,
+      "variant": "reachability",
+      "node_method": "bars",
+      "mem_mb": 1600,
+      "set": {
+        "data.source": "ogbench",
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "gas_bars_same_backbone",
+        "eval.fallback_mode": "none",
+        "eval.variant": "reachability",
+        "planner.variant": "reachability",
+        "external_policy.repo_path": "/root/remote/project/BARS/external_src/GAS",
+        "external_policy.checkpoint_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench_policy_ckpts/antmaze-large-explore-v0/seed0/policy.pkl",
+        "external_gas.keygraph_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/keygraph.pkl",
+        "external_gas.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "embedding.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "diagnostics.enabled": false,
+        "external_gas.node_indices_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/node_indices.npy"
+      }
+    },
+    {
+      "run_id": "stage21_gas_bars_same_backbone_antmaze-large-explore-v0_gas_bars_seed0",
+      "env": "antmaze-large-explore-v0",
+      "seed": 0,
+      "variant": "gas_bars",
+      "node_method": "bars",
+      "mem_mb": 1600,
+      "set": {
+        "data.source": "ogbench",
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "gas_bars_same_backbone",
+        "eval.fallback_mode": "none",
+        "eval.variant": "gas_bars",
+        "planner.variant": "gas_bars",
+        "external_policy.repo_path": "/root/remote/project/BARS/external_src/GAS",
+        "external_policy.checkpoint_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench_policy_ckpts/antmaze-large-explore-v0/seed0/policy.pkl",
+        "external_gas.keygraph_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/keygraph.pkl",
+        "external_gas.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "embedding.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "diagnostics.enabled": false,
+        "external_gas.node_indices_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/node_indices.npy"
+      }
+    },
+    {
+      "run_id": "stage21_gas_bars_same_backbone_antmaze-large-explore-v0_constrained_bars_seed0",
+      "env": "antmaze-large-explore-v0",
+      "seed": 0,
+      "variant": "constrained_bars",
+      "node_method": "bars",
+      "mem_mb": 1600,
+      "set": {
+        "data.source": "ogbench",
+        "eval.enabled": true,
+        "eval.episodes": 100,
+        "eval.condition": "gas_bars_same_backbone",
+        "eval.fallback_mode": "none",
+        "eval.variant": "constrained_bars",
+        "planner.variant": "constrained_bars",
+        "external_policy.repo_path": "/root/remote/project/BARS/external_src/GAS",
+        "external_policy.checkpoint_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench_policy_ckpts/antmaze-large-explore-v0/seed0/policy.pkl",
+        "external_gas.keygraph_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/keygraph.pkl",
+        "external_gas.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "embedding.dataset_embeddings_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/dataset_embeddings.npy",
+        "diagnostics.enabled": false,
+        "external_gas.node_indices_path": "/root/remote/project/BARS/external_artifacts/gas_ogbench/antmaze-large-explore-v0/seed0/node_indices.npy"
+      }
+    }
+  ]
+}

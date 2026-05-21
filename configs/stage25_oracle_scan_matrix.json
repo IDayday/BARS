@@ -1,0 +1,27 @@
+{
+  "env_groups": {
+    "stage24_regression": ["scene-play-v0"],
+    "ogbench_antmaze_hard": [
+      "antmaze-large-navigate-v0",
+      "antmaze-large-stitch-v0",
+      "antmaze-giant-navigate-v0",
+      "antmaze-giant-stitch-v0",
+      "antmaze-large-explore-v0"
+    ],
+    "ogbench_non_antmaze_candidates": []
+  },
+  "seeds": [0],
+  "graph_ids": ["G0", "G1", "G2", "G3"],
+  "top_k_bridge": 4,
+  "max_sources": 200,
+  "edge_exec_pilot": 1,
+  "gates": {
+    "set_state_rate": 0.95,
+    "safe_local_success_rate": 0.85,
+    "oracle_bridge_count": 50,
+    "oracle_bridge_usage_rate": 0.20,
+    "oracle_shorter_path_rate": 0.20,
+    "oracle_mean_path_cost_reduction": 1.0,
+    "useful_bridge_score": 0.20
+  }
+}

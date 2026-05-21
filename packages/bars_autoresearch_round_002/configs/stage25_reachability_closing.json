@@ -1,0 +1,9 @@
+{
+  "envs": ["antmaze-medium-navigate-v0", "antmaze-medium-stitch-v0"],
+  "seeds": [0, 1, 2],
+  "episodes": 300,
+  "variants": ["gas_shortest", "gas_reachability_budget_calibrated"],
+  "fallback_modes": ["none"],
+  "max_parallel_eval": 4,
+  "min_episodes_for_gate": 300
+}

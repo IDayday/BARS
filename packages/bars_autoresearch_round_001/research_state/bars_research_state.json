@@ -1,0 +1,40 @@
+{
+  "active_scientific_question": "Do any available natural benchmarks contain path-useful oracle bridges?",
+  "active_tracks": [
+    "oracle_headroom"
+  ],
+  "best_positive_signal": null,
+  "closed_tracks": [],
+  "created_at": "2026-05-19T19:23:52.736092+00:00",
+  "git_head": "7e860d7",
+  "global_decision": "CONTINUE",
+  "limits": {
+    "max_gpu_hours_per_round": 72.0,
+    "max_parallel_jobs": 12,
+    "max_rounds": 8,
+    "max_wall_hours_per_round": 12.0
+  },
+  "must_not_do": [
+    "Do not use direct-goal/progress fallback as planner evidence.",
+    "Do not train p_bridge until PASS_ORACLE_HEADROOM.",
+    "Do not run integrated BARS-v3 until PASS_ORACLE_HEADROOM and PASS_P_BRIDGE.",
+    "Keep boundary diagnostic-only until coverage/gap/AUROC gates pass.",
+    "Keep D4RL protocol/debug-only until PASS_D4RL_PROTOCOL_AUDIT."
+  ],
+  "next_round_plan": {
+    "commands": [
+      "bash scripts/stage25_oracle_headroom_scan_v2.sh CONFIG=configs/stage25_oracle_scan_matrix.json ENVS=scene-play-v0,kitchen-partial-v0,visual-scene-play-v0,visual-antmaze-large-explore-v0 SEEDS=0 GRAPH_IDS=G3 GPUS=${GPUS:-0,1,2,3} EDGE_EXEC_PILOT=1 TOP_K_BRIDGE=4 MAX_SOURCES=200 WAIT=1",
+      "python scripts/stage25_analyze.py --reports-root reports --oracle-reports-root reports/stage25_oracle_scan_tmp --oracle-artifact-root artifacts/stage25 --failure-atlas reports/stage25_failure_atlas_all_variants.csv --min-episodes 100"
+    ],
+    "experiment_batch": "Run Stage25 oracle-headroom scan v2 on candidate natural envs and audit reset/set_state reliability.",
+    "primary_question": "Do any available natural benchmarks contain path-useful oracle bridges?",
+    "round": 2,
+    "track": "oracle_headroom"
+  },
+  "project": "BARS",
+  "round": 1,
+  "stage": "autonomous_loop",
+  "stop_reason": null,
+  "strongest_negative_signal": "Stage24 found weak reachability effect, failed local drift repair, no scene-play oracle path-level headroom, boundary coverage collapse, and D4RL protocol hold.",
+  "updated_at": "2026-05-19T19:24:24.697105+00:00"
+}

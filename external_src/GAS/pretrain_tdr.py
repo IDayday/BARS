@@ -33,7 +33,7 @@ from O_utils.env_utils import make_env_and_datasets
 from O_utils.log_utils import get_exp_name, setup_save_directory, setup_wandb, CsvLogger, wandb
 
 from M_utils.agents import agents_dict
-from M_utils.flax_utils import save_agent
+from M_utils.flax_utils import restore_agent, save_agent
 
 # Flags for TDR pretraining (GAS Stage 1).
 FLAGS = flags.FLAGS
@@ -48,6 +48,7 @@ flags.DEFINE_string('save_tdr_dir', 'exp_tdr/', 'Save directory.')
 flags.DEFINE_integer('train_steps', 1000000, 'Number of training steps.')
 flags.DEFINE_integer('log_interval', 5000, 'Logging interval.')
 flags.DEFINE_integer('save_interval', 100000, 'Saving interval.')
+flags.DEFINE_string('resume_tdr_path', None, 'Optional TDR checkpoint path to resume from.')
 
 config_flags.DEFINE_config_file('agent_config', 'M_utils/agents/gas.py', lock_config=False) 
 
@@ -77,12 +78,18 @@ def main(_):
     example_batch = train_gc_dataset.sample(1)
     agent_class = agents_dict[config['agent_name']]
     agent = agent_class.create(FLAGS.seed, example_batch['observations'], example_batch['actions'], config,)
+    start_step = 1
+    if FLAGS.resume_tdr_path is not None:
+        tdr_restore_path = os.path.dirname(FLAGS.resume_tdr_path)
+        tdr_restore_epoch = int(os.path.basename(FLAGS.resume_tdr_path).split('_')[-1].split('.')[0])
+        agent = restore_agent(agent, tdr_restore_path, tdr_restore_epoch)
+        start_step = tdr_restore_epoch + 1
     
     # Train TDR.
     train_logger = CsvLogger(os.path.join(FLAGS.save_tdr_dir, 'train.csv'))
     first_time = time.time()
     last_time = time.time()
-    for i in tqdm(range(1, FLAGS.train_steps + 1), desc="Training TDR", smoothing=0.1, dynamic_ncols=True):        
+    for i in tqdm(range(start_step, FLAGS.train_steps + 1), desc="Training TDR", smoothing=0.1, dynamic_ncols=True):
         # Update TDR.
         batch = train_gc_dataset.sample(config['batch_size'])
         agent, update_info = agent.tdr_update(batch)

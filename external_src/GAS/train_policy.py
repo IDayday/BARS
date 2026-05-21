@@ -50,6 +50,7 @@ flags.DEFINE_integer('log_interval', 5000, 'Logging interval.')
 flags.DEFINE_integer('save_interval', 100000, 'Saving interval.')
 
 flags.DEFINE_string('tdr_path', None, 'Pretrained TDR path.') 
+flags.DEFINE_string('resume_policy_path', None, 'Optional policy checkpoint path to resume from.')
 
 config_flags.DEFINE_config_file('agent_config', 'M_utils/agents/gas.py', lock_config=False) 
 
@@ -84,6 +85,12 @@ def main(_):
     tdr_restore_path = os.path.dirname(FLAGS.tdr_path)
     tdr_restore_epoch = os.path.basename(FLAGS.tdr_path).split('_')[-1].split('.')[0]
     agent = restore_agent(agent, tdr_restore_path, tdr_restore_epoch)
+    start_step = 1
+    if FLAGS.resume_policy_path is not None:
+        policy_restore_path = os.path.dirname(FLAGS.resume_policy_path)
+        policy_restore_epoch = int(os.path.basename(FLAGS.resume_policy_path).split('_')[-1].split('.')[0])
+        agent = restore_agent(agent, policy_restore_path, policy_restore_epoch)
+        start_step = policy_restore_epoch + 1
 
     # Get TDR feature extractor.
     get_phi_fn = agent.get_phi
@@ -97,7 +104,7 @@ def main(_):
     train_logger = CsvLogger(os.path.join(FLAGS.save_policy_dir, 'train.csv'))
     first_time = time.time()
     last_time = time.time()
-    for i in tqdm(range(1, FLAGS.train_steps + 1), desc="Training Policy", smoothing=0.1, dynamic_ncols=True):        
+    for i in tqdm(range(start_step, FLAGS.train_steps + 1), desc="Training Policy", smoothing=0.1, dynamic_ncols=True):
         # Update low-level policy.
         batch = train_gas_dataset.sample(config['batch_size'])
         agent, update_info = agent.critic_actor_update(batch)

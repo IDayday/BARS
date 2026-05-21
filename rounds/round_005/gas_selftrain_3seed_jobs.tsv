@@ -1,0 +1,10 @@
+job_index	env	seed	gpu	worker_index	status	log
+0	antmaze-giant-stitch-v0	0	0	0	assigned	runs_round005_gas_selftrain/antmaze-giant-stitch-v0/seed0/launcher.log
+1	antmaze-giant-stitch-v0	1	1	1	assigned	runs_round005_gas_selftrain/antmaze-giant-stitch-v0/seed1/launcher.log
+2	antmaze-giant-stitch-v0	2	2	2	assigned	runs_round005_gas_selftrain/antmaze-giant-stitch-v0/seed2/launcher.log
+3	antmaze-large-explore-v0	0	3	3	assigned	runs_round005_gas_selftrain/antmaze-large-explore-v0/seed0/launcher.log
+4	antmaze-large-explore-v0	1	4	4	assigned	runs_round005_gas_selftrain/antmaze-large-explore-v0/seed1/launcher.log
+5	antmaze-large-explore-v0	2	5	5	assigned	runs_round005_gas_selftrain/antmaze-large-explore-v0/seed2/launcher.log
+6	scene-play-v0	0	0	0	direct_launched	runs_round005_gas_selftrain/scene-play-v0/seed0/launcher.log
+7	scene-play-v0	1	1	1	direct_launched	runs_round005_gas_selftrain/scene-play-v0/seed1/launcher.log
+8	scene-play-v0	2	2	2	direct_launched	runs_round005_gas_selftrain/scene-play-v0/seed2/launcher.log

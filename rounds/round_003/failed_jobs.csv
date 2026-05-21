@@ -1,0 +1,3 @@
+job,env,status,reason,log
+adapter_eval,antmaze-giant-stitch-v0,FAIL_ADAPTER_MISMATCH,adapter gap exceeds 2pp or protocol equality check failed,
+adapter_eval,antmaze-large-explore-v0,FAIL_ADAPTER_MISMATCH,adapter gap exceeds 2pp or protocol equality check failed,

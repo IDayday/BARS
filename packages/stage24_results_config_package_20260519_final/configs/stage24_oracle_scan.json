@@ -1,0 +1,23 @@
+{
+  "stage": "stage24",
+  "track": "oracle_headroom_scan",
+  "envs": ["scene-play-v0"],
+  "seeds": [0],
+  "graph_id": "G3",
+  "top_k_bridge": 4,
+  "max_sources": 200,
+  "edge_exec_pilot": true,
+  "fallback_as_planner_evidence": false,
+  "run_integrated_before_oracle_gate": false,
+  "artifact_root": "artifacts/stage24",
+  "gas_artifact_root": "artifacts/gas",
+  "reports_root": "reports",
+  "gates": {
+    "min_set_state_rate": 0.95,
+    "min_safe_local_success_rate": 0.85,
+    "min_oracle_bridge_count": 50,
+    "min_oracle_shorter_path_rate": 0.2,
+    "min_oracle_mean_path_cost_reduction": 1.0,
+    "min_oracle_bridge_usage_rate": 0.2
+  }
+}

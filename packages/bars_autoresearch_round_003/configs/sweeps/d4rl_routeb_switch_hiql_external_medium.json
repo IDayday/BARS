@@ -1,0 +1,11 @@
+{
+  "base_config": "../routeb/d4rl_antmaze_routeb_base.json",
+  "resources": {"default_mem_mb": 5000},
+  "grid": {
+    "envs": ["antmaze-medium-play-v2", "antmaze-medium-diverse-v2"],
+    "seeds": [0, 1, 2],
+    "variants": ["shortest", "reachability", "full_bars"],
+    "node_methods": ["bars"],
+    "set": {"routeb.backbone": "hiql_external", "routeb.repo_path": "external_src/HIQL", "routeb.factory": "routeb_hiql_adapter.build_policy", "routeb.checkpoint_path": "/ABS/PATH/TO/HIQL/checkpoint", "eval.enabled": true, "eval.episodes": 50, "diagnostics.enabled": false}
+  }
+}

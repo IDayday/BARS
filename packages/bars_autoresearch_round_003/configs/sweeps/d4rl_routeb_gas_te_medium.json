@@ -1,0 +1,49 @@
+{
+  "base_config": "../routeb/d4rl_antmaze_gas_te_bars.json",
+  "resources": {
+    "default_mem_mb": 5000
+  },
+  "grid": {
+    "envs": [
+      "antmaze-medium-play-v2",
+      "antmaze-medium-diverse-v2"
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ],
+    "node_methods": [
+      "gas_te"
+    ],
+    "set": {
+      "experiment.warmstart_root": "runs_stage16_full12",
+      "experiment.warmstart_source_variant": "full_bars",
+      "experiment.warmstart_artifacts": [
+        "tdr",
+        "policy",
+        "reachability",
+        "embeddings"
+      ],
+      "eval.enabled": true,
+      "eval.episodes": 50,
+      "eval.subgoal_horizon": 50,
+      "eval.subgoal_threshold": 1.0,
+      "eval.success_threshold": 0.5,
+      "eval.fallback_enabled": true,
+      "eval.fallback_variants": [
+        "reachability",
+        "shortest",
+        "direct_goal"
+      ],
+      "diagnostics.enabled": false,
+      "boundary.enabled": true,
+      "boundary.method": "support_modes"
+    }
+  }
+}

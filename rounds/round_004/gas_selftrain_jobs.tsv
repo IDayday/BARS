@@ -1,0 +1,4 @@
+env	seed	gpu	pid	status	log
+antmaze-giant-stitch-v0	0	0	22864	launched	runs_round004_gas_selftrain/antmaze-giant-stitch-v0/seed0/launcher.log
+antmaze-large-explore-v0	0	1	22866	launched	runs_round004_gas_selftrain/antmaze-large-explore-v0/seed0/launcher.log
+scene-play-v0	0	2	22868	launched	runs_round004_gas_selftrain/scene-play-v0/seed0/launcher.log

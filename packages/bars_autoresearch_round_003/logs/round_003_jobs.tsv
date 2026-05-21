@@ -1,0 +1,6 @@
+job	status	report
+artifact_audit	completed	reports/round_003_official_artifact_audit.md
+official_gas_eval	PASS_BASELINE_CERTIFICATION	reports/round_003_baseline_certification.md
+adapter_eval	PASS_ADAPTER_CERTIFICATION	reports/round_003_adapter_certification.md
+prior_reclassification	completed	reports/round_003_prior_evidence_reclassification.md
+gate_status	completed	reports/round_003_gate_status.json

@@ -1,0 +1,11 @@
+{
+  "base_config": "../d4rl_antmaze_quick.json",
+  "resources": {"default_mem_mb": 3500},
+  "tasks": [
+    {"env": "antmaze-medium-play-v2", "seed": 0, "variant": "reachability", "node_method": "bars", "set": {"eval.enabled": false, "boundary.enabled": false, "planner.lambda_risk": 0.0, "diagnostics.planner_variants": ["shortest", "reachability"], "diagnostics.path_min_graph_edges": 1}},
+    {"env": "antmaze-medium-play-v2", "seed": 0, "variant": "reachability", "node_method": "bars", "set": {"eval.enabled": false, "boundary.enabled": false, "planner.lambda_risk": 0.1, "diagnostics.planner_variants": ["shortest", "reachability"], "diagnostics.path_min_graph_edges": 1}},
+    {"env": "antmaze-medium-play-v2", "seed": 0, "variant": "reachability", "node_method": "bars", "set": {"eval.enabled": false, "boundary.enabled": false, "planner.lambda_risk": 0.3, "diagnostics.planner_variants": ["shortest", "reachability"], "diagnostics.path_min_graph_edges": 1}},
+    {"env": "antmaze-medium-play-v2", "seed": 0, "variant": "reachability", "node_method": "bars", "set": {"eval.enabled": false, "boundary.enabled": false, "planner.lambda_risk": 1.0, "diagnostics.planner_variants": ["shortest", "reachability"], "diagnostics.path_min_graph_edges": 1}},
+    {"env": "antmaze-medium-play-v2", "seed": 0, "variant": "reachability", "node_method": "bars", "set": {"eval.enabled": false, "boundary.enabled": false, "planner.lambda_risk": 3.0, "diagnostics.planner_variants": ["shortest", "reachability"], "diagnostics.path_min_graph_edges": 1}}
+  ]
+}

@@ -18,11 +18,39 @@ class GASGraphTables:
     edges: pd.DataFrame
 
 
+class LoadedGASKeyGraph:
+    """Method-bearing wrapper for GAS keygraph pickle dictionaries."""
+
+    def get_shortest_path(self, task_id: int, source: np.ndarray, force_closest: bool = False) -> Any:
+        nodes = np.asarray(self.nodes)
+        shortest_paths = self.task_paths_dict[int(task_id)]
+        shortest_paths_dist = self.task_paths_dist_dict[int(task_id)]
+        sp_keys = list(shortest_paths.keys())
+        start_distances = np.linalg.norm(nodes[sp_keys] - np.asarray(source), axis=1)
+        valid_indices = np.where(start_distances <= float(self.way_steps))[0]
+        if len(valid_indices) == 0:
+            if force_closest:
+                valid_indices = [int(np.argmin(start_distances))]
+            else:
+                return None
+
+        best_total_distance = float("inf")
+        best_path = None
+        for idx in valid_indices:
+            path_key = sp_keys[int(idx)]
+            path_distance = float(shortest_paths_dist[path_key])
+            total_distance = float(start_distances[int(idx)]) + path_distance
+            if total_distance < best_total_distance:
+                best_total_distance = total_distance
+                best_path = shortest_paths[path_key]
+        return None if best_path is None else nodes[best_path]
+
+
 def load_gas_keygraph(path: str | os.PathLike[str]) -> Any:
     with open(path, "rb") as f:
         data = pickle.load(f)
     if isinstance(data, dict):
-        kg = type("LoadedGASKeyGraph", (), {})()
+        kg = LoadedGASKeyGraph()
         for k, v in data.items():
             setattr(kg, k, v)
         return kg

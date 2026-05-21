@@ -1,0 +1,10 @@
+# Stage23 Edge Execution
+
+```csv
+env,seed,edge_type,edges,success_rate,set_state_rate
+scene-play-v0,0,aggressive_tdr_bridge,4,0.0,0.0
+scene-play-v0,0,bottleneck_bridge,300,0.8933333333333333,0.0
+scene-play-v0,0,safe_local,200,1.0,0.0
+```
+
+- Evidence strength: weak proxy only.

@@ -326,6 +326,7 @@ def run_episode(
     debug_rows = []
     base_graph = {"nodes": export_nodes(key_graph), "edges": export_edges(key_graph), "way_steps": getattr(key_graph, "way_steps", 8.0)}
     active_subgoals: list[np.ndarray] = []
+    active_subgoal_ids: list[int] = []
     active_subgoal_idx = 0
     requested_variant = variant.lower()
     replan_on_local_drift = requested_variant in {
@@ -333,8 +334,26 @@ def run_episode(
         "gas_reachability_budget_replan_on_local_drift",
     }
     adaptive_subgoal_horizon = requested_variant == "gas_shortest_adaptive_subgoal_horizon"
+    stage25_refresh = requested_variant == "gas_shortest_subgoal_refresh_on_target_distance_increase"
+    stage25_nearest = requested_variant == "gas_shortest_nearest_reachable_subgoal_on_path"
+    stage25_cooldown_replan = requested_variant == "gas_shortest_drift_replan_with_cooldown"
     drift_triggered_replans = 0
     last_local_drift_score = 0.0
+    drift_event_count = 0
+    refresh_count = 0
+    replan_reason_counts: dict[str, int] = {}
+    helpful_replan_count = 0
+    harmful_replan_count = 0
+    last_event_goal_dist = initial_goal_dist
+    cooldown_remaining = 0
+    best_target_dist_since_subgoal = float("inf")
+    tracked_subgoal_idx = -999
+    last_replan_reason = ""
+    last_replan_triggered = 0
+    last_refresh_reason = ""
+    last_refresh_triggered = 0
+    last_selected_subgoal_rank = 0
+    last_reachable_score = 0.0
 
     while not done and replans < max_steps and (len(debug_rows) < max_steps):
         phi_obs = np.asarray(backbone.get_phi(observation))
@@ -367,6 +386,10 @@ def run_episode(
                 force_closest=True,
             )
             replans += 1
+            reason_key = last_replan_reason or ("subgoal_failure" if subgoal_failures >= stall_k else "initial_or_empty_path")
+            replan_reason_counts[reason_key] = replan_reason_counts.get(reason_key, 0) + 1
+            last_replan_triggered = 1
+            last_replan_reason = reason_key
             planner_latencies.append(plan_result.planner_latency_ms)
             plan_lengths.append(plan_result.path_len)
             if first_plan is None:
@@ -430,20 +453,35 @@ def run_episode(
                 break
             else:
                 active_subgoals = [np.asarray(x) for x in plan_result.subgoal_phis]
+                active_subgoal_ids = [int(x) for x in plan_result.node_ids[1:]]
                 active_subgoal_idx = 0
+                tracked_subgoal_idx = -999
+                best_target_dist_since_subgoal = float("inf")
                 subgoal_failures = 0
         elif not use_direct:
             plan_result = last_plan
 
         if use_direct:
             target_phi = phi_goal
+            current_subgoal_id = -1
+            selected_subgoal_id = -1
+            path_len_remaining = 0
             chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
         else:
             if not active_subgoals or active_subgoal_idx >= len(active_subgoals):
                 target_phi = phi_goal
+                current_subgoal_id = -1
+                selected_subgoal_id = -1
+                path_len_remaining = 0
             else:
                 target_phi = np.asarray(active_subgoals[active_subgoal_idx])
+                current_subgoal_id = active_subgoal_ids[active_subgoal_idx] if active_subgoal_idx < len(active_subgoal_ids) else active_subgoal_idx
+                selected_subgoal_id = current_subgoal_id
+                path_len_remaining = max(0, len(active_subgoals) - active_subgoal_idx)
                 subgoals_attempted += 1
+                if tracked_subgoal_idx != active_subgoal_idx:
+                    tracked_subgoal_idx = active_subgoal_idx
+                    best_target_dist_since_subgoal = float("inf")
             chunk_base = max(1, int(getattr(key_graph, "way_steps", 8)))
         if adaptive_subgoal_horizon and not use_direct and (subgoal_failures > 0 or no_improve_replans > 0):
             chunk = max(1, chunk_base // 2)
@@ -464,24 +502,54 @@ def run_episode(
             if cur_goal_dist < best_goal_dist:
                 best_goal_dist = cur_goal_dist
             target_dist = float(np.linalg.norm(np.asarray(target_phi) - phi_obs))
+            if not use_direct:
+                best_target_dist_since_subgoal = min(best_target_dist_since_subgoal, target_dist)
             chunk_target_dists.append(target_dist)
             ep_success, _ = _episode_success(info if isinstance(info, dict) else {})
             success = success or ep_success
             debug_rows.append(
                 {
                     "step": len(debug_rows),
+                    "task_id": task_id,
+                    "episode_id": episode_id,
+                    "variant": variant,
+                    "current_subgoal_idx": int(active_subgoal_idx if not use_direct else -1),
+                    "current_subgoal_id": current_subgoal_id,
+                    "selected_subgoal_id": selected_subgoal_id,
                     "goal_dist_phi": cur_goal_dist,
                     "target_dist_phi": target_dist,
+                    "best_target_dist_phi_since_subgoal": best_target_dist_since_subgoal if np.isfinite(best_target_dist_since_subgoal) else target_dist,
+                    "best_goal_dist_phi": best_goal_dist,
+                    "replan_triggered": last_replan_triggered,
+                    "replan_reason": last_replan_reason,
+                    "refresh_triggered": last_refresh_triggered,
+                    "refresh_reason": last_refresh_reason,
+                    "refresh_count": refresh_count,
+                    "drift_event_count": drift_event_count,
+                    "cooldown_remaining": cooldown_remaining,
+                    "reachable_score_selected": last_reachable_score,
+                    "chosen_subgoal_rank": last_selected_subgoal_rank,
+                    "path_len_remaining": path_len_remaining,
+                    "first_plan_edges": first_plan.path_len if first_plan is not None else 0,
+                    "last_plan_edges": last_plan.path_len if last_plan is not None else 0,
                     "fallback": int(fallback_used),
                     "plan_edges": plan_result.path_len if plan_result is not None else 0,
                 }
             )
+            last_replan_triggered = 0
+            last_replan_reason = ""
+            last_refresh_triggered = 0
+            last_refresh_reason = ""
+            if cooldown_remaining > 0:
+                cooldown_remaining -= 1
             if success:
                 done = True
                 break
             if not use_direct and target_dist <= subgoal_threshold:
                 subgoals_reached += 1
                 active_subgoal_idx += 1
+                tracked_subgoal_idx = -999
+                best_target_dist_since_subgoal = float("inf")
                 reached_this = True
                 break
             if done or len(debug_rows) >= max_steps:
@@ -493,13 +561,85 @@ def run_episode(
             chunk_drift_score = (end_target_dist - start_target_dist) / start_target_dist
             chunk_progress = (start_target_dist - best_target_dist) / start_target_dist
             last_local_drift_score = max(last_local_drift_score, chunk_drift_score)
+            rel_to_best = (end_target_dist - max(best_target_dist_since_subgoal, 1e-6)) / max(best_target_dist_since_subgoal, 1e-6)
             local_stall = chunk_progress < progress_stall_frac and len(chunk_target_dists) >= min(local_drift_window, chunk)
-            should_refresh = not reached_this and (chunk_drift_score > local_drift_threshold or local_stall)
+            should_refresh = not reached_this and (chunk_drift_score > local_drift_threshold or rel_to_best > local_drift_threshold or local_stall)
+            if should_refresh:
+                drift_event_count += 1
             if (replan_on_local_drift or adaptive_subgoal_horizon) and should_refresh:
                 active_subgoals = []
+                active_subgoal_ids = []
                 active_subgoal_idx = 0
                 subgoal_failures = max(subgoal_failures, stall_k)
                 drift_triggered_replans += 1
+                last_replan_reason = "stage24_local_drift"
+            elif (stage25_refresh or stage25_nearest) and should_refresh and active_subgoals and active_subgoal_idx < len(active_subgoals):
+                can_refresh = cooldown_remaining <= 0 and refresh_count < 5
+                if can_refresh:
+                    cur_phi = np.asarray(backbone.get_phi(observation))
+                    max_skip = 2 if stage25_nearest else max(2, len(active_subgoals))
+                    start_idx = int(active_subgoal_idx)
+                    end_idx = min(len(active_subgoals), start_idx + max_skip + 1)
+                    candidates: list[tuple[float, int]] = []
+                    for cand_idx in range(start_idx, end_idx):
+                        if cand_idx == len(active_subgoals) - 1 and cand_idx != start_idx:
+                            dist_to_final_node = float(np.linalg.norm(np.asarray(active_subgoals[cand_idx]) - cur_phi))
+                            if dist_to_final_node > subgoal_threshold:
+                                continue
+                        dist = float(np.linalg.norm(np.asarray(active_subgoals[cand_idx]) - cur_phi))
+                        candidates.append((dist, cand_idx))
+                    if candidates:
+                        dist, new_idx = sorted(candidates, key=lambda x: (x[0], x[1]))[0]
+                        old_idx = active_subgoal_idx
+                        active_subgoal_idx = int(new_idx)
+                        refresh_count += 1
+                        cooldown_remaining = 25
+                        best_target_dist_since_subgoal = float(dist)
+                        tracked_subgoal_idx = active_subgoal_idx
+                        last_refresh_triggered = 1
+                        last_refresh_reason = "nearest_reachable_on_path" if stage25_nearest else "target_distance_increase"
+                        last_selected_subgoal_rank = int(active_subgoal_idx - old_idx)
+                        last_reachable_score = float(np.exp(-dist / max(subgoal_threshold, 1e-6)))
+                        if debug_rows:
+                            debug_rows[-1].update(
+                                {
+                                    "refresh_triggered": 1,
+                                    "refresh_reason": last_refresh_reason,
+                                    "refresh_count": refresh_count,
+                                    "drift_event_count": drift_event_count,
+                                    "cooldown_remaining": cooldown_remaining,
+                                    "selected_subgoal_id": active_subgoal_ids[active_subgoal_idx] if active_subgoal_idx < len(active_subgoal_ids) else active_subgoal_idx,
+                                    "reachable_score_selected": last_reachable_score,
+                                    "chosen_subgoal_rank": last_selected_subgoal_rank,
+                                }
+                            )
+                        if best_goal_dist < last_event_goal_dist:
+                            helpful_replan_count += 1
+                        else:
+                            harmful_replan_count += 1
+                        last_event_goal_dist = best_goal_dist
+            elif stage25_cooldown_replan and should_refresh and cooldown_remaining <= 0 and drift_triggered_replans < 4:
+                active_subgoals = []
+                active_subgoal_ids = []
+                active_subgoal_idx = 0
+                subgoal_failures = max(subgoal_failures, stall_k)
+                drift_triggered_replans += 1
+                cooldown_remaining = 50
+                last_replan_reason = "confirmed_local_drift_cooldown"
+                if debug_rows:
+                    debug_rows[-1].update(
+                        {
+                            "replan_triggered": 1,
+                            "replan_reason": last_replan_reason,
+                            "drift_event_count": drift_event_count,
+                            "cooldown_remaining": cooldown_remaining,
+                        }
+                    )
+                if best_goal_dist < last_event_goal_dist:
+                    helpful_replan_count += 1
+                else:
+                    harmful_replan_count += 1
+                last_event_goal_dist = best_goal_dist
         if not use_direct and not reached_this:
             subgoal_failures += 1
         if len(debug_rows) >= max_steps:
@@ -575,6 +715,13 @@ def run_episode(
         "progress_stall_count": drift_metrics["progress_stall_count"],
         "oscillation_score": drift_metrics["oscillation_score"],
         "drift_triggered_replans": drift_triggered_replans,
+        "drift_event_count": drift_event_count,
+        "refresh_count": refresh_count,
+        "replan_reason_counts": json.dumps(replan_reason_counts, sort_keys=True),
+        "helpful_replan_count": helpful_replan_count,
+        "harmful_replan_count": harmful_replan_count,
+        "helpful_replan_rate": helpful_replan_count / max(helpful_replan_count + harmful_replan_count, 1),
+        "harmful_replan_rate": harmful_replan_count / max(helpful_replan_count + harmful_replan_count, 1),
         "debug_trace_path": trace_path_str,
     }
     return row

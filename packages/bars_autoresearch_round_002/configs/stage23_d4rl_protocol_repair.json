@@ -1,0 +1,16 @@
+{
+  "envs": ["antmaze-medium-play-v2", "antmaze-medium-diverse-v2"],
+  "seeds": [0],
+  "episodes": 50,
+  "variants": ["gas_shortest", "gas_reachability_budget_calibrated"],
+  "fallback_modes": ["none", "progress_stall_v3"],
+  "diagnostics": [
+    "goal_extraction",
+    "success_threshold",
+    "action_scaling",
+    "observation_normalization",
+    "policy_adapter",
+    "tdr_feature_consistency"
+  ],
+  "max_parallel_eval": 1
+}

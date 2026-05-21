@@ -1,0 +1,193 @@
+{
+  "seed": 0,
+  "device": "cuda",
+  "data": {
+    "source": "d4rl",
+    "env_name": "antmaze-medium-play-v2",
+    "dataset_limit": 0
+  },
+  "ann": {
+    "backend": "auto",
+    "use_gpu": false,
+    "gpu_id": 0,
+    "n_threads": 1
+  },
+  "tdr": {
+    "latent_dim": 16,
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "pair_hidden_dims": [
+      128,
+      128
+    ],
+    "horizon": 50,
+    "steps": 3000,
+    "batch_size": 1024,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "bce_weight": 1.0,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 200,
+    "embed_batch_size": 8192,
+    "load_if_exists": true,
+    "force_reembed": false
+  },
+  "policy": {
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "goal_delta": true,
+    "horizon": 30,
+    "steps": 3000,
+    "batch_size": 1024,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "amp": true,
+    "log_every": 200,
+    "load_if_exists": true
+  },
+  "reachability": {
+    "enabled": true,
+    "hidden_dims": [
+      128,
+      128
+    ],
+    "horizon": 30,
+    "steps": 3000,
+    "batch_size": 2048,
+    "lr": 0.0003,
+    "weight_decay": 1e-05,
+    "grad_clip": 10.0,
+    "log_every": 200,
+    "load_if_exists": true,
+    "loss_mode": "pu",
+    "pos_frac": 0.35,
+    "unlabeled_frac": 0.35,
+    "pu_weight": 1.0,
+    "pu_prior": 0.15,
+    "pu_beta": 0.0,
+    "pu_gamma": 1.0,
+    "use_hard_neg": true,
+    "hard_neg_pool": 12000,
+    "hard_neg_knn": 12,
+    "hard_neg_weight": 0.5,
+    "same_neg_weight": 1.0,
+    "cross_random_weight": 0.15,
+    "far_neg_min_dt": 31,
+    "far_neg_max_dt": 120
+  },
+  "graph": {
+    "node_method": "bars",
+    "num_nodes": 300,
+    "num_bottleneck_nodes": 100,
+    "max_support_states": 12000,
+    "support_knn": 10,
+    "spectral_clusters": 6,
+    "spectral_solver": "landmark",
+    "spectral_landmarks": 2048,
+    "spectral_full_max_nodes": 3500,
+    "spectral_eig_tol": 0.01,
+    "spectral_eig_maxiter": 500,
+    "spectral_landmark_method": "fps",
+    "anchor_exclude_quantile": 0.1,
+    "edge_knn": 12,
+    "bidirectional_knn": true,
+    "temporal_connect": 3,
+    "temporal_edge_horizon": 80,
+    "temporal_reverse": false,
+    "cost_mode": "hybrid",
+    "top_outgoing": 12,
+    "prune_lambda_risk": 0.25,
+    "p_clip": 0.0001,
+    "score_batch_size": 65536,
+    "load_if_exists": false,
+    "ann_backend": "auto",
+    "ann_use_gpu": false,
+    "ann_threads": 1
+  },
+  "boundary": {
+    "enabled": true,
+    "method": "support_modes",
+    "num_modes": 4,
+    "support_k": 32,
+    "segment_horizon": 30,
+    "segment_min_dt": 1,
+    "support_segments": 60000,
+    "support_batch_size": 65536,
+    "mode_kmeans_max_iter": 50,
+    "min_edge_support_count": 1,
+    "fallback_psi": 0.5,
+    "direction_fallback": true,
+    "direction_temperature": 1.0,
+    "load_if_exists": true,
+    "direction_fallback_weight": 0.15
+  },
+  "planner": {
+    "variant": "full_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 0.3
+  },
+  "diagnostics": {
+    "enabled": true,
+    "edge_label_horizon": 30,
+    "edge_selected_threshold": 0.5,
+    "balanced_edge_diag": true,
+    "edge_support_segments": 100000,
+    "edge_support_min_dt": 1,
+    "edge_support_batch_size": 65536,
+    "num_path_pairs": 128,
+    "path_min_dt": 50,
+    "path_max_dt": 160,
+    "path_min_graph_edges": 1,
+    "include_trivial_path_pairs": false,
+    "max_sampling_attempts": 20000,
+    "planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ],
+    "lambda_risk_values": [
+      0.0,
+      0.1,
+      0.3,
+      1.0,
+      3.0
+    ],
+    "edge_rollout_enabled": false,
+    "edge_rollout": {
+      "enabled": false,
+      "num_edges": 64,
+      "horizon": 30,
+      "goal_dim": 2,
+      "success_threshold": 0.5
+    }
+  },
+  "eval": {
+    "enabled": false,
+    "episodes": 5,
+    "variant": "full_bars",
+    "max_steps": 700,
+    "subgoal_horizon": 30,
+    "goal_dim": 2,
+    "success_threshold": 0.5,
+    "subgoal_threshold": 0.5,
+    "fallback_enabled": true,
+    "fallback_variants": [
+      "reachability",
+      "shortest",
+      "direct_goal"
+    ]
+  },
+  "experiment": {
+    "routeb_mode": "gas_keygraph_import"
+  },
+  "external_gas": {
+    "keygraph_path": "${GAS_KEYGRAPH_PATH}",
+    "enabled": true
+  }
+}
