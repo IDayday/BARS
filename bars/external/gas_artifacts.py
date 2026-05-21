@@ -255,13 +255,26 @@ def gas_agent_flag_args(env_name: str) -> list[str]:
     discount = "0.995" if "giant" in slug else "0.99"
     alpha = "0.01" if "explore" in slug else "1.0"
     expectile = "0.999"
+    batch_size = "1024"
+    encoder = "not_used"
+    p_aug = "0.0"
     way_steps = "48" if ("scene" in slug or "kitchen" in slug) else "8"
     if "kitchen" in slug:
         alpha = "10.0"
         expectile = "0.95"
+    if slug.startswith("visual-"):
+        encoder = "impala_small"
+        expectile = "0.95"
+        batch_size = "256"
+        p_aug = "0.5"
+        way_steps = "24" if "scene" in slug else "8"
+    if slug.startswith("humanoidmaze-"):
+        alpha = "0.1"
+        expectile = "0.95"
+        way_steps = "32"
     return [
         "--agent_config.encoder",
-        "not_used",
+        encoder,
         "--agent_config.discount",
         discount,
         "--agent_config.tdr_expectile",
@@ -269,12 +282,34 @@ def gas_agent_flag_args(env_name: str) -> list[str]:
         "--agent_config.alpha",
         alpha,
         "--agent_config.batch_size",
-        "1024",
+        batch_size,
         "--agent_config.p_aug",
-        "0.0",
+        p_aug,
         "--agent_config.way_steps",
         way_steps,
     ]
+
+
+def official_train_steps(env_name: str) -> int:
+    """Return the official GAS training budget for an environment."""
+    slug = env_to_hf_slug(env_name)
+    if "kitchen" in slug or slug.startswith("visual-"):
+        return 500_000
+    return 1_000_000
+
+
+def official_te_threshold(env_name: str) -> float:
+    """Return the official GAS TE graph threshold for an environment."""
+    slug = env_to_hf_slug(env_name)
+    if "kitchen" in slug or slug.startswith("visual-"):
+        return 0.9
+    return 0.99
+
+
+def official_eval_on_cpu(env_name: str) -> int:
+    """Return the official GAS eval_on_cpu flag for an environment."""
+    slug = env_to_hf_slug(env_name)
+    return 0 if slug.startswith("visual-") else 1
 
 
 def _run(cmd: list[str], cwd: Path, env: Dict[str, str], log_path: Path) -> None:
@@ -329,7 +364,7 @@ def train_gas_backbone_if_missing(
     raw_root = artifacts.root.resolve() / "_raw_gas"
     logs = artifacts.root.resolve() / "logs"
     run_group = f"stage22_{env_to_hf_slug(env_name)}_seed{seed}"
-    steps = 1_000_000 if full else (100_000 if quick else 1_000_000)
+    steps = official_train_steps(env_name) if full else (100_000 if quick else official_train_steps(env_name))
     save_interval = min(100_000, steps)
     common = [
         "--env_name",
@@ -377,7 +412,7 @@ def train_gas_backbone_if_missing(
                 "--save_graph_dir",
                 str(raw_root / "graph"),
                 "--te_threshold",
-                "0.99",
+                str(official_te_threshold(env_name)),
                 "--tdr_path",
                 str(artifacts.tdr_checkpoint.resolve()),
             ]
