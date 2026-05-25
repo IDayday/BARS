@@ -20,39 +20,90 @@ class _CompatSettings:
         self.kwargs = kwargs
 
 
+class _NoOpRun:
+    def log(self, metrics, step=None):
+        return None
+
+    def finish(self):
+        return None
+
+
+class _NoOpWandbCompat:
+    Image = _CompatMedia
+    Video = _CompatMedia
+    Histogram = _CompatMedia
+    Settings = _CompatSettings
+
+    def __init__(self):
+        self.run = _NoOpRun()
+
+    def init(self, **kwargs):
+        print("[GAS logging] WandB disabled; keeping CSV/stdout only.")
+        return self.run
+
+    def log(self, metrics, step=None):
+        self.run.log(metrics, step=step)
+
+
 class _TensorBoardRun:
     def __init__(self, log_dir, config=None):
-        self.log_dir = log_dir
+        self.log_dir = os.path.abspath(log_dir)
         self.config = config or {}
         self._writer = None
+        self._disabled_reason = None
         try:
             from torch.utils.tensorboard import SummaryWriter
 
-            self._writer = SummaryWriter(log_dir=log_dir)
+            os.makedirs(self.log_dir, exist_ok=True)
+            self._writer = SummaryWriter(log_dir=self.log_dir)
         except Exception as exc:
             print(f"[GAS logging] TensorBoard unavailable ({exc!r}); keeping CSV/stdout only.")
+
+    def _disable_writer(self, exc):
+        if self._writer is None:
+            return
+        writer = self._writer
+        self._writer = None
+        try:
+            writer.close()
+        except Exception:
+            pass
+        if self._disabled_reason is None:
+            self._disabled_reason = repr(exc)
+            print(f"[GAS logging] TensorBoard writer disabled after error ({exc!r}); keeping CSV/stdout only.")
 
     def log(self, metrics, step=None):
         if self._writer is None:
             return
         step = int(step or 0)
-        for key, value in metrics.items():
-            if isinstance(value, _CompatMedia):
-                continue
-            try:
-                arr = np.asarray(value)
+        writer = self._writer
+        try:
+            for key, value in metrics.items():
+                if isinstance(value, _CompatMedia):
+                    continue
+                try:
+                    arr = np.asarray(value)
+                except Exception:
+                    continue
                 if arr.shape == ():
-                    self._writer.add_scalar(key, float(arr), step)
+                    writer.add_scalar(key, float(arr), step)
                 elif arr.size > 0:
-                    self._writer.add_histogram(key, arr.reshape(-1), step)
-            except Exception:
-                continue
-        self._writer.flush()
+                    writer.add_histogram(key, arr.reshape(-1), step)
+            writer.flush()
+        except Exception as exc:
+            self._disable_writer(exc)
 
     def finish(self):
         if self._writer is not None:
-            self._writer.flush()
-            self._writer.close()
+            writer = self._writer
+            self._writer = None
+            try:
+                writer.flush()
+                writer.close()
+            except Exception as exc:
+                if self._disabled_reason is None:
+                    self._disabled_reason = repr(exc)
+                    print(f"[GAS logging] TensorBoard writer disabled after error ({exc!r}); keeping CSV/stdout only.")
 
 
 class _TensorBoardWandbCompat:
@@ -83,15 +134,17 @@ class _TensorBoardWandbCompat:
 def _load_logging_backend():
     use_tb = os.environ.get("BARS_USE_TENSORBOARD", "").lower() in {"1", "true", "yes"}
     disable_wandb = os.environ.get("WANDB_DISABLED", "").lower() in {"1", "true", "yes"}
-    if use_tb or disable_wandb:
+    if use_tb:
         return _TensorBoardWandbCompat()
+    if disable_wandb:
+        return _NoOpWandbCompat()
     try:
         import wandb as _wandb
 
         return _wandb
     except Exception as exc:
-        print(f"[GAS logging] wandb unavailable ({exc!r}); falling back to TensorBoard/CSV.")
-        return _TensorBoardWandbCompat()
+        print(f"[GAS logging] wandb unavailable ({exc!r}); keeping CSV/stdout only.")
+        return _NoOpWandbCompat()
 
 
 wandb = _load_logging_backend()

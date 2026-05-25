@@ -1,0 +1,33 @@
+{
+  "artifact_source": "full_budget_train_from_scratch",
+  "checkpoint_policy": "full_stage_checkpoints_only_no_intermediate_resume",
+  "completed_at": "2026-05-25T02:41:02+08:00",
+  "config": {
+    "alpha": "0.1",
+    "batch_size": 1024,
+    "discount": "0.99",
+    "encoder": "not_used",
+    "env": "humanoidmaze-medium-navigate-v0",
+    "eval_on_cpu": 1,
+    "p_aug": "0.0",
+    "priority": 11,
+    "slot_cost": 1,
+    "tdr_expectile": "0.95",
+    "te_threshold": "0.99",
+    "train_steps": 1000000,
+    "way_steps": 32
+  },
+  "env": "humanoidmaze-medium-navigate-v0",
+  "eval_csv": "artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed43/policy/round006_selftrain_humanoidmaze-medium-navigate_seed43/humanoidmaze-medium-navigate-v0_sd043__2026-05-25_00-54-54/eval.csv",
+  "evidence_class": "E4_FULL_BUDGET_TRAINED_METHOD",
+  "gpu": "4",
+  "graph_checkpoint": "artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed43/graph/round006_selftrain_humanoidmaze-medium-navigate_seed43/humanoidmaze-medium-navigate-v0_sd043__2026-05-24_23-23-10/keygraph.pkl",
+  "official_weights_used": false,
+  "policy_checkpoint": "artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed43/policy/round006_selftrain_humanoidmaze-medium-navigate_seed43/humanoidmaze-medium-navigate-v0_sd043__2026-05-25_00-54-54/params_1000000.pkl",
+  "round": "006",
+  "seed": 43,
+  "started_at": "2026-05-25T00:54:51+08:00",
+  "status": "completed",
+  "tdr_checkpoint": "artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed43/tdr/round006_selftrain_humanoidmaze-medium-navigate_seed43/humanoidmaze-medium-navigate-v0_sd043__2026-05-24_17-08-16/params_1000000.pkl",
+  "train_steps": 1000000
+}

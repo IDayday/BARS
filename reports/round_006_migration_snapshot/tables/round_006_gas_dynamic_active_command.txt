@@ -1,0 +1,1 @@
+/root/anaconda3/envs/gcrlo/bin/python scripts/round006_gas_dynamic_orchestrator.py --round 006 --dataset-dir /root/remote/datasets/ogbench --run-root runs_round006_gas_dynamic --out-root artifacts/gas_selftrain_round006 --seeds 42\,43\,44\,45\,46 --gpus 0\,1\,2\,3\,4\,5 --gpu-slots-per-gpu 2 --poll-seconds 60 --download-poll-seconds 30 

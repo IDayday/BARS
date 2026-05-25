@@ -1,0 +1,33 @@
+{
+  "artifact_source": "full_budget_train_from_scratch",
+  "checkpoint_policy": "full_stage_checkpoints_only_no_intermediate_resume",
+  "completed_at": "2026-05-24T23:30:53+08:00",
+  "config": {
+    "alpha": "1.0",
+    "batch_size": 1024,
+    "discount": "0.995",
+    "encoder": "not_used",
+    "env": "antmaze-giant-navigate-v0",
+    "eval_on_cpu": 1,
+    "p_aug": "0.0",
+    "priority": 0,
+    "slot_cost": 1,
+    "tdr_expectile": "0.999",
+    "te_threshold": "0.99",
+    "train_steps": 1000000,
+    "way_steps": 8
+  },
+  "env": "antmaze-giant-navigate-v0",
+  "eval_csv": "artifacts/gas_selftrain_round006/antmaze-giant-navigate-v0/seed46/policy/round006_selftrain_antmaze-giant-navigate_seed46/antmaze-giant-navigate-v0_sd046__2026-05-24_21-52-44/eval.csv",
+  "evidence_class": "E4_FULL_BUDGET_TRAINED_METHOD",
+  "gpu": "2",
+  "graph_checkpoint": "artifacts/gas_selftrain_round006/antmaze-giant-navigate-v0/seed46/graph/round006_selftrain_antmaze-giant-navigate_seed46/antmaze-giant-navigate-v0_sd046__2026-05-24_21-51-00/keygraph.pkl",
+  "official_weights_used": false,
+  "policy_checkpoint": "artifacts/gas_selftrain_round006/antmaze-giant-navigate-v0/seed46/policy/round006_selftrain_antmaze-giant-navigate_seed46/antmaze-giant-navigate-v0_sd046__2026-05-24_21-52-44/params_1000000.pkl",
+  "round": "006",
+  "seed": 46,
+  "started_at": "2026-05-24T20:39:36+08:00",
+  "status": "completed",
+  "tdr_checkpoint": "artifacts/gas_selftrain_round006/antmaze-giant-navigate-v0/seed46/tdr/round006_selftrain_antmaze-giant-navigate_seed46/antmaze-giant-navigate-v0_sd046__2026-05-24_20-39-41/params_1000000.pkl",
+  "train_steps": 1000000
+}

@@ -1,0 +1,32 @@
+{
+  "artifact_source": "full_budget_train_from_scratch",
+  "completed_at": "2026-05-24T04:26:52+08:00",
+  "config": {
+    "alpha": "1.0",
+    "batch_size": 1024,
+    "discount": "0.99",
+    "encoder": "not_used",
+    "env": "antmaze-large-navigate-v0",
+    "eval_on_cpu": 1,
+    "p_aug": "0.0",
+    "priority": 4,
+    "slot_cost": 1,
+    "tdr_expectile": "0.999",
+    "te_threshold": "0.99",
+    "train_steps": 1000000,
+    "way_steps": 8
+  },
+  "env": "antmaze-large-navigate-v0",
+  "eval_csv": "artifacts/gas_selftrain_round006/antmaze-large-navigate-v0/seed42/policy/round006_selftrain_antmaze-large-navigate_seed42/antmaze-large-navigate-v0_sd042__2026-05-24_02-54-01/eval.csv",
+  "evidence_class": "E4_FULL_BUDGET_TRAINED_METHOD",
+  "gpu": "4",
+  "graph_checkpoint": "artifacts/gas_selftrain_round006/antmaze-large-navigate-v0/seed42/graph/round006_selftrain_antmaze-large-navigate_seed42/antmaze-large-navigate-v0_sd042__2026-05-24_02-52-43/keygraph.pkl",
+  "official_weights_used": false,
+  "policy_checkpoint": "artifacts/gas_selftrain_round006/antmaze-large-navigate-v0/seed42/policy/round006_selftrain_antmaze-large-navigate_seed42/antmaze-large-navigate-v0_sd042__2026-05-24_02-54-01/params_1000000.pkl",
+  "round": "006",
+  "seed": 42,
+  "started_at": "2026-05-24T01:42:05+08:00",
+  "status": "completed",
+  "tdr_checkpoint": "artifacts/gas_selftrain_round006/antmaze-large-navigate-v0/seed42/tdr/round006_selftrain_antmaze-large-navigate_seed42/antmaze-large-navigate-v0_sd042__2026-05-24_01-42-07/params_1000000.pkl",
+  "train_steps": 1000000
+}

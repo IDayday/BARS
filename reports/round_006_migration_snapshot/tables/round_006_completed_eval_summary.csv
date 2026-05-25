@@ -1,0 +1,4 @@
+env,n,mean_score_pp,std_score_pp,min_score_pp,max_score_pp,seeds,scores_pp
+antmaze-large-explore-v0,3,90.933,3.585,86.800,93.200,"44,45,46","86.8,93.2,92.8"
+antmaze-large-navigate-v0,4,94.200,1.366,92.400,95.600,"42,43,44,45","94.8,94.0,95.6,92.4"
+scene-play-v0,5,57.680,10.413,45.200,72.400,"42,43,44,45,46","53.2,63.2,72.4,54.4,45.2"
