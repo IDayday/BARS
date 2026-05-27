@@ -1,9 +1,9 @@
 # Round 006 GAS Monitor Snapshot
 
-- Generated: 2026-05-25T09:59:53+08:00
+- Generated: 2026-05-26T13:42:13+08:00
 - Evidence class: `E4_FULL_BUDGET_TRAINED_METHOD` pending completed eval rows.
 - Baseline-only monitor: no BARS mechanism interpretation.
-- Orchestrator PID: `1798` (`not alive`)
+- Orchestrator PID: `11492` (`alive`)
 - Jobs table: `reports/round_006_gas_dynamic_jobs.tsv`
 - Dataset table: `reports/round_006_ogbench_download_status.tsv`
 - Artifact root: `artifacts/gas_selftrain_round006`
@@ -13,8 +13,8 @@
 | status | count |
 | --- | ---: |
 | completed | 64 |
+| launched | 14 |
 | queued | 42 |
-| queued_after_interrupt | 14 |
 
 ## Phase Status
 
@@ -35,10 +35,10 @@
 
 | gpu | used_mb | free_mb | util_pct | name |
 | ---: | ---: | ---: | ---: | --- |
-| 0 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
-| 1 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
-| 2 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
-| 3 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
+| 0 | 1077 | 23181 | 0 | NVIDIA GeForce RTX 3090 |
+| 1 | 2657 | 21602 | 69 | NVIDIA GeForce RTX 3090 |
+| 2 | 1862 | 22396 | 6 | NVIDIA GeForce RTX 3090 |
+| 3 | 1057 | 23201 | 7 | NVIDIA GeForce RTX 3090 |
 | 4 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
 | 5 | 1 | 24258 | 0 | NVIDIA GeForce RTX 3090 |
 
@@ -46,7 +46,20 @@
 
 | env | seed | gpu | status | phase | tdr | policy | pct | pid | alive |
 | --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | --- |
-| none |  |  |  |  |  |  |  |  |  |
+| humanoidmaze-giant-stitch-v0 | 42 | 1 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11502 | True |
+| humanoidmaze-giant-stitch-v0 | 43 | 1 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11503 | True |
+| humanoidmaze-giant-stitch-v0 | 44 | 2 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11504 | True |
+| humanoidmaze-giant-stitch-v0 | 45 | 2 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11505 | True |
+| humanoidmaze-giant-stitch-v0 | 46 | 3 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11506 | True |
+| humanoidmaze-large-stitch-v0 | 42 | 3 | launched | await_eval | 1000000/1000000 | 1000000/1000000 | 100.0 | 11507 | True |
+| humanoidmaze-medium-stitch-v0 | 42 | 0 | launched | policy | 1000000/1000000 | 30000/1000000 | 51.5 | 11508 | True |
+| humanoidmaze-medium-stitch-v0 | 43 | 0 | launched | policy | 1000000/1000000 | 30000/1000000 | 51.5 | 11509 | True |
+| humanoidmaze-medium-stitch-v0 | 44 | 1 | launched | tdr | 10000/1000000 | 0/1000000 | 0.5 | 11510 | True |
+| humanoidmaze-medium-stitch-v0 | 45 | 1 | launched | tdr | 10000/1000000 | 0/1000000 | 0.5 | 11511 | True |
+| humanoidmaze-medium-stitch-v0 | 46 | 2 | launched | tdr | 10000/1000000 | 0/1000000 | 0.5 | 11512 | True |
+| visual-antmaze-giant-navigate-v0 | 42 | 3 | launched | tdr | 5000/500000 | 0/500000 | 0.5 | 11513 | True |
+| visual-antmaze-giant-navigate-v0 | 43 | 4 | launched | tdr | 5000/500000 | 0/500000 | 0.5 | 11514 | True |
+| visual-antmaze-giant-navigate-v0 | 44 | 5 | launched | tdr | 5000/500000 | 0/500000 | 0.5 | 11515 | True |
 
 ## Failures
 
@@ -117,13 +130,13 @@
 ## Event Tail
 
 ```json
-{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "0", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed42/worker_supervisor.log", "pid": 1813, "seed": 42, "slot_cost": 1, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "0", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed43/worker_supervisor.log", "pid": 1814, "seed": 43, "slot_cost": 1, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "1", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed44/worker_supervisor.log", "pid": 1815, "seed": 44, "slot_cost": 1, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "1", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed45/worker_supervisor.log", "pid": 1816, "seed": 45, "slot_cost": 1, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "2", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed46/worker_supervisor.log", "pid": 1817, "seed": 46, "slot_cost": 1, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "3", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed42/worker_supervisor.log", "pid": 1818, "seed": 42, "slot_cost": 2, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "4", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed43/worker_supervisor.log", "pid": 1819, "seed": 43, "slot_cost": 2, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
-{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "5", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed44/worker_supervisor.log", "pid": 1820, "seed": 44, "slot_cost": 2, "started_at": "2026-05-25T09:40:43+08:00", "time": "2026-05-25T09:40:43+08:00"}
+{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "0", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed42/worker_supervisor.log", "pid": 11508, "seed": 42, "slot_cost": 1, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "0", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed43/worker_supervisor.log", "pid": 11509, "seed": 43, "slot_cost": 1, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "1", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed44/worker_supervisor.log", "pid": 11510, "seed": 44, "slot_cost": 1, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "1", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed45/worker_supervisor.log", "pid": 11511, "seed": 45, "slot_cost": 1, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "humanoidmaze-medium-stitch-v0", "event": "job_launched", "gpu": "2", "log": "runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed46/worker_supervisor.log", "pid": 11512, "seed": 46, "slot_cost": 1, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "3", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed42/worker_supervisor.log", "pid": 11513, "seed": 42, "slot_cost": 2, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "4", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed43/worker_supervisor.log", "pid": 11514, "seed": 43, "slot_cost": 2, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
+{"env": "visual-antmaze-giant-navigate-v0", "event": "job_launched", "gpu": "5", "log": "runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed44/worker_supervisor.log", "pid": 11515, "seed": 44, "slot_cost": 2, "started_at": "2026-05-26T13:41:42+08:00", "time": "2026-05-26T13:41:42+08:00"}
 ```
 

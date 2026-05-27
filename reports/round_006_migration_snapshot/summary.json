@@ -1,6 +1,11 @@
 {
   "completed_eval": 64,
-  "generated_at": "2026-05-25T10:01:35+08:00",
+  "generated_at": "2026-05-27T15:22:57+08:00",
+  "job_table_status_counts": {
+    "completed": 64,
+    "launched": 14,
+    "queued": 42
+  },
   "remaining_jobs": 56,
   "round": "006",
   "source_out_root": "artifacts/gas_selftrain_round006",
@@ -8,6 +13,22 @@
   "status_counts_among_completed": {
     "completed": 64
   },
+  "status_json_count": 78,
+  "status_json_status_counts": {
+    "completed": 64,
+    "launched": 14,
+    "missing": 42
+  },
   "total_jobs": 120,
+  "weights_excluded_patterns": [
+    "params_*.pkl",
+    "*.pkl",
+    "*.npz",
+    "*.npy",
+    "*.pt",
+    "*.pth",
+    "*.ckpt",
+    "checkpoints/"
+  ],
   "weights_included": false
 }

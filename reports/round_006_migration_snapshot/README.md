@@ -1,6 +1,6 @@
 # Round 006 Migration Snapshot
 
-Generated: `2026-05-25T10:01:35+08:00`
+Generated: `2026-05-27T15:22:57+08:00`
 
 This snapshot is intentionally lightweight and git-trackable. It includes completed `eval.csv`
 files, selected `flags.json` files, job tables, and reports. It does not include checkpoint
@@ -11,7 +11,21 @@ weights, videos, TensorBoard files, or dataset files.
 - Total jobs: `120`
 - Completed eval rows: `64`
 - Remaining jobs to run on the next server: `56`
+- Status JSON files included: `78`
 - Weights included: `false`
+
+## Included Files
+
+- Completed `eval.csv` files and associated lightweight `flags.json` files.
+- `completed_eval_manifest.csv` for completed eval rows.
+- `job_status_manifest.csv` plus available `status.json` files for current Round006 job state.
+- Round006 job tables, config audit, interruption/restart notes, and monitor snapshot.
+
+## Excluded Files
+
+- Checkpoint weights such as `params_*.pkl`.
+- Graph/checkpoint pickle files.
+- Dataset, tensorboard, video, and raw training output files.
 
 ## Restore On A New Server
 
