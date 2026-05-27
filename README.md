@@ -108,24 +108,16 @@ python -m bars.cli run \
   --set eval.episodes=100
 ```
 
-## Multi-GPU sweep
+## Current multi-GPU entrypoints
+
+Use the Stage22/Stage23 GAS-aligned scripts for current experiments:
 
 ```bash
-GPUS=0,1,2,3 MAX_JOBS_PER_GPU=2 LOG_ROOT=runs bash scripts/launch_stage1.sh
+bash scripts/stage22_prepare_gas_backbone.sh ENVS=antmaze-medium-stitch-v0 SEEDS=0 GPUS=0 QUICK=1
+bash scripts/stage23_run_key_claim.sh CONFIG=configs/stage23_key_claim_reachability.json ENVS=antmaze-medium-stitch-v0 SEEDS=0 EPISODES=100 GPUS=0 WAIT=1
 ```
 
-The scheduler queries `nvidia-smi` and only launches a job if the target GPU has at least the job's `mem_mb` free. Set the per-job memory requirement in the sweep JSON through `resources.default_mem_mb` or each task's `mem_mb`.
-
-Dry-run scheduling:
-
-```bash
-python -m bars.sched.jobctl launch \
-  --sweep configs/sweeps/d4rl_stage1.json \
-  --log-root runs \
-  --gpus 0,1,2,3 \
-  --max-jobs-per-gpu 2 \
-  --dry-run
-```
+For active baseline-first rounds, start from `BARS_AUTONOMOUS_RESEARCH_LOOP_BASELINE_FIRST.md` and the latest `CURRENT_STATUS.md`.
 
 ## Status and stop
 

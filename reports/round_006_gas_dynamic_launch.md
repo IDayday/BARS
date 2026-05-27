@@ -1,6 +1,6 @@
 # Round 006 GAS Dynamic Download/Training Launch
 
-Generated: 2026-05-25T09:40:43+08:00.
+Generated: 2026-05-26T13:41:42+08:00.
 
 - Evidence class while running: `E4_FULL_BUDGET_TRAINED_METHOD` pending completion.
 - Baseline-only run: no p_bridge, integrated BARS, oracle-headroom, boundary, or failure-taxonomy interpretation.

@@ -59,24 +59,24 @@ humanoidmaze-medium-navigate-v0	43	11	1	4		completed	97.2	artifacts/gas_selftrai
 humanoidmaze-medium-navigate-v0	44	11	1	4		completed	94.8	artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed44/policy/round006_selftrain_humanoidmaze-medium-navigate_seed44/humanoidmaze-medium-navigate-v0_sd044__2026-05-25_00-54-54/eval.csv	runs_round006_gas_dynamic/humanoidmaze-medium-navigate-v0/seed44/status.json
 humanoidmaze-medium-navigate-v0	45	11	1	5		completed	94.0	artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed45/policy/round006_selftrain_humanoidmaze-medium-navigate_seed45/humanoidmaze-medium-navigate-v0_sd045__2026-05-25_02-23-21/eval.csv	runs_round006_gas_dynamic/humanoidmaze-medium-navigate-v0/seed45/status.json
 humanoidmaze-medium-navigate-v0	46	11	1	5		completed	96.4	artifacts/gas_selftrain_round006/humanoidmaze-medium-navigate-v0/seed46/policy/round006_selftrain_humanoidmaze-medium-navigate_seed46/humanoidmaze-medium-navigate-v0_sd046__2026-05-25_02-23-01/eval.csv	runs_round006_gas_dynamic/humanoidmaze-medium-navigate-v0/seed46/status.json
-humanoidmaze-giant-stitch-v0	42	12	1	1	1807	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed42/status.json
-humanoidmaze-giant-stitch-v0	43	12	1	1	1808	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed43/status.json
-humanoidmaze-giant-stitch-v0	44	12	1	2	1809	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed44/status.json
-humanoidmaze-giant-stitch-v0	45	12	1	2	1810	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed45/status.json
-humanoidmaze-giant-stitch-v0	46	12	1	3	1811	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed46/status.json
-humanoidmaze-large-stitch-v0	42	13	1	3	1812	launched			runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed42/status.json
+humanoidmaze-giant-stitch-v0	42	12	1	1	11502	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed42/status.json
+humanoidmaze-giant-stitch-v0	43	12	1	1	11503	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed43/status.json
+humanoidmaze-giant-stitch-v0	44	12	1	2	11504	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed44/status.json
+humanoidmaze-giant-stitch-v0	45	12	1	2	11505	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed45/status.json
+humanoidmaze-giant-stitch-v0	46	12	1	3	11506	launched			runs_round006_gas_dynamic/humanoidmaze-giant-stitch-v0/seed46/status.json
+humanoidmaze-large-stitch-v0	42	13	1	3	11507	launched			runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed42/status.json
 humanoidmaze-large-stitch-v0	43	13	1	4		completed	84.4	artifacts/gas_selftrain_round006/humanoidmaze-large-stitch-v0/seed43/policy/round006_selftrain_humanoidmaze-large-stitch_seed43/humanoidmaze-large-stitch-v0_sd043__2026-05-25_03-41-30/eval.csv	runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed43/status.json
 humanoidmaze-large-stitch-v0	44	13	1	4		completed	84.0	artifacts/gas_selftrain_round006/humanoidmaze-large-stitch-v0/seed44/policy/round006_selftrain_humanoidmaze-large-stitch_seed44/humanoidmaze-large-stitch-v0_sd044__2026-05-25_03-41-25/eval.csv	runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed44/status.json
 humanoidmaze-large-stitch-v0	45	13	1	0		completed	76.8	artifacts/gas_selftrain_round006/humanoidmaze-large-stitch-v0/seed45/policy/round006_selftrain_humanoidmaze-large-stitch_seed45/humanoidmaze-large-stitch-v0_sd045__2026-05-25_03-48-09/eval.csv	runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed45/status.json
 humanoidmaze-large-stitch-v0	46	13	1	0		completed	87.2	artifacts/gas_selftrain_round006/humanoidmaze-large-stitch-v0/seed46/policy/round006_selftrain_humanoidmaze-large-stitch_seed46/humanoidmaze-large-stitch-v0_sd046__2026-05-25_03-48-11/eval.csv	runs_round006_gas_dynamic/humanoidmaze-large-stitch-v0/seed46/status.json
-humanoidmaze-medium-stitch-v0	42	14	1	0	1813	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed42/status.json
-humanoidmaze-medium-stitch-v0	43	14	1	0	1814	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed43/status.json
-humanoidmaze-medium-stitch-v0	44	14	1	1	1815	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed44/status.json
-humanoidmaze-medium-stitch-v0	45	14	1	1	1816	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed45/status.json
-humanoidmaze-medium-stitch-v0	46	14	1	2	1817	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed46/status.json
-visual-antmaze-giant-navigate-v0	42	15	2	3	1818	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed42/status.json
-visual-antmaze-giant-navigate-v0	43	15	2	4	1819	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed43/status.json
-visual-antmaze-giant-navigate-v0	44	15	2	5	1820	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed44/status.json
+humanoidmaze-medium-stitch-v0	42	14	1	0	11508	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed42/status.json
+humanoidmaze-medium-stitch-v0	43	14	1	0	11509	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed43/status.json
+humanoidmaze-medium-stitch-v0	44	14	1	1	11510	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed44/status.json
+humanoidmaze-medium-stitch-v0	45	14	1	1	11511	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed45/status.json
+humanoidmaze-medium-stitch-v0	46	14	1	2	11512	launched			runs_round006_gas_dynamic/humanoidmaze-medium-stitch-v0/seed46/status.json
+visual-antmaze-giant-navigate-v0	42	15	2	3	11513	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed42/status.json
+visual-antmaze-giant-navigate-v0	43	15	2	4	11514	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed43/status.json
+visual-antmaze-giant-navigate-v0	44	15	2	5	11515	launched			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed44/status.json
 visual-antmaze-giant-navigate-v0	45	15	2			queued			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed45/status.json
 visual-antmaze-giant-navigate-v0	46	15	2			queued			runs_round006_gas_dynamic/visual-antmaze-giant-navigate-v0/seed46/status.json
 visual-antmaze-large-navigate-v0	42	16	2			queued			runs_round006_gas_dynamic/visual-antmaze-large-navigate-v0/seed42/status.json

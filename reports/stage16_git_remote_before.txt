@@ -1,2 +1,0 @@
-origin	git@github.com:IDayday/BARS.git (fetch)
-origin	git@github.com:IDayday/BARS.git (push)
