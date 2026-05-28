@@ -1,0 +1,15 @@
+{
+  "envs": ["antmaze-medium-stitch-v0", "antmaze-medium-navigate-v0"],
+  "seeds": [0],
+  "dataset_root": "/mnt/project/offlinerl_datasets/ogbench",
+  "tmd_checkpoint_note": "Pass env-specific checkpoints with TMD_CHECKPOINT when available. The bundled smoke checkpoint is for antmaze-medium-stitch-v0.",
+  "temporal_horizon_steps": 8,
+  "sample_size": 50000,
+  "max_observations": 50000,
+  "max_nodes": 256,
+  "pairwise_batch_size": 512,
+  "te_threshold": 0.99,
+  "episodes": 50,
+  "modes": ["tmd_graph_gas_policy", "tmd_graph_tmd_actor"],
+  "fallback": "none"
+}

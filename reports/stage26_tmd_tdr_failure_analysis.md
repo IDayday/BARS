@@ -1,0 +1,72 @@
+# Stage 26 TMD/TDR Failure Analysis
+
+The current taxonomy is based on evaluator-level signals available in `eval.csv`.
+More detailed trigger-state replay remains required for Phase F.
+
+| env | variant | weight | failure_type | count |
+|---|---|---|---|---|
+| antmaze-giant-navigate-v0 | gas |  | final_goal_handoff_failure | 1 |
+| antmaze-giant-navigate-v0 | gas |  | unclassified_execution_failure | 701 |
+| antmaze-giant-navigate-v0 | lowcond_factor_only_nearestgoal |  | unclassified_execution_failure | 25 |
+| antmaze-giant-navigate-v0 | lowcond_full_localres |  | unclassified_execution_failure | 24 |
+| antmaze-giant-navigate-v0 | lowcond_full_nearestgoal |  | unclassified_execution_failure | 23 |
+| antmaze-giant-navigate-v0 | lowcond_full_nomask_nearestgoal |  | unclassified_execution_failure | 24 |
+| antmaze-giant-navigate-v0 | lowcond_full_rawdist_nearestgoal |  | unclassified_execution_failure | 25 |
+| antmaze-giant-navigate-v0 | lowcond_full_trajend |  | unclassified_execution_failure | 23 |
+| antmaze-giant-navigate-v0 | lowcond_tdr_only_local |  | unclassified_execution_failure | 20 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.1 | unclassified_execution_failure | 204 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.2 | unclassified_execution_failure | 180 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.25 | final_goal_handoff_failure | 4 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.25 | unclassified_execution_failure | 586 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.3 | final_goal_handoff_failure | 1 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.3 | unclassified_execution_failure | 185 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.4 | final_goal_handoff_failure | 1 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.4 | unclassified_execution_failure | 185 |
+| antmaze-giant-navigate-v0 | tmd_cost | 0.5 | unclassified_execution_failure | 208 |
+| antmaze-giant-stitch-v0 | gas |  | unclassified_execution_failure | 81 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.1 | unclassified_execution_failure | 80 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.2 | unclassified_execution_failure | 83 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.25 | final_goal_handoff_failure | 1 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.25 | unclassified_execution_failure | 73 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.3 | final_goal_handoff_failure | 1 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.3 | unclassified_execution_failure | 90 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.4 | final_goal_handoff_failure | 1 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.4 | unclassified_execution_failure | 88 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.5 | final_goal_handoff_failure | 1 |
+| antmaze-giant-stitch-v0 | tmd_cost | 0.5 | unclassified_execution_failure | 75 |
+| antmaze-medium-navigate-v0 | gas |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-navigate-v0 | gas |  | unclassified_execution_failure | 16 |
+| antmaze-medium-navigate-v0 | lowcond_factor_only_nearestgoal |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-navigate-v0 | lowcond_factor_only_nearestgoal |  | unclassified_execution_failure | 24 |
+| antmaze-medium-navigate-v0 | lowcond_full_localres |  | unclassified_execution_failure | 3 |
+| antmaze-medium-navigate-v0 | lowcond_full_nearestgoal |  | unclassified_execution_failure | 7 |
+| antmaze-medium-navigate-v0 | lowcond_full_nomask_nearestgoal |  | final_goal_handoff_failure | 3 |
+| antmaze-medium-navigate-v0 | lowcond_full_nomask_nearestgoal |  | unclassified_execution_failure | 3 |
+| antmaze-medium-navigate-v0 | lowcond_full_rawdist_nearestgoal |  | final_goal_handoff_failure | 3 |
+| antmaze-medium-navigate-v0 | lowcond_full_rawdist_nearestgoal |  | unclassified_execution_failure | 9 |
+| antmaze-medium-navigate-v0 | lowcond_full_trajend |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-navigate-v0 | lowcond_full_trajend |  | unclassified_execution_failure | 9 |
+| antmaze-medium-navigate-v0 | lowcond_tdr_only_local |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-navigate-v0 | lowcond_tdr_only_local |  | unclassified_execution_failure | 5 |
+| antmaze-medium-navigate-v0 | tmd_cost | 0.1 | unclassified_execution_failure | 14 |
+| antmaze-medium-navigate-v0 | tmd_cost | 0.25 | final_goal_handoff_failure | 2 |
+| antmaze-medium-navigate-v0 | tmd_cost | 0.25 | unclassified_execution_failure | 8 |
+| antmaze-medium-stitch-v0 | gas |  | final_goal_handoff_failure | 4 |
+| antmaze-medium-stitch-v0 | gas |  | unclassified_execution_failure | 5 |
+| antmaze-medium-stitch-v0 | lowcond_factor_only_nearestgoal |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-stitch-v0 | lowcond_factor_only_nearestgoal |  | unclassified_execution_failure | 22 |
+| antmaze-medium-stitch-v0 | lowcond_full |  | unclassified_execution_failure | 7 |
+| antmaze-medium-stitch-v0 | lowcond_full_localres |  | final_goal_handoff_failure | 3 |
+| antmaze-medium-stitch-v0 | lowcond_full_localres |  | unclassified_execution_failure | 2 |
+| antmaze-medium-stitch-v0 | lowcond_full_localres_from_full |  | unclassified_execution_failure | 2 |
+| antmaze-medium-stitch-v0 | lowcond_full_nearestgoal |  | unclassified_execution_failure | 3 |
+| antmaze-medium-stitch-v0 | lowcond_full_nomask_nearestgoal |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-stitch-v0 | lowcond_full_nomask_nearestgoal |  | unclassified_execution_failure | 5 |
+| antmaze-medium-stitch-v0 | lowcond_full_rawdist_nearestgoal |  | final_goal_handoff_failure | 1 |
+| antmaze-medium-stitch-v0 | lowcond_full_rawdist_nearestgoal |  | unclassified_execution_failure | 3 |
+| antmaze-medium-stitch-v0 | lowcond_full_trajend |  | unclassified_execution_failure | 7 |
+| antmaze-medium-stitch-v0 | lowcond_tdr_only_local |  | unclassified_execution_failure | 1 |
+| antmaze-medium-stitch-v0 | tmd_cost | 0.1 | final_goal_handoff_failure | 3 |
+| antmaze-medium-stitch-v0 | tmd_cost | 0.1 | unclassified_execution_failure | 3 |
+| antmaze-medium-stitch-v0 | tmd_cost | 0.25 | final_goal_handoff_failure | 2 |
+| antmaze-medium-stitch-v0 | tmd_cost | 0.25 | unclassified_execution_failure | 5 |

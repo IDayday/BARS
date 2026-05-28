@@ -1,0 +1,15 @@
+{
+  "env": "antmaze-medium-stitch-v0",
+  "seed": 0,
+  "dataset_root": "/mnt/project/offlinerl_datasets/ogbench",
+  "tmd_checkpoint": "artifacts/tmd_gas_script_smoke/exp_tmd/smoke_tmd_actor/antmaze-medium-stitch-v0_sd000__2026-05-21_17-53-08/params_1000.pkl",
+  "output_dir": "artifacts/tmd_test/antmaze-medium-stitch-v0/0",
+  "temporal_horizon_steps": 8,
+  "sample_size": 512,
+  "max_observations": 2048,
+  "max_nodes": 64,
+  "pairwise_batch_size": 256,
+  "te_threshold": 0.99,
+  "tasks": 5,
+  "fallback": "none"
+}
