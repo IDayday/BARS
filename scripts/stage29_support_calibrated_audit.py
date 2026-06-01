@@ -95,6 +95,55 @@ def _load_cached_artifacts(cfg: dict, run_dir: Path, device):
     return embeddings, graph, boundary, reach_model, artifact_meta
 
 
+def _maybe_realign_cached_dataset(cfg: Dict, dataset, embeddings: np.ndarray, graph: BARSGraph):
+    """Keep cached GAS graph indices aligned with the offline dataset.
+
+    In environments with the `ogbench` package installed, `_load_data` may use
+    that package's API.  The cached GAS artifacts used in Stage28/29 were built
+    against the local NPZ normalization path.  If the two loaders expose a
+    different transition count, graph node indices can become invalid.  For
+    cache-based audits, the cache alignment is authoritative.
+    """
+    max_node = int(np.max(graph.node_indices)) if graph.num_nodes else -1
+    reasons = []
+    if int(dataset.size) != int(len(embeddings)):
+        reasons.append(f"dataset_size_{dataset.size}_embeddings_{len(embeddings)}")
+    if max_node >= int(dataset.size):
+        reasons.append(f"max_node_{max_node}_dataset_size_{dataset.size}")
+    if not reasons:
+        return dataset, {
+            "dataset_realigned_local_npz": 0,
+            "dataset_realign_reason": "",
+            "dataset_size_after_realign": int(dataset.size),
+        }
+    dc = cfg.get("data", {})
+    if str(dc.get("source", "")).lower() not in {"ogbench", "gas_v0"}:
+        raise ValueError("Cached graph/dataset mismatch: " + ";".join(reasons))
+    try:
+        from bars.data.ogbench_dataset import _call_local_ogbench_npz, _normalise_dataset
+
+        env_name = dc.get("env_name", cfg.get("env_name", "unknown"))
+        _, raw, _ = _call_local_ogbench_npz(
+            env_name,
+            dataset_path=dc.get("dataset_path", None),
+            dataset_dir=dc.get("dataset_dir", None),
+        )
+        local = _normalise_dataset(raw, env_name, dataset_limit=int(dc.get("dataset_limit", 0)))
+    except Exception as exc:
+        raise ValueError("Cached graph/dataset mismatch and local NPZ realign failed: " + ";".join(reasons)) from exc
+    if int(local.size) != int(len(embeddings)) or max_node >= int(local.size):
+        raise ValueError(
+            "Cached graph/dataset mismatch after local NPZ realign: "
+            f"local_size={local.size}, embeddings={len(embeddings)}, max_node={max_node}, reasons={';'.join(reasons)}"
+        )
+    return local, {
+        "dataset_realigned_local_npz": 1,
+        "dataset_realign_reason": ";".join(reasons),
+        "dataset_size_before_realign": int(dataset.size),
+        "dataset_size_after_realign": int(local.size),
+    }
+
+
 def _same_traj_cross_rate(dataset, graph: BARSGraph, edge_path: Iterable[int]) -> float:
     e = np.asarray(list(edge_path), dtype=np.int64)
     if len(e) == 0:
@@ -488,8 +537,10 @@ def main(argv=None) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     device = get_torch_device(str(cfg.get("device", "cpu")))
-    _, dataset = _load_data(cfg)
     embeddings, base_graph, _boundary, _reach_model, artifact_meta = _load_cached_artifacts(cfg, run_dir, device)
+    _, dataset = _load_data(cfg)
+    dataset, realign_meta = _maybe_realign_cached_dataset(cfg, dataset, embeddings, base_graph)
+    artifact_meta.update(realign_meta)
     logger = CSVLogger(str(out_path), _default_fields(cfg, run_dir, out_path))
     logger.log(artifact_meta)
     run_stage29_audit(dataset, embeddings, base_graph, cfg, logger)
