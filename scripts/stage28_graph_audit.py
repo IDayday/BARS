@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import os
 import sys
 from pathlib import Path
@@ -29,6 +30,29 @@ def _default_fields(cfg: dict, run_dir: Path) -> dict:
     }
 
 
+def _merge_stage28_config(audit_cfg: dict, run_dir: Path) -> dict:
+    """Prefer the original run config so dataset/checkpoint shapes match cached artifacts.
+
+    The Stage28 config is intentionally audit-only.  Existing BARS/GAS runs often
+    carry source-specific dataset paths, Route-B switches, hidden dimensions, and
+    boundary settings in <run-dir>/config.json.  Reusing that config prevents the
+    audit from accidentally loading a different dataset or mismatched reachability
+    checkpoint.  The audit config contributes only stage28_audit knobs by default.
+    """
+    run_cfg_path = run_dir / "config.json"
+    use_run_config = bool(audit_cfg.get("stage28_audit", {}).get("use_run_config", True))
+    if not use_run_config or not run_cfg_path.exists():
+        return copy.deepcopy(audit_cfg)
+    cfg = load_json(str(run_cfg_path))
+    if "stage28_audit" in audit_cfg:
+        cfg.setdefault("stage28_audit", {}).update(copy.deepcopy(audit_cfg["stage28_audit"]))
+    if "ann" in audit_cfg and bool(audit_cfg.get("stage28_audit", {}).get("override_ann", False)):
+        cfg["ann"] = copy.deepcopy(audit_cfg["ann"])
+    if "experiment" in audit_cfg:
+        cfg.setdefault("experiment", {}).update(copy.deepcopy(audit_cfg["experiment"]))
+    return cfg
+
+
 def _load_cached_artifacts(cfg: dict, run_dir: Path, device):
     emb_path = run_dir / "cache" / "embeddings.npy"
     graph_path = run_dir / "cache" / "graph.npz"
@@ -50,7 +74,7 @@ def _load_cached_artifacts(cfg: dict, run_dir: Path, device):
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Stage28 graph-method audit over cached BARS/GAS artifacts.")
-    parser.add_argument("--config", required=True, help="BARS config used to load the dataset and audit knobs.")
+    parser.add_argument("--config", required=True, help="Audit config. By default, <run-dir>/config.json is reused and this file supplies stage28_audit knobs.")
     parser.add_argument("--run-dir", required=True, help="Existing run dir containing cache/embeddings.npy and cache/graph.npz.")
     parser.add_argument("--out", default=None, help="CSV path. Defaults to <run-dir>/logs/stage28_graph_audit.csv.")
     parser.add_argument("--env", dest="env_name", default=None)
@@ -64,7 +88,8 @@ def main(argv=None) -> None:
     args = parser.parse_args(argv)
 
     run_dir = Path(args.run_dir)
-    cfg = load_json(args.config)
+    audit_cfg = load_json(args.config)
+    cfg = _merge_stage28_config(audit_cfg, run_dir)
     cfg = _apply_routeb_backbone_config(cfg)
     cfg.setdefault("run_id", run_dir.name)
     if args.env_name is not None:
