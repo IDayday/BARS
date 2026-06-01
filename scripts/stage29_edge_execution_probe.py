@@ -580,10 +580,24 @@ def _write_markdown_report(
         f"- Probe mode: {validation_row.get('probe_mode', '')}.",
         f"- Sampled edges: {len(rows)}.",
         f"- Executed edges: {validation_row.get('executed_edges', 0)}.",
-        "",
-        "## Edge Type Summary",
-        "",
     ]
+    if (
+        validation_row.get("execution_evidence_status") == EXECUTION_STATUS_PASS
+        and validation_row.get("probe_mode") == "full_calibration"
+        and int(validation_row.get("online_eval_allowed", 0) or 0) == 1
+    ):
+        lines.append("- Support score status: VALIDATED as an executability calibration signal for the Stage29-B full calibration probe.")
+    else:
+        lines.append("- Support score status: NOT_VALIDATED_FOR_PROMOTION by this probe mode/result.")
+    if int(artifact_row.get("boundary_loaded", 0) or 0) == 0:
+        lines.append("- Boundary status: UNVALIDATED because boundary_loaded=0.")
+    else:
+        lines.append("- Boundary status: loaded for scoring, but this probe does not separately validate boundary semantics.")
+    if int(artifact_row.get("reachability_loaded", 0) or 0) == 0:
+        lines.append("- Reachability status: UNVALIDATED because reachability_loaded=0.")
+    else:
+        lines.append("- Reachability status: loaded for scoring, but support_score calibration is reported separately.")
+    lines.extend(["", "## Edge Type Summary", ""])
     if summaries:
         header = ["edge_type", "count", "reach_rate", "reset_success_rate", "set_state_success_rate", "progress_norm_mean", "divergence_rate", "stuck_rate", "timeout_rate", "support_score_mean", "support_count_mean", "graph_p_exec_mean", "reachability_p_exec_mean"]
         lines.append("| " + " | ".join(header) + " |")
