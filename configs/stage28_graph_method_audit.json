@@ -82,7 +82,7 @@
       16,
       32
     ],
-    "max_nodes_per_variant": 0,
+    "max_nodes_per_variant": 4096,
     "bottleneck_extra_nodes": 256,
     "top_outgoing": 0,
     "coverage_sample": 200000,
