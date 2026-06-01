@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import multiprocessing as mp
+import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -23,6 +25,9 @@ class AuditPair:
     goal_index: int
     true_dt: int
     data_supported: int
+
+
+_PAIR_WORKER_STATE: Dict[str, object] = {}
 
 
 def _cfg(cfg: Dict, key: str, default=None):
@@ -560,6 +565,86 @@ def _label_failure(row: Dict[str, float | int | str], cfg: Dict) -> str:
     return "NO_GRAPH_PATH_UNRESOLVED"
 
 
+def _set_pair_worker_state(state: Dict[str, object]) -> None:
+    global _PAIR_WORKER_STATE
+    _PAIR_WORKER_STATE = state
+
+
+def _audit_pair_worker(pair: AuditPair) -> Tuple[Dict[str, float | int | str], List[Dict[str, float | int | str]]]:
+    state = _PAIR_WORKER_STATE
+    dataset = state["dataset"]
+    variants = state["variants"]
+    graph_pair_nodes = state["graph_pair_nodes"]
+    cfg = state["cfg"]
+    boundary = state["boundary"]
+    lambda_risk = float(state["lambda_risk"])
+    lambda_boundary = float(state["lambda_boundary"])
+    max_edges = state["max_edges"]
+    base_ref = str(state["base_ref"])
+    projection_ref = str(state["projection_ref"])
+    boundary_available = boundary is not None
+
+    pair_summary: Dict[str, float | int | str] = {
+        "phase": "stage28_failure_taxonomy_proxy",
+        **_evidence_fields("PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY", "failure_taxonomy_proxy"),
+        "pair_id": pair.pair_id,
+        "pair_type": pair.pair_type,
+        "start_index": pair.start_index,
+        "goal_index": pair.goal_index,
+        "true_dt": pair.true_dt,
+        "data_supported": pair.data_supported,
+    }
+    rows: List[Dict[str, float | int | str]] = []
+    for graph_id, graph in variants.items():
+        s_nodes, g_nodes = graph_pair_nodes[graph_id]
+        s_node = int(s_nodes[pair.pair_id])
+        g_node = int(g_nodes[pair.pair_id])
+        planner_variants = _variants_for_graph(graph_id, cfg, boundary_available and graph_id == "base_cached")
+        for planner_variant in planner_variants:
+            use_boundary = boundary if graph_id == "base_cached" and str(planner_variant).lower() in {"full_bars", "bars", "boundary", "gas_bars"} else None
+            result = plan_path(graph, s_node, g_node, variant=planner_variant, lambda_risk=lambda_risk, lambda_boundary=lambda_boundary, boundary=use_boundary, max_edges=max_edges)
+            path_stats = _path_edge_stats(dataset, graph, result)
+            diversity_stats = {}
+            if bool(_cfg(cfg, "enable_path_diversity_probe", True)) and graph_id == "base_cached" and str(planner_variant).lower() == base_ref:
+                diversity_stats = _alternative_path_stats(graph, s_node, g_node, result, planner_variant, cfg, boundary=use_boundary)
+            row = {
+                "phase": "stage28_path_probe",
+                **_evidence_fields("PASS_STAGE28_PATH_PROBE", "path_search_counterfactual"),
+                "graph_id": graph_id,
+                "pair_id": pair.pair_id,
+                "pair_type": pair.pair_type,
+                "start_index": pair.start_index,
+                "goal_index": pair.goal_index,
+                "true_dt": pair.true_dt,
+                "data_supported": pair.data_supported,
+                "start_node": s_node,
+                "goal_node": g_node,
+                "planner_variant": planner_variant,
+                **result.to_row(),
+                **path_stats,
+                **diversity_stats,
+            }
+            rows.append(row)
+            if graph_id == "projection_temporal" and str(planner_variant).lower() == projection_ref:
+                pair_summary["projection_found"] = int(result.found)
+            if graph_id == "base_cached" and str(planner_variant).lower() == base_ref:
+                pair_summary["base_found"] = int(result.found)
+                pair_summary["base_num_edges"] = len(result.edge_path)
+                pair_summary["base_objective"] = result.objective
+                pair_summary["base_path_cross_edge_rate"] = path_stats["path_cross_edge_rate"]
+                pair_summary["base_path_largest_edge_cost_ratio"] = path_stats["path_largest_edge_cost_ratio"]
+                if diversity_stats:
+                    pair_summary["base_alt_path_rate"] = diversity_stats.get("alt_path_rate", float("nan"))
+
+    pair_summary.setdefault("projection_found", 0)
+    pair_summary.setdefault("base_found", 0)
+    pair_summary.setdefault("base_path_cross_edge_rate", float("nan"))
+    pair_summary.setdefault("base_path_largest_edge_cost_ratio", float("nan"))
+    pair_summary.setdefault("base_alt_path_rate", float("nan"))
+    pair_summary["failure_label"] = _label_failure(pair_summary, cfg)
+    return pair_summary, rows
+
+
 def run_graph_method_audit(
     dataset: OfflineDataset,
     embeddings: np.ndarray,
@@ -628,68 +713,48 @@ def run_graph_method_audit(
     max_edges = int(acfg.get("max_path_edges", 0)) or None
     base_ref = _reference_variant(cfg, boundary is not None)
     projection_ref = str(acfg.get("projection_reference_variant", "shortest"))
+    worker_state: Dict[str, object] = {
+        "dataset": dataset,
+        "variants": variants,
+        "graph_pair_nodes": graph_pair_nodes,
+        "cfg": cfg,
+        "boundary": boundary,
+        "lambda_risk": lambda_risk,
+        "lambda_boundary": lambda_boundary,
+        "max_edges": max_edges,
+        "base_ref": base_ref,
+        "projection_ref": projection_ref,
+    }
 
     taxonomy_rows: list[Dict[str, float | int | str]] = []
-    for pair in pairs:
-        pair_summary: Dict[str, float | int | str] = {
-            "phase": "stage28_failure_taxonomy_proxy",
-            **_evidence_fields("PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY", "failure_taxonomy_proxy"),
-            "pair_id": pair.pair_id,
-            "pair_type": pair.pair_type,
-            "start_index": pair.start_index,
-            "goal_index": pair.goal_index,
-            "true_dt": pair.true_dt,
-            "data_supported": pair.data_supported,
-        }
-        for graph_id, graph in variants.items():
-            s_nodes, g_nodes = graph_pair_nodes[graph_id]
-            s_node = int(s_nodes[pair.pair_id])
-            g_node = int(g_nodes[pair.pair_id])
-            planner_variants = _variants_for_graph(graph_id, cfg, boundary is not None and graph_id == "base_cached")
-            for planner_variant in planner_variants:
-                use_boundary = boundary if graph_id == "base_cached" and str(planner_variant).lower() in {"full_bars", "bars", "boundary", "gas_bars"} else None
-                result = plan_path(graph, s_node, g_node, variant=planner_variant, lambda_risk=lambda_risk, lambda_boundary=lambda_boundary, boundary=use_boundary, max_edges=max_edges)
-                path_stats = _path_edge_stats(dataset, graph, result)
-                diversity_stats = {}
-                if bool(acfg.get("enable_path_diversity_probe", True)) and graph_id == "base_cached" and str(planner_variant).lower() == base_ref:
-                    diversity_stats = _alternative_path_stats(graph, s_node, g_node, result, planner_variant, cfg, boundary=use_boundary)
-                row = {
-                    "phase": "stage28_path_probe",
-                    **_evidence_fields("PASS_STAGE28_PATH_PROBE", "path_search_counterfactual"),
-                    "graph_id": graph_id,
-                    "pair_id": pair.pair_id,
-                    "pair_type": pair.pair_type,
-                    "start_index": pair.start_index,
-                    "goal_index": pair.goal_index,
-                    "true_dt": pair.true_dt,
-                    "data_supported": pair.data_supported,
-                    "start_node": s_node,
-                    "goal_node": g_node,
-                    "planner_variant": planner_variant,
-                    **result.to_row(),
-                    **path_stats,
-                    **diversity_stats,
-                }
+    num_workers = int(acfg.get("num_workers", 1) or 1)
+    num_workers = max(1, min(num_workers, len(pairs), os.cpu_count() or num_workers))
+    if num_workers > 1:
+        try:
+            ctx = mp.get_context("fork")
+        except ValueError:
+            ctx = None
+        if ctx is not None:
+            chunksize = int(acfg.get("worker_chunksize", max(1, len(pairs) // max(1, num_workers * 4))))
+            _set_pair_worker_state(worker_state)
+            with ctx.Pool(processes=num_workers) as pool:
+                for pair_summary, path_rows in pool.imap(_audit_pair_worker, pairs, chunksize=chunksize):
+                    for row in path_rows:
+                        logger.log(row)
+                    taxonomy_rows.append(pair_summary)
+                    logger.log(pair_summary)
+            _set_pair_worker_state({})
+        else:
+            num_workers = 1
+    if num_workers == 1:
+        _set_pair_worker_state(worker_state)
+        for pair in pairs:
+            pair_summary, path_rows = _audit_pair_worker(pair)
+            for row in path_rows:
                 logger.log(row)
-                if graph_id == "projection_temporal" and str(planner_variant).lower() == projection_ref:
-                    pair_summary["projection_found"] = int(result.found)
-                if graph_id == "base_cached" and str(planner_variant).lower() == base_ref:
-                    pair_summary["base_found"] = int(result.found)
-                    pair_summary["base_num_edges"] = len(result.edge_path)
-                    pair_summary["base_objective"] = result.objective
-                    pair_summary["base_path_cross_edge_rate"] = path_stats["path_cross_edge_rate"]
-                    pair_summary["base_path_largest_edge_cost_ratio"] = path_stats["path_largest_edge_cost_ratio"]
-                    if diversity_stats:
-                        pair_summary["base_alt_path_rate"] = diversity_stats.get("alt_path_rate", float("nan"))
-
-        pair_summary.setdefault("projection_found", 0)
-        pair_summary.setdefault("base_found", 0)
-        pair_summary.setdefault("base_path_cross_edge_rate", float("nan"))
-        pair_summary.setdefault("base_path_largest_edge_cost_ratio", float("nan"))
-        pair_summary.setdefault("base_alt_path_rate", float("nan"))
-        pair_summary["failure_label"] = _label_failure(pair_summary, cfg)
-        taxonomy_rows.append(pair_summary)
-        logger.log(pair_summary)
+            taxonomy_rows.append(pair_summary)
+            logger.log(pair_summary)
+        _set_pair_worker_state({})
 
     if taxonomy_rows:
         labels: Dict[str, int] = {}

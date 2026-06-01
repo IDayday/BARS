@@ -99,6 +99,7 @@ def main(argv=None) -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--num-pairs", type=int, default=None, help="Override stage28_audit.num_future_pairs.")
     parser.add_argument("--num-cross-pairs", type=int, default=None, help="Override stage28_audit.num_cross_pairs.")
+    parser.add_argument("--num-workers", type=int, default=None, help="Pair-level CPU worker processes for path probes.")
     parser.add_argument("--graph-variants", default=None, help="Comma-separated audit graph variants.")
     parser.add_argument("--device", default=None)
     parser.add_argument("--clear", action="store_true", help="Replace existing audit CSV instead of appending.")
@@ -123,6 +124,8 @@ def main(argv=None) -> None:
         cfg["stage28_audit"]["num_future_pairs"] = int(args.num_pairs)
     if args.num_cross_pairs is not None:
         cfg["stage28_audit"]["num_cross_pairs"] = int(args.num_cross_pairs)
+    if args.num_workers is not None:
+        cfg["stage28_audit"]["num_workers"] = int(args.num_workers)
     if args.graph_variants:
         cfg["stage28_audit"]["graph_variants"] = [x.strip() for x in args.graph_variants.split(",") if x.strip()]
 
