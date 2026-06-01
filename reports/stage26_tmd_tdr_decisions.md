@@ -1,22 +1,24 @@
 # Stage 26 TMD/TDR Decisions
 
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.1`: EXPLORATORY_POSITIVE; delta=0.002, bootstrap95=[-0.050000000000000044, 0.05499999999999994], normal95=[-0.052, 0.055].
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.2`: EXPLORATORY_POSITIVE; delta=0.042, bootstrap95=[0.0, 0.08166666666666667], normal95=[-0.011, 0.094].
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.25`: PROMOTE_FOR_CONFIRM; delta=0.075, bootstrap95=[0.023333333333333317, 0.13], normal95=[0.023, 0.127].
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.3`: EXPLORATORY_POSITIVE; delta=0.032, bootstrap95=[-0.010000000000000009, 0.07333333333333336], normal95=[-0.021, 0.085].
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.4`: EXPLORATORY_POSITIVE; delta=0.032, bootstrap95=[-0.015000000000000013, 0.08000000000000007], normal95=[-0.021, 0.085].
-- `antmaze-giant-navigate-v0` episodes `20` weight `0.5`: DO_NOT_PROMOTE; delta=-0.005, bootstrap95=[-0.05999999999999994, 0.046666666666666634], normal95=[-0.059, 0.049].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.1`: DO_NOT_PROMOTE; delta=-0.108, bootstrap95=[-0.050000000000000044, 0.05499999999999994], normal95=[-0.152, -0.064].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.2`: DO_NOT_PROMOTE; delta=-0.068, bootstrap95=[0.0, 0.08166666666666667], normal95=[-0.110, -0.026].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.25`: PROMOTE_FOR_CONFIRM; delta=0.045, bootstrap95=[0.018000000000000016, 0.07533333333333325], normal95=[0.016, 0.074].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.3`: DO_NOT_PROMOTE; delta=-0.078, bootstrap95=[-0.010000000000000009, 0.07333333333333336], normal95=[-0.121, -0.035].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.4`: DO_NOT_PROMOTE; delta=-0.078, bootstrap95=[-0.015000000000000013, 0.08000000000000007], normal95=[-0.121, -0.035].
+- `antmaze-giant-navigate-v0` episodes `20` weight `0.5`: DO_NOT_PROMOTE; delta=-0.115, bootstrap95=[-0.05999999999999994, 0.046666666666666634], normal95=[-0.158, -0.071].
 - `antmaze-giant-navigate-v0` episodes `50` weight `0.25`: PROMOTE_FOR_CONFIRM; delta=0.037, bootstrap95=[0.015999999999999903, 0.058666666666666645], normal95=[0.004, 0.070].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.1`: EXPLORATORY_POSITIVE; delta=0.002, bootstrap95=[-0.033333333333333326, 0.036666666666666736], normal95=[-0.037, 0.040].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.2`: DO_NOT_PROMOTE; delta=-0.003, bootstrap95=[-0.033333333333333326, 0.03166666666666662], normal95=[-0.042, 0.036].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.25`: EXPLORATORY_POSITIVE; delta=0.012, bootstrap95=[-0.020000000000000018, 0.04166666666666674], normal95=[-0.026, 0.050].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.3`: DO_NOT_PROMOTE; delta=-0.017, bootstrap95=[-0.05999999999999994, 0.021666666666666612], normal95=[-0.056, 0.023].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.4`: DO_NOT_PROMOTE; delta=-0.013, bootstrap95=[-0.04500000000000004, 0.020000000000000018], normal95=[-0.053, 0.026].
-- `antmaze-giant-stitch-v0` episodes `20` weight `0.5`: EXPLORATORY_POSITIVE; delta=0.008, bootstrap95=[-0.02833333333333332, 0.04500000000000004], normal95=[-0.030, 0.046].
-- `antmaze-medium-navigate-v0` episodes `20` weight `0.1`: EXPLORATORY_POSITIVE; delta=0.007, bootstrap95=[-0.01750000000000007, 0.03500000000000003], normal95=[-0.019, 0.034].
-- `antmaze-medium-navigate-v0` episodes `20` weight `0.25`: EXPLORATORY_POSITIVE; delta=0.017, bootstrap95=[-0.010000000000000009, 0.04749999999999999], normal95=[-0.007, 0.042].
-- `antmaze-medium-stitch-v0` episodes `20` weight `0.1`: EXPLORATORY_POSITIVE; delta=0.007, bootstrap95=[-0.012500000000000067, 0.030000000000000027], normal95=[-0.011, 0.026].
-- `antmaze-medium-stitch-v0` episodes `20` weight `0.25`: EXPLORATORY_POSITIVE; delta=0.005, bootstrap95=[-0.010000000000000009, 0.020000000000000018], normal95=[-0.014, 0.024].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.1`: DO_NOT_PROMOTE; delta=-0.011, bootstrap95=[-0.033333333333333326, 0.036666666666666736], normal95=[-0.043, 0.021].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.2`: DO_NOT_PROMOTE; delta=-0.016, bootstrap95=[-0.033333333333333326, 0.03166666666666662], normal95=[-0.049, 0.016].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.25`: DO_NOT_PROMOTE; delta=-0.014, bootstrap95=[-0.034666666666666734, 0.007333333333333303], normal95=[-0.038, 0.010].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.3`: DO_NOT_PROMOTE; delta=-0.030, bootstrap95=[-0.05999999999999994, 0.021666666666666612], normal95=[-0.063, 0.003].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.4`: DO_NOT_PROMOTE; delta=-0.026, bootstrap95=[-0.04500000000000004, 0.020000000000000018], normal95=[-0.059, 0.007].
+- `antmaze-giant-stitch-v0` episodes `20` weight `0.5`: DO_NOT_PROMOTE; delta=-0.005, bootstrap95=[-0.02833333333333332, 0.04500000000000004], normal95=[-0.036, 0.027].
+- `antmaze-large-navigate-v0` episodes `10` weight `0.25`: EXPLORATORY_POSITIVE; delta=0.007, bootstrap95=[-0.040000000000000036, 0.053333333333333344], normal95=[-0.043, 0.056].
+- `antmaze-large-stitch-v0` episodes `10` weight `0.25`: DO_NOT_PROMOTE; delta=0.000, bootstrap95=[-0.033333333333333326, 0.039999999999999925], normal95=[-0.044, 0.044].
+- `antmaze-medium-navigate-v0` episodes `20` weight `0.1`: DO_NOT_PROMOTE; delta=-0.006, bootstrap95=[-0.01750000000000007, 0.03500000000000003], normal95=[-0.026, 0.014].
+- `antmaze-medium-navigate-v0` episodes `20` weight `0.25`: DO_NOT_PROMOTE; delta=-0.004, bootstrap95=[-0.01692307692307682, 0.010769230769230753], normal95=[-0.017, 0.010].
+- `antmaze-medium-stitch-v0` episodes `20` weight `0.1`: EXPLORATORY_POSITIVE; delta=0.017, bootstrap95=[-0.012500000000000067, 0.030000000000000027], normal95=[0.002, 0.033].
+- `antmaze-medium-stitch-v0` episodes `20` weight `0.25`: DO_NOT_PROMOTE; delta=-0.006, bootstrap95=[-0.018461538461538418, 0.006923076923076921], normal95=[-0.020, 0.008].
 
 ## Phase D Low-Level Condition
 - `antmaze-giant-navigate-v0` episodes `5` variant `lowcond_factor_only_nearestgoal`: DO_NOT_PROMOTE; delta=-0.520, bootstrap95=[-0.8, -0.24], normal95=[-0.716, -0.324], delta_steps=138.680.
@@ -26,6 +28,13 @@
 - `antmaze-giant-navigate-v0` episodes `5` variant `lowcond_full_rawdist_nearestgoal`: DO_NOT_PROMOTE; delta=-0.520, bootstrap95=[-0.8, -0.24], normal95=[-0.716, -0.324], delta_steps=138.680.
 - `antmaze-giant-navigate-v0` episodes `5` variant `lowcond_full_trajend`: DO_NOT_PROMOTE; delta=-0.440, bootstrap95=[-0.76, -0.12000000000000002], normal95=[-0.663, -0.217], delta_steps=115.640.
 - `antmaze-giant-navigate-v0` episodes `5` variant `lowcond_tdr_only_local`: DO_NOT_PROMOTE; delta=-0.320, bootstrap95=[-0.76, 0.15999999999999998], normal95=[-0.571, -0.069], delta_steps=98.120.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_factor_only_nearestgoal`: DO_NOT_PROMOTE; delta=-0.920, bootstrap95=[-1.0, -0.84], normal95=[-1.026, -0.814], delta_steps=293.400.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_full_localres`: DO_NOT_PROMOTE; delta=-0.800, bootstrap95=[-0.96, -0.6], normal95=[-0.966, -0.634], delta_steps=252.400.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_full_nearestgoal`: DO_NOT_PROMOTE; delta=-0.800, bootstrap95=[-0.96, -0.6], normal95=[-0.966, -0.634], delta_steps=248.480.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_full_nomask_nearestgoal`: DO_NOT_PROMOTE; delta=-0.720, bootstrap95=[-0.88, -0.5599999999999999], normal95=[-0.909, -0.531], delta_steps=242.600.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_full_rawdist_nearestgoal`: DO_NOT_PROMOTE; delta=-0.800, bootstrap95=[-0.96, -0.6], normal95=[-0.966, -0.634], delta_steps=259.040.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_full_trajend`: DO_NOT_PROMOTE; delta=-0.920, bootstrap95=[-1.0, -0.84], normal95=[-1.026, -0.814], delta_steps=293.400.
+- `antmaze-giant-stitch-v0` episodes `5` variant `lowcond_tdr_only_local`: DO_NOT_PROMOTE; delta=-0.720, bootstrap95=[-0.88, -0.5599999999999999], normal95=[-0.909, -0.531], delta_steps=252.840.
 - `antmaze-medium-navigate-v0` episodes `5` variant `lowcond_factor_only_nearestgoal`: DO_NOT_PROMOTE; delta=-1.000, bootstrap95=[-1.0, -1.0], normal95=[-1.000, -1.000], delta_steps=771.320.
 - `antmaze-medium-navigate-v0` episodes `5` variant `lowcond_full_localres`: DO_NOT_PROMOTE; delta=-0.120, bootstrap95=[-0.36, 0.0], normal95=[-0.247, 0.007], delta_steps=250.480.
 - `antmaze-medium-navigate-v0` episodes `5` variant `lowcond_full_nearestgoal`: DO_NOT_PROMOTE; delta=-0.280, bootstrap95=[-0.56, -0.07999999999999996], normal95=[-0.456, -0.104], delta_steps=392.720.

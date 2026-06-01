@@ -1,7 +1,7 @@
 # Stage 26 TMD/TDR Protocol
 
 Branch: `stage26-tdr-factor-tmdcost`
-Commit: `595930c`
+Commit: `f864251`
 Dataset root: `/mnt/project/offlinerl_datasets/ogbench`
 Runs root: `runs_stage26_tmd_tdr`
 

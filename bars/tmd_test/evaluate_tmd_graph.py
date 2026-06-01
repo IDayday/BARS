@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import heapq
+import os
 from pathlib import Path
 
 import numpy as np
@@ -22,12 +24,31 @@ GAS_MODES = {
     "gas_direct_goal",
     "gas_graph_policy",
     "gas_graph_tmd_cost_policy",
+    "stage27_graph_policy",
+    "stage27_adaptive_policy",
     "tmd_exec_graph_gas_policy",
     "gas_graph_tmd_exec_rescue_policy",
 }
 TMD_PROVIDER_MODES = {
     "gas_graph_tmd_cost_policy",
 }
+STAGE27_MODES = {
+    "stage27_graph_policy",
+    "stage27_adaptive_policy",
+}
+STAGE27_DIAG_KEYS = (
+    "stage27_path_found",
+    "stage27_path_len",
+    "stage27_path_edges",
+    "stage27_path_cost",
+    "stage27_largest_hop_ratio",
+    "stage27_cross_traj_edge_ratio",
+    "stage27_path_p_exec_mean",
+    "stage27_path_metric_disagreement_mean",
+    "stage27_path_longhop_penalty_mean",
+    "stage27_path_tmd_shortcut_rate",
+    "stage27_path_norm_d_tdr_mean",
+)
 
 
 def _parse_tasks(spec: str, available: int | None = None) -> list[int]:
@@ -96,6 +117,12 @@ def _load_gas(args):
     from bars.external.gas_backbone import GASBackbone
 
     gas_seed = int(args.gas_seed if args.gas_seed is not None else args.seed)
+    if str(args.gas_gpu).lower() in {"", "cpu", "-1"}:
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        os.environ.setdefault("JAX_PLATFORMS", "cpu")
+        os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")
+    else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gas_gpu)
     artifacts = None
     policy_path = Path(args.gas_policy_path) if args.gas_policy_path else None
     if policy_path is None:
@@ -123,6 +150,17 @@ def _load_gas(args):
     args.gas_seed = gas_seed
     args.gas_policy_path = str(policy_path)
     return gas
+
+
+def _load_stage27_graph(args):
+    if not args.stage27_graph_path:
+        raise ValueError(f"{args.mode} requires --stage27-graph-path")
+    from stage27_gas.graph import GraphData
+
+    graph = GraphData.from_npz(args.stage27_graph_path)
+    variant = str(graph.metadata.get("variant") or Path(args.stage27_graph_path).stem.replace("graph_", ""))
+    args.stage27_variant = args.stage27_variant or variant
+    return graph
 
 
 def _select_tmd_subgoal(graph: TMDKeyGraph, provider, task_id: int, obs: np.ndarray):
@@ -237,6 +275,195 @@ def _apply_tmd_cost_to_gas_graph(gas, provider, args, out: Path) -> None:
     )
 
 
+def _nearest_stage27_node(stage27_graph, gas, obs: np.ndarray) -> int:
+    if getattr(stage27_graph, "states", None) is None or len(stage27_graph.states) == 0:
+        raise RuntimeError("Stage27 graph has no states")
+    node_phi = getattr(stage27_graph, "metadata", {}).get("_runtime_gas_phi")
+    if node_phi is not None:
+        phi = np.asarray(gas.get_phi(obs), dtype=np.float32)
+        return int(np.argmin(np.linalg.norm(np.asarray(node_phi, dtype=np.float32) - phi[None, :], axis=1)))
+    state = np.asarray(obs, dtype=np.float32)
+    dim = min(state.shape[-1], stage27_graph.states.shape[-1])
+    return int(np.argmin(np.sum((stage27_graph.states[:, :dim] - state[:dim]) ** 2, axis=1)))
+
+
+def _cache_stage27_node_phi(stage27_graph, gas) -> None:
+    if getattr(stage27_graph, "metadata", None) is None:
+        stage27_graph.metadata = {}
+    if stage27_graph.metadata.get("_runtime_gas_phi") is None:
+        stage27_graph.metadata["_runtime_gas_phi"] = np.asarray(gas.get_phi(stage27_graph.states), dtype=np.float32)
+
+
+def _stage27_build_goal_plan(stage27_graph, goal_node: int) -> dict[str, np.ndarray]:
+    n = int(stage27_graph.num_nodes)
+    goal_node = int(goal_node)
+    reverse_adj: list[list[tuple[int, float, int]]] = [[] for _ in range(n)]
+    for eid, (src, dst, cost) in enumerate(zip(stage27_graph.edges_src, stage27_graph.edges_dst, stage27_graph.edge_costs)):
+        reverse_adj[int(dst)].append((int(src), float(cost), int(eid)))
+    dist = np.full((n,), np.inf, dtype=np.float64)
+    next_node = np.full((n,), -1, dtype=np.int64)
+    next_eid = np.full((n,), -1, dtype=np.int64)
+    dist[goal_node] = 0.0
+    heap = [(0.0, goal_node)]
+    seen = np.zeros((n,), dtype=bool)
+    while heap:
+        d, node = heapq.heappop(heap)
+        if seen[node]:
+            continue
+        seen[node] = True
+        for pred, cost, eid in reverse_adj[node]:
+            nd = d + cost
+            if nd < dist[pred]:
+                dist[pred] = nd
+                next_node[pred] = node
+                next_eid[pred] = eid
+                heapq.heappush(heap, (nd, pred))
+    return {"goal_node": np.asarray(goal_node), "dist": dist, "next_node": next_node, "next_eid": next_eid}
+
+
+def _stage27_reconstruct_goal_path(plan: dict[str, np.ndarray], start_node: int) -> tuple[list[int], float, list[int]]:
+    start_node = int(start_node)
+    goal_node = int(plan["goal_node"])
+    dist = np.asarray(plan["dist"], dtype=np.float64)
+    if not np.isfinite(dist[start_node]):
+        return [], float("inf"), []
+    if start_node == goal_node:
+        return [start_node], 0.0, []
+    next_node = np.asarray(plan["next_node"], dtype=np.int64)
+    next_eid = np.asarray(plan["next_eid"], dtype=np.int64)
+    path = [start_node]
+    edge_ids: list[int] = []
+    cur = start_node
+    for _ in range(len(next_node)):
+        nxt = int(next_node[cur])
+        eid = int(next_eid[cur])
+        if nxt < 0 or eid < 0:
+            return [], float("inf"), []
+        edge_ids.append(eid)
+        path.append(nxt)
+        cur = nxt
+        if cur == goal_node:
+            return path, float(dist[start_node]), edge_ids
+    return [], float("inf"), []
+
+
+def _stage27_edge_lookup(stage27_graph) -> dict[tuple[int, int], int]:
+    return {
+        (int(src), int(dst)): int(eid)
+        for eid, (src, dst) in enumerate(zip(stage27_graph.edges_src, stage27_graph.edges_dst))
+    }
+
+
+def _stage27_path_edge_ids(stage27_graph, path: list[int]) -> list[int]:
+    lookup = _stage27_edge_lookup(stage27_graph)
+    out: list[int] = []
+    for src, dst in zip(path[:-1], path[1:]):
+        eid = lookup.get((int(src), int(dst)))
+        if eid is None:
+            return []
+        out.append(eid)
+    return out
+
+
+def _stage27_path_diagnostics(stage27_graph, path: list[int], edge_ids: list[int]) -> dict[str, float]:
+    if not path:
+        return {
+            "stage27_path_found": 0.0,
+            "stage27_path_len": 0.0,
+            "stage27_path_cost": float("inf"),
+            "stage27_largest_hop_ratio": float("nan"),
+            "stage27_cross_traj_edge_ratio": float("nan"),
+            "stage27_path_p_exec_mean": float("nan"),
+            "stage27_path_metric_disagreement_mean": float("nan"),
+        }
+    eids = np.asarray(edge_ids, dtype=np.int64)
+    edge_cost = np.asarray(stage27_graph.edge_costs, dtype=np.float32)
+    out = {
+        "stage27_path_found": 1.0,
+        "stage27_path_len": float(len(path)),
+        "stage27_path_edges": float(len(eids)),
+        "stage27_path_cost": float(np.sum(edge_cost[eids])) if len(eids) else 0.0,
+    }
+    features = stage27_graph.edge_features
+    feature_map = {
+        "norm_d_tdr": "stage27_largest_hop_ratio",
+        "is_cross_traj": "stage27_cross_traj_edge_ratio",
+        "p_exec": "stage27_path_p_exec_mean",
+        "metric_disagreement": "stage27_path_metric_disagreement_mean",
+        "longhop_penalty": "stage27_path_longhop_penalty_mean",
+        "tmd_shortcut_used": "stage27_path_tmd_shortcut_rate",
+    }
+    for key, out_key in feature_map.items():
+        if key not in features or len(eids) == 0:
+            out[out_key] = float("nan") if key != "norm_d_tdr" else 0.0
+            continue
+        vals = np.asarray(features[key], dtype=np.float32)[eids]
+        vals = vals[np.isfinite(vals)]
+        if len(vals) == 0:
+            out[out_key] = float("nan")
+        elif key == "norm_d_tdr":
+            out[out_key] = float(np.max(vals))
+            out["stage27_path_norm_d_tdr_mean"] = float(np.mean(vals))
+        else:
+            out[out_key] = float(np.mean(vals))
+    return out
+
+
+def _stage27_accumulate(sums: dict[str, float], counts: dict[str, int], diag: dict[str, float]) -> None:
+    for key in STAGE27_DIAG_KEYS:
+        value = diag.get(key)
+        if value is None:
+            continue
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(value):
+            sums[key] = sums.get(key, 0.0) + value
+            counts[key] = counts.get(key, 0) + 1
+
+
+def _stage27_means(sums: dict[str, float], counts: dict[str, int]) -> dict[str, object]:
+    return {
+        key: (sums.get(key, 0.0) / counts[key] if counts.get(key, 0) else "")
+        for key in STAGE27_DIAG_KEYS
+    }
+
+
+def _stage27_select_path_node(stage27_graph, gas, obs: np.ndarray, path: list[int], edge_ids: list[int], args):
+    if len(path) == 0:
+        return -1, -1, 0.0, 0.0, "no_path"
+    if len(path) <= int(args.gas_final_goal_threshold):
+        return int(path[-1]), len(path) - 1, 0.0, 1.0, "near_final"
+    phi_obs = np.asarray(gas.get_phi(obs), dtype=np.float32)
+    path_idx = np.asarray(path, dtype=np.int64)
+    node_phi_all = stage27_graph.metadata.get("_runtime_gas_phi")
+    if node_phi_all is None:
+        node_states = np.asarray(stage27_graph.states, dtype=np.float32)
+        node_phi = np.asarray(gas.get_phi(node_states[path_idx]), dtype=np.float32)
+    else:
+        node_phi = np.asarray(node_phi_all, dtype=np.float32)[path_idx]
+    d = np.linalg.norm(node_phi - phi_obs[None, :], axis=1)
+    p_exec = np.ones(len(path), dtype=np.float32)
+    if "p_exec" in stage27_graph.edge_features and edge_ids:
+        edge_p = np.asarray(stage27_graph.edge_features["p_exec"], dtype=np.float32)
+        for idx in range(1, len(path)):
+            if idx - 1 < len(edge_ids):
+                p_exec[idx] = edge_p[int(edge_ids[idx - 1])]
+    reach_budget = float(args.stage27_adaptive_reach_scale) * float(gas.config["way_steps"])
+    if args.mode == "stage27_adaptive_policy":
+        max_idx = len(path) - 1
+        if int(args.stage27_adaptive_max_skip) > 0:
+            max_idx = min(max_idx, int(args.stage27_adaptive_max_skip))
+        for idx in range(max_idx, 0, -1):
+            if d[idx] <= reach_budget and p_exec[idx] >= float(args.stage27_adaptive_min_p_exec):
+                return int(path[idx]), idx, float(d[idx]), float(p_exec[idx]), "adaptive_farthest_reachable"
+        return int(path[min(1, len(path) - 1)]), min(1, len(path) - 1), float(d[min(1, len(path) - 1)]), float(p_exec[min(1, len(path) - 1)]), "adaptive_fallback_next"
+    valid = np.flatnonzero(d <= float(gas.config["way_steps"]))
+    idx = int(valid[-1]) if len(valid) else min(1, len(path) - 1)
+    return int(path[idx]), idx, float(d[idx]), float(p_exec[idx]), "graph_reachable"
+
+
 def _build_tmd_exec_planner(graph: TMDKeyGraph, gas, goal: np.ndarray, args):
     import networkx as nx
 
@@ -341,6 +568,8 @@ def main(argv=None) -> int:
             "gas_direct_goal",
             "gas_graph_policy",
             "gas_graph_tmd_cost_policy",
+            "stage27_graph_policy",
+            "stage27_adaptive_policy",
             "tmd_full_gas_low",
         ],
         required=True,
@@ -377,6 +606,12 @@ def main(argv=None) -> int:
     p.add_argument("--tmd-cost-lookup-observations", type=int, default=50000)
     p.add_argument("--tmd-cost-lookup-batch-size", type=int, default=2048)
     p.add_argument("--tmd-cost-batch-size", type=int, default=256)
+    p.add_argument("--stage27-graph-path")
+    p.add_argument("--stage27-variant", default="")
+    p.add_argument("--stage27-adaptive-reach-scale", type=float, default=1.25)
+    p.add_argument("--stage27-adaptive-min-p-exec", type=float, default=0.55)
+    p.add_argument("--stage27-adaptive-max-skip", type=int, default=0)
+    p.add_argument("--stage27-subgoal-reach-scale", type=float, default=0.75)
     p.add_argument("--rescue-low-level", choices=["gas", "tmd_actor"], default="gas")
     p.add_argument("--sticky-subgoal-steps", type=int, default=0)
     p.add_argument("--fallback", default="none")
@@ -394,6 +629,7 @@ def main(argv=None) -> int:
             raise NotImplementedError("tmd_full_gas_low is intentionally not enabled until full GAS low-level integration is specified")
         tmd = provider = graph = None
         gas = None
+        stage27_graph = None
         if args.mode in TMD_GRAPH_MODES:
             tmd, provider, graph = _load_tmd_graph(args)
         elif args.mode in TMD_PROVIDER_MODES:
@@ -405,6 +641,10 @@ def main(argv=None) -> int:
         if args.mode in GAS_MODES:
             gas = _load_gas(args)
             env, _, _ = gas.load_env_and_dataset()
+        if args.mode in STAGE27_MODES:
+            stage27_graph = _load_stage27_graph(args)
+            assert gas is not None
+            _cache_stage27_node_phi(stage27_graph, gas)
         if args.mode == "gas_graph_tmd_cost_policy":
             assert gas is not None and provider is not None
             _apply_tmd_cost_to_gas_graph(gas, provider, args, out)
@@ -435,7 +675,7 @@ def main(argv=None) -> int:
                 info = {}
                 initial_goal_dist = float(np.linalg.norm(np.asarray(obs) - goal))
                 best_goal_dist = initial_goal_dist
-                gas_phi_goal = gas.get_phi(goal) if args.mode in {"gas_direct_goal", "gas_graph_policy", "gas_graph_tmd_cost_policy", "tmd_exec_graph_gas_policy", "gas_graph_tmd_exec_rescue_policy"} else None
+                gas_phi_goal = gas.get_phi(goal) if args.mode in {"gas_direct_goal", "gas_graph_policy", "gas_graph_tmd_cost_policy", "tmd_exec_graph_gas_policy", "gas_graph_tmd_exec_rescue_policy", *STAGE27_MODES} else None
                 gas_shortest_path = None
                 gas_final_goal_on = False
                 tmd_rescue_on = False
@@ -450,6 +690,13 @@ def main(argv=None) -> int:
                 tmd_final_rescue_first_step = -1
                 tmd_final_rescue_steps = 0
                 tmd_exec_planner = None
+                stage27_goal_plan = None
+                stage27_plan_count = 0
+                stage27_subgoal_attempt_count = 0
+                stage27_subgoal_reach_count = 0
+                stage27_first_failed_edge_id = -1
+                stage27_diag_sums = {key: 0.0 for key in STAGE27_DIAG_KEYS}
+                stage27_diag_counts = {key: 0 for key in STAGE27_DIAG_KEYS}
                 if args.mode in {"gas_graph_policy", "gas_graph_tmd_cost_policy", "gas_graph_tmd_exec_rescue_policy"}:
                     assert gas is not None and gas.key_graph is not None and gas_phi_goal is not None
                     phi_obs = gas.get_phi(obs)
@@ -458,6 +705,10 @@ def main(argv=None) -> int:
                 if args.mode in {"tmd_exec_graph_gas_policy", "gas_graph_tmd_exec_rescue_policy"}:
                     assert gas is not None and graph is not None
                     tmd_exec_planner = _build_tmd_exec_planner(graph, gas, goal, args)
+                if args.mode in STAGE27_MODES:
+                    assert gas is not None and stage27_graph is not None
+                    goal_node = _nearest_stage27_node(stage27_graph, gas, goal)
+                    stage27_goal_plan = _stage27_build_goal_plan(stage27_graph, goal_node)
                 while not done:
                     path_len = 0
                     selected_node = -2
@@ -465,6 +716,12 @@ def main(argv=None) -> int:
                     final_goal_active = 0
                     tmd_rescue_active = 0
                     tmd_final_rescue_active = 0
+                    stage27_step_diag = {}
+                    stage27_selection_reason = ""
+                    stage27_selected_distance = float("nan")
+                    stage27_selected_p_exec = float("nan")
+                    stage27_selected_edge_id = -1
+                    stage27_selected_target_phi = None
                     if args.mode == "gas_graph_tmd_exec_rescue_policy":
                         assert gas is not None and gas_phi_goal is not None and gas_shortest_path is not None
                         assert tmd_exec_planner is not None
@@ -697,6 +954,51 @@ def main(argv=None) -> int:
                         if last_node is not None and selected_node != last_node:
                             subgoal_switch_count += 1
                         last_node = selected_node
+                    elif args.mode in STAGE27_MODES:
+                        assert gas is not None and gas_phi_goal is not None and stage27_graph is not None and stage27_goal_plan is not None
+                        if gas_final_goal_on:
+                            final_goal_mode_steps += 1
+                            final_goal_active = 1
+                            selected_node = -1
+                            stage27_selection_reason = "final_goal_cached"
+                            action = gas.sample_action(obs, gas_phi_goal)
+                        else:
+                            start_node = _nearest_stage27_node(stage27_graph, gas, obs)
+                            path, path_cost, edge_ids = _stage27_reconstruct_goal_path(stage27_goal_plan, start_node)
+                            stage27_plan_count += 1
+                            path_len = len(path)
+                            stage27_step_diag = _stage27_path_diagnostics(stage27_graph, path, edge_ids)
+                            if path:
+                                stage27_step_diag["stage27_path_cost"] = float(path_cost)
+                            _stage27_accumulate(stage27_diag_sums, stage27_diag_counts, stage27_step_diag)
+
+                            if not path:
+                                no_path_steps += 1
+                                selected_node = -1
+                                stage27_selection_reason = "no_path"
+                                action = np.zeros(env.action_space.shape, dtype=np.float32)
+                            else:
+                                (
+                                    selected_node,
+                                    subgoal_index,
+                                    stage27_selected_distance,
+                                    stage27_selected_p_exec,
+                                    stage27_selection_reason,
+                                ) = _stage27_select_path_node(stage27_graph, gas, obs, path, edge_ids, args)
+                                if 0 < subgoal_index <= len(edge_ids):
+                                    stage27_selected_edge_id = int(edge_ids[subgoal_index - 1])
+                                if len(path) <= int(args.gas_final_goal_threshold) or subgoal_index >= len(path) - 1:
+                                    gas_final_goal_on = True
+                                    final_goal_mode_steps += 1
+                                    final_goal_active = 1
+                                    action = gas.sample_action(obs, gas_phi_goal)
+                                else:
+                                    subgoal = np.asarray(stage27_graph.states[int(selected_node)], dtype=np.float32)
+                                    stage27_selected_target_phi = np.asarray(gas.get_phi(subgoal), dtype=np.float32)
+                                    action = gas.sample_action(obs, stage27_selected_target_phi)
+                        if last_node is not None and selected_node != last_node:
+                            subgoal_switch_count += 1
+                        last_node = selected_node
                     elif args.mode == "gas_direct_goal":
                         assert gas is not None and gas_phi_goal is not None
                         action = gas.sample_action(obs, gas_phi_goal)
@@ -725,6 +1027,15 @@ def main(argv=None) -> int:
                         next_obs, reward, done, info = gas.step_env(env, args.env, np.asarray(action))
                     else:
                         next_obs, reward, done, info = _step_env(env, np.asarray(action))
+                    if args.mode in STAGE27_MODES and stage27_selected_target_phi is not None:
+                        assert gas is not None
+                        next_phi = np.asarray(gas.get_phi(next_obs), dtype=np.float32)
+                        reach_radius = float(args.stage27_subgoal_reach_scale) * float(gas.config["way_steps"])
+                        reached = float(np.linalg.norm(next_phi - stage27_selected_target_phi) <= reach_radius)
+                        stage27_subgoal_attempt_count += 1
+                        stage27_subgoal_reach_count += int(reached)
+                        if not reached and stage27_first_failed_edge_id < 0:
+                            stage27_first_failed_edge_id = int(stage27_selected_edge_id)
                     steps += 1
                     goal_dist = float(np.linalg.norm(np.asarray(next_obs) - goal))
                     best_goal_dist = min(best_goal_dist, goal_dist)
@@ -734,6 +1045,7 @@ def main(argv=None) -> int:
                             "step": steps,
                             "task_id": task_id,
                             "selected_node": selected_node,
+                            "subgoal_index": subgoal_index,
                             "path_len": path_len,
                             "final_goal_mode": final_goal_active,
                             "tmd_rescue_active": tmd_rescue_active,
@@ -741,6 +1053,12 @@ def main(argv=None) -> int:
                             "tmd_rescue_first_step": tmd_rescue_first_step,
                             "goal_dist": goal_dist,
                             "mode": args.mode,
+                            "stage27_variant": args.stage27_variant if args.mode in STAGE27_MODES else "",
+                            "stage27_selection_reason": stage27_selection_reason,
+                            "stage27_selected_distance": stage27_selected_distance,
+                            "stage27_selected_p_exec": stage27_selected_p_exec,
+                            "stage27_selected_edge_id": stage27_selected_edge_id,
+                            **{key: stage27_step_diag.get(key, "") for key in STAGE27_DIAG_KEYS},
                         }
                     )
                     obs = next_obs
@@ -750,6 +1068,8 @@ def main(argv=None) -> int:
                         "seed": args.seed,
                         "gas_seed": args.gas_seed if args.mode in GAS_MODES else "",
                         "mode": args.mode,
+                        "stage27_variant": args.stage27_variant if args.mode in STAGE27_MODES else "",
+                        "stage27_graph_path": args.stage27_graph_path if args.mode in STAGE27_MODES else "",
                         "task_id": task_id,
                         "episode": ep,
                         "episodes": 1,
@@ -766,6 +1086,16 @@ def main(argv=None) -> int:
                         "tmd_rescue_returns": tmd_rescue_returns,
                         "tmd_final_rescue_first_step": tmd_final_rescue_first_step,
                         "tmd_final_rescue_steps": tmd_final_rescue_steps,
+                        "stage27_plan_count": stage27_plan_count,
+                        "stage27_subgoal_attempt_count": stage27_subgoal_attempt_count,
+                        "stage27_subgoal_reach_count": stage27_subgoal_reach_count,
+                        "stage27_subgoal_reach_rate": (
+                            stage27_subgoal_reach_count / stage27_subgoal_attempt_count
+                            if stage27_subgoal_attempt_count
+                            else ""
+                        ),
+                        "stage27_first_failed_edge_id": stage27_first_failed_edge_id,
+                        **_stage27_means(stage27_diag_sums, stage27_diag_counts),
                     }
                 )
         write_csv(out / "eval.csv", rows)

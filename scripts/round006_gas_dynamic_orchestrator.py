@@ -18,6 +18,8 @@ from typing import Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 DEFAULT_DATASET_DIR = Path("/root/remote/datasets/ogbench")
 DEFAULT_ROUND = "006"
 DEFAULT_SEEDS = (42, 43, 44, 45, 46)
@@ -551,7 +553,13 @@ def run_worker(args: argparse.Namespace) -> int:
         raise
 
 
-def write_launch_report(args: argparse.Namespace, envs: list[str], seeds: list[int], configs: dict[str, GasConfig]) -> None:
+def write_launch_report(
+    args: argparse.Namespace,
+    envs: list[str],
+    seeds: list[int],
+    configs: dict[str, GasConfig],
+    job_pairs: list[tuple[str, int]] | None = None,
+) -> None:
     report = REPO_ROOT / "reports" / f"round_{args.round}_gas_dynamic_launch.md"
     skipped = ["kitchen-partial-v0 (D4RL, not OGBench; skipped by this OGBench queue)"]
     lines = [
@@ -563,6 +571,7 @@ def write_launch_report(args: argparse.Namespace, envs: list[str], seeds: list[i
         "- Baseline-only run: no p_bridge, integrated BARS, oracle-headroom, boundary, or failure-taxonomy interpretation.",
         f"- Seeds: {','.join(map(str, seeds))}.",
         f"- Target OGBench envs: {','.join(envs)}.",
+        f"- Exact job list: `{args.jobs_tsv}` ({len(job_pairs)} env/seed jobs)." if job_pairs is not None else "- Exact job list: full env x seed product.",
         f"- Dataset root: `{args.dataset_dir}`.",
         f"- Artifact root: `{args.out_root}`.",
         f"- Run root: `{args.run_root}`.",
@@ -621,8 +630,32 @@ def write_command(args: argparse.Namespace) -> None:
     ]
     if args.envs:
         cmd.extend(["--envs", args.envs])
+    if args.jobs_tsv:
+        cmd.extend(["--jobs-tsv", args.jobs_tsv])
     path.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + " ".join(cmd) + "\n", encoding="utf-8")
     path.chmod(0o755)
+
+
+def read_jobs_tsv(path: str, configs: dict[str, GasConfig]) -> list[tuple[str, int]]:
+    rows: list[tuple[str, int]] = []
+    seen: set[tuple[str, int]] = set()
+    with Path(path).open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        if "env" not in (reader.fieldnames or []) or "seed" not in (reader.fieldnames or []):
+            raise ValueError(f"jobs TSV must contain env and seed columns: {path}")
+        for row in reader:
+            env = str(row["env"]).strip()
+            seed = int(str(row["seed"]).strip())
+            if env not in configs:
+                raise ValueError(f"Unsupported GAS/OGBench env in jobs TSV: {env}")
+            key = (env, seed)
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(key)
+    if not rows:
+        raise ValueError(f"No jobs found in jobs TSV: {path}")
+    return sorted(rows, key=lambda item: (configs[item[0]].priority, item[0], item[1]))
 
 
 def download_one(env_name: str, dataset_dir: Path, log: Path, events: Path) -> bool:
@@ -742,10 +775,12 @@ def adopt_live_children(
     seeds: list[int],
     configs: dict[str, GasConfig],
     events: Path,
+    job_pairs: list[tuple[str, int]] | None = None,
 ) -> dict[tuple[str, int], dict]:
     children: dict[tuple[str, int], dict] = {}
     valid_envs = set(envs)
     valid_seeds = set(seeds)
+    valid_pairs = set(job_pairs) if job_pairs is not None else None
     for obj in parse_launch_events(events):
         env = obj.get("env")
         try:
@@ -754,6 +789,8 @@ def adopt_live_children(
         except Exception:
             continue
         if env not in valid_envs or seed not in valid_seeds:
+            continue
+        if valid_pairs is not None and (str(env), seed) not in valid_pairs:
             continue
         if not process_alive(pid) or not worker_matches(pid, str(env), seed):
             continue
@@ -804,29 +841,30 @@ def write_jobs_table(
     seeds: list[int],
     configs: dict[str, GasConfig],
     children: dict[tuple[str, int], dict],
+    job_pairs: list[tuple[str, int]] | None = None,
 ) -> None:
     rows = []
-    for env in envs:
+    pairs = job_pairs if job_pairs is not None else [(env, seed) for env in envs for seed in seeds]
+    for env, seed in pairs:
         c = configs[env]
-        for seed in seeds:
-            run_dir = Path(args.run_root) / env / f"seed{seed}"
-            status = read_status(run_dir / "status.json")
-            eval_csv = latest_eval_csv(Path(args.out_root) / env / f"seed{seed}" / "policy")
-            key = (env, seed)
-            rows.append(
-                {
-                    "env": env,
-                    "seed": seed,
-                    "priority": c.priority,
-                    "slot_cost": c.slot_cost,
-                    "gpu": status.get("gpu", children.get(key, {}).get("gpu", "")),
-                    "pid": children.get(key, {}).get("pid", ""),
-                    "status": status.get("status", "pending_dataset" if not dataset_ready(env, Path(args.dataset_dir)) else "queued"),
-                    "score_pp": "" if collect_score(eval_csv) is None else f"{collect_score(eval_csv):.1f}",
-                    "eval_csv": "" if eval_csv is None else rel(eval_csv),
-                    "status_file": rel(run_dir / "status.json"),
-                }
-            )
+        run_dir = Path(args.run_root) / env / f"seed{seed}"
+        status = read_status(run_dir / "status.json")
+        eval_csv = latest_eval_csv(Path(args.out_root) / env / f"seed{seed}" / "policy")
+        key = (env, seed)
+        rows.append(
+            {
+                "env": env,
+                "seed": seed,
+                "priority": c.priority,
+                "slot_cost": c.slot_cost,
+                "gpu": status.get("gpu", children.get(key, {}).get("gpu", "")),
+                "pid": children.get(key, {}).get("pid", ""),
+                "status": status.get("status", "pending_dataset" if not dataset_ready(env, Path(args.dataset_dir)) else "queued"),
+                "score_pp": "" if collect_score(eval_csv) is None else f"{collect_score(eval_csv):.1f}",
+                "eval_csv": "" if eval_csv is None else rel(eval_csv),
+                "status_file": rel(run_dir / "status.json"),
+            }
+        )
     for dest in [
         REPO_ROOT / "reports" / f"round_{args.round}_gas_dynamic_jobs.tsv",
         REPO_ROOT / "rounds" / f"round_{args.round}" / "gas_dynamic_jobs.tsv",
@@ -917,15 +955,20 @@ def orchestrate(args: argparse.Namespace) -> int:
     out_root = Path(args.out_root)
     ensure_dirs(args.round, run_root, out_root)
     configs = gas_configs()
+    job_pairs = read_jobs_tsv(args.jobs_tsv, configs) if args.jobs_tsv else None
     envs = split_csv(args.envs) if args.envs else [env for env, _ in sorted(configs.items(), key=lambda kv: kv[1].priority)]
+    if job_pairs is not None:
+        envs = [env for env in envs if any(pair[0] == env for pair in job_pairs)]
     unknown = [env for env in envs if env not in configs]
     if unknown:
         raise ValueError(f"Unsupported GAS/OGBench envs: {unknown}")
     seeds = parse_seeds(args.seeds)
+    if job_pairs is not None:
+        seeds = sorted({seed for _, seed in job_pairs})
     events = run_root / "_orchestrator" / "events.jsonl"
     downloader_log = run_root / "_orchestrator" / "download.log"
-    append_jsonl(events, {"time": now_iso(), "event": "orchestrator_started", "envs": envs, "seeds": seeds})
-    write_launch_report(args, envs, seeds, configs)
+    append_jsonl(events, {"time": now_iso(), "event": "orchestrator_started", "envs": envs, "seeds": seeds, "jobs_tsv": args.jobs_tsv})
+    write_launch_report(args, envs, seeds, configs, job_pairs)
     write_command(args)
 
     next_download_at = 0.0
@@ -933,7 +976,7 @@ def orchestrate(args: argparse.Namespace) -> int:
     gpus = split_csv(args.gpus)
     if not gpus:
         raise ValueError("No GPUs specified")
-    children = adopt_live_children(args, envs, seeds, configs, events)
+    children = adopt_live_children(args, envs, seeds, configs, events, job_pairs)
 
     while True:
         # Reap stale child metadata.
@@ -941,6 +984,38 @@ def orchestrate(args: argparse.Namespace) -> int:
             if not process_alive(int(meta["pid"])):
                 append_jsonl(events, {"time": now_iso(), "event": "job_process_exited", "env": key[0], "seed": key[1], **meta})
                 children.pop(key, None)
+
+        # Launch ready jobs in priority order.
+        pairs = job_pairs if job_pairs is not None else [(env, seed) for env in envs for seed in seeds]
+        for env, seed in pairs:
+            config = configs[env]
+            if not dataset_ready(env, dataset_dir):
+                continue
+            key = (env, seed)
+            status_path = run_root / env / f"seed{seed}" / "status.json"
+            status = read_status(status_path).get("status")
+            if status == "completed" or key in children:
+                continue
+            if status == "launched" and latest_eval_csv(out_root / env / f"seed{seed}" / "policy") is not None:
+                continue
+            if status == "failed" and not args.retry_failed:
+                continue
+            required_slots = job_slot_cost(args, config, seed)
+            chosen_gpu = None
+            if required_slots == 0:
+                status_gpu = str(read_status(status_path).get("gpu", ""))
+                chosen_gpu = status_gpu if status_gpu in gpus else gpus[0]
+            else:
+                for gpu in gpus:
+                    if gpu_slots_used(args, configs, children, gpu) + required_slots <= args.gpu_slots_per_gpu:
+                        chosen_gpu = gpu
+                        break
+            if chosen_gpu is None:
+                break
+            children[key] = launch_child(args, config, seed, chosen_gpu, events)
+
+        write_download_table(args, envs)
+        write_jobs_table(args, envs, seeds, configs, children, job_pairs)
 
         t = time.time()
         if t >= next_download_at and download_index < len(envs):
@@ -955,47 +1030,16 @@ def orchestrate(args: argparse.Namespace) -> int:
                 download_index = len(envs)
             next_download_at = t + args.download_poll_seconds
 
-        # Launch ready jobs in priority order.
-        for env in envs:
-            config = configs[env]
-            if not dataset_ready(env, dataset_dir):
-                continue
-            for seed in seeds:
-                key = (env, seed)
-                status_path = run_root / env / f"seed{seed}" / "status.json"
-                status = read_status(status_path).get("status")
-                if status == "completed" or key in children:
-                    continue
-                if status == "launched" and latest_eval_csv(out_root / env / f"seed{seed}" / "policy") is not None:
-                    continue
-                if status == "failed" and not args.retry_failed:
-                    continue
-                required_slots = job_slot_cost(args, config, seed)
-                chosen_gpu = None
-                if required_slots == 0:
-                    status_gpu = str(read_status(status_path).get("gpu", ""))
-                    chosen_gpu = status_gpu if status_gpu in gpus else gpus[0]
-                else:
-                    for gpu in gpus:
-                        if gpu_slots_used(args, configs, children, gpu) + required_slots <= args.gpu_slots_per_gpu:
-                            chosen_gpu = gpu
-                            break
-                if chosen_gpu is None:
-                    break
-                children[key] = launch_child(args, config, seed, chosen_gpu, events)
-
         write_download_table(args, envs)
-        write_jobs_table(args, envs, seeds, configs, children)
+        write_jobs_table(args, envs, seeds, configs, children, job_pairs)
 
         all_datasets_done = all(dataset_ready(env, dataset_dir) for env in envs) or download_index >= len(envs)
         all_jobs_terminal = True
-        for env in envs:
-            for seed in seeds:
-                status = read_status(run_root / env / f"seed{seed}" / "status.json").get("status")
-                if status != "completed" and not (status == "failed" and not args.retry_failed):
-                    all_jobs_terminal = False
-                    break
-            if not all_jobs_terminal:
+        pairs = job_pairs if job_pairs is not None else [(env, seed) for env in envs for seed in seeds]
+        for env, seed in pairs:
+            status = read_status(run_root / env / f"seed{seed}" / "status.json").get("status")
+            if status != "completed" and not (status == "failed" and not args.retry_failed):
+                all_jobs_terminal = False
                 break
         if all_datasets_done and all_jobs_terminal and not children:
             append_jsonl(events, {"time": now_iso(), "event": "orchestrator_completed"})
@@ -1012,6 +1056,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-root", default="runs_round006_gas_dynamic")
     p.add_argument("--out-root", default="artifacts/gas_selftrain_round006")
     p.add_argument("--envs", default="")
+    p.add_argument("--jobs-tsv", default="")
     p.add_argument("--seeds", default="42,43,44,45,46")
     p.add_argument("--gpus", default="0,1,2,3,4,5")
     p.add_argument("--gpu-slots-per-gpu", type=int, default=int(os.environ.get("ROUND006_GPU_SLOTS_PER_GPU", "2")))

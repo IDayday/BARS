@@ -2,7 +2,6 @@ import gym
 import time
 import numpy as np
 
-from D_utils.kitchen_utils import kitchen_get_dataset
 
 
 class d4rl_EpisodeMonitor(gym.ActionWrapper):
@@ -47,6 +46,8 @@ class d4rl_EpisodeMonitor(gym.ActionWrapper):
     
 def d4rl_make_env_and_dataset(env_name, seed):
     """Make kitchen-partial environment and dataset."""
+    from D_utils.kitchen_utils import kitchen_get_dataset
+
     env = gym.make(env_name)
     env = d4rl_EpisodeMonitor(env)
     observation = env.reset(seed) 

@@ -1,4 +1,3 @@
-import d4rl
 import numpy as np
 
 from dm_control.mujoco import engine
@@ -8,6 +7,8 @@ from O_utils.datasets import Dataset
 
 def kitchen_get_dataset(env):
     """Preprocess dataset."""
+    import d4rl
+
     dataset = d4rl.qlearning_dataset(env)
     dataset['observations'] = dataset['observations'][:, :30]
     dataset['next_observations'] = dataset['next_observations'][:, :30]

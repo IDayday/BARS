@@ -5,9 +5,6 @@ import numpy as np
 from tqdm import trange
 from collections import defaultdict
 
-from D_utils.kitchen_utils import kitchen_set_obs_and_goal, kitchen_render
-
-
 def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes, eval_video_episodes, 
                         seed, eval_on_cpu, eval_subgoal_threshold, eval_final_goal_threshold, config, recompute_paths_per_episode=False):         
     """
@@ -90,6 +87,8 @@ def supply_rng(f, rng=jax.random.PRNGKey(0)):
 def setup_task_env(env, env_name, task_id, should_render, seed):
     """Reset the environment for a specific task."""
     if env_name in ['kitchen-partial-v0',]:
+        from D_utils.kitchen_utils import kitchen_set_obs_and_goal
+
         env, observation, goal = kitchen_set_obs_and_goal(env, env_name, task_id, seed=seed)
         goal_rendered = None
     else:
@@ -125,6 +124,8 @@ def resize_frame(frame):
 def get_frame(env, env_name):
     """Render a frame from the environment."""
     if env_name in ['kitchen-partial-v0',]:
+        from D_utils.kitchen_utils import kitchen_render
+
         frame = kitchen_render(env, wh=200)
     else:
         frame = np.ascontiguousarray(env.render())

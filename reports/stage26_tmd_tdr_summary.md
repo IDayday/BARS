@@ -1,120 +1,132 @@
 # Stage 26 TMD/TDR Summary
 
-Evaluation rows: 14450
-Graph rows: 26
+Evaluation rows: 22450
+Graph rows: 28
 
 ## Phase B Aggregate Comparisons
 
 | env | run_episodes | weight | gas_n | gas_success_rate | variant_n | variant_success_rate | delta_success_rate | normal95_low | normal95_high | bootstrap95_low | bootstrap95_high | delta_mean_steps |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| antmaze-giant-navigate-v0 | 20 | 0.1 | 600 | 0.658 | 600 | 0.660 | 0.002 | -0.052 | 0.055 | -0.050 | 0.055 | 0.680 |
-| antmaze-giant-navigate-v0 | 20 | 0.2 | 600 | 0.658 | 600 | 0.700 | 0.042 | -0.011 | 0.094 | 0.000 | 0.082 | -12.618 |
-| antmaze-giant-navigate-v0 | 20 | 0.25 | 600 | 0.658 | 600 | 0.733 | 0.075 | 0.023 | 0.127 | 0.023 | 0.130 | -18.992 |
-| antmaze-giant-navigate-v0 | 20 | 0.3 | 600 | 0.658 | 600 | 0.690 | 0.032 | -0.021 | 0.085 | -0.010 | 0.073 | -6.382 |
-| antmaze-giant-navigate-v0 | 20 | 0.4 | 600 | 0.658 | 600 | 0.690 | 0.032 | -0.021 | 0.085 | -0.015 | 0.080 | -4.790 |
-| antmaze-giant-navigate-v0 | 20 | 0.5 | 600 | 0.658 | 600 | 0.653 | -0.005 | -0.059 | 0.049 | -0.060 | 0.047 | 10.162 |
+| antmaze-giant-navigate-v0 | 20 | 0.1 | 1500 | 0.768 | 600 | 0.660 | -0.108 | -0.152 | -0.064 | -0.050 | 0.055 | 48.174 |
+| antmaze-giant-navigate-v0 | 20 | 0.2 | 1500 | 0.768 | 600 | 0.700 | -0.068 | -0.110 | -0.026 | 0.000 | 0.082 | 34.876 |
+| antmaze-giant-navigate-v0 | 20 | 0.25 | 1500 | 0.768 | 1500 | 0.813 | 0.045 | 0.016 | 0.074 | 0.018 | 0.075 | -10.331 |
+| antmaze-giant-navigate-v0 | 20 | 0.3 | 1500 | 0.768 | 600 | 0.690 | -0.078 | -0.121 | -0.035 | -0.010 | 0.073 | 41.113 |
+| antmaze-giant-navigate-v0 | 20 | 0.4 | 1500 | 0.768 | 600 | 0.690 | -0.078 | -0.121 | -0.035 | -0.015 | 0.080 | 42.704 |
+| antmaze-giant-navigate-v0 | 20 | 0.5 | 1500 | 0.768 | 600 | 0.653 | -0.115 | -0.158 | -0.071 | -0.060 | 0.047 | 57.656 |
 | antmaze-giant-navigate-v0 | 50 | 0.25 | 1500 | 0.677 | 1500 | 0.713 | 0.037 | 0.004 | 0.070 | 0.016 | 0.059 | -10.622 |
-| antmaze-giant-stitch-v0 | 20 | 0.1 | 600 | 0.865 | 600 | 0.867 | 0.002 | -0.037 | 0.040 | -0.033 | 0.037 | -4.047 |
-| antmaze-giant-stitch-v0 | 20 | 0.2 | 600 | 0.865 | 600 | 0.862 | -0.003 | -0.042 | 0.036 | -0.033 | 0.032 | 6.557 |
-| antmaze-giant-stitch-v0 | 20 | 0.25 | 600 | 0.865 | 600 | 0.877 | 0.012 | -0.026 | 0.050 | -0.020 | 0.042 | -4.968 |
-| antmaze-giant-stitch-v0 | 20 | 0.3 | 600 | 0.865 | 600 | 0.848 | -0.017 | -0.056 | 0.023 | -0.060 | 0.022 | 4.868 |
-| antmaze-giant-stitch-v0 | 20 | 0.4 | 600 | 0.865 | 600 | 0.852 | -0.013 | -0.053 | 0.026 | -0.045 | 0.020 | 1.680 |
-| antmaze-giant-stitch-v0 | 20 | 0.5 | 600 | 0.865 | 600 | 0.873 | 0.008 | -0.030 | 0.046 | -0.028 | 0.045 | -2.795 |
-| antmaze-medium-navigate-v0 | 20 | 0.1 | 400 | 0.958 | 400 | 0.965 | 0.007 | -0.019 | 0.034 | -0.018 | 0.035 | -8.803 |
-| antmaze-medium-navigate-v0 | 20 | 0.25 | 400 | 0.958 | 400 | 0.975 | 0.017 | -0.007 | 0.042 | -0.010 | 0.047 | -13.848 |
-| antmaze-medium-stitch-v0 | 20 | 0.1 | 400 | 0.978 | 400 | 0.985 | 0.007 | -0.011 | 0.026 | -0.013 | 0.030 | -1.925 |
-| antmaze-medium-stitch-v0 | 20 | 0.25 | 400 | 0.978 | 400 | 0.983 | 0.005 | -0.014 | 0.024 | -0.010 | 0.020 | -3.888 |
+| antmaze-giant-stitch-v0 | 20 | 0.1 | 1500 | 0.878 | 600 | 0.867 | -0.011 | -0.043 | 0.021 | -0.033 | 0.037 | 2.019 |
+| antmaze-giant-stitch-v0 | 20 | 0.2 | 1500 | 0.878 | 600 | 0.862 | -0.016 | -0.049 | 0.016 | -0.033 | 0.032 | 12.622 |
+| antmaze-giant-stitch-v0 | 20 | 0.25 | 1500 | 0.878 | 1500 | 0.864 | -0.014 | -0.038 | 0.010 | -0.035 | 0.007 | 2.369 |
+| antmaze-giant-stitch-v0 | 20 | 0.3 | 1500 | 0.878 | 600 | 0.848 | -0.030 | -0.063 | 0.003 | -0.060 | 0.022 | 10.934 |
+| antmaze-giant-stitch-v0 | 20 | 0.4 | 1500 | 0.878 | 600 | 0.852 | -0.026 | -0.059 | 0.007 | -0.045 | 0.020 | 7.745 |
+| antmaze-giant-stitch-v0 | 20 | 0.5 | 1500 | 0.878 | 600 | 0.873 | -0.005 | -0.036 | 0.027 | -0.028 | 0.045 | 3.270 |
+| antmaze-large-navigate-v0 | 10 | 0.25 | 150 | 0.947 | 150 | 0.953 | 0.007 | -0.043 | 0.056 | -0.040 | 0.053 | -2.507 |
+| antmaze-large-stitch-v0 | 10 | 0.25 | 150 | 0.960 | 150 | 0.960 | 0.000 | -0.044 | 0.044 | -0.033 | 0.040 | 2.967 |
+| antmaze-medium-navigate-v0 | 20 | 0.1 | 1300 | 0.971 | 400 | 0.965 | -0.006 | -0.026 | 0.014 | -0.018 | 0.035 | 0.324 |
+| antmaze-medium-navigate-v0 | 20 | 0.25 | 1300 | 0.971 | 1300 | 0.967 | -0.004 | -0.017 | 0.010 | -0.017 | 0.011 | 4.006 |
+| antmaze-medium-stitch-v0 | 20 | 0.1 | 1300 | 0.968 | 400 | 0.985 | 0.017 | 0.002 | 0.033 | -0.013 | 0.030 | -16.836 |
+| antmaze-medium-stitch-v0 | 20 | 0.25 | 1300 | 0.968 | 1300 | 0.962 | -0.006 | -0.020 | 0.008 | -0.018 | 0.007 | 5.080 |
 
 
 ## Phase B Task-Wise Deltas
 
 | env | run_episodes | task_id | weight | gas_success_rate | variant_success_rate | delta_success_rate | delta_mean_steps |
 |---|---|---|---|---|---|---|---|
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.1 | 0.183 | 0.217 | 0.033 | -0.667 |
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.2 | 0.183 | 0.175 | -0.008 | 0.175 |
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.25 | 0.183 | 0.233 | 0.050 | -1.325 |
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.3 | 0.183 | 0.142 | -0.042 | -2.008 |
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.4 | 0.183 | 0.225 | 0.042 | -4.417 |
-| antmaze-giant-navigate-v0 | 20 | 1 | 0.5 | 0.183 | 0.175 | -0.008 | 2.817 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.1 | 0.833 | 0.875 | 0.042 | -6.333 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.2 | 0.833 | 0.883 | 0.050 | -12.150 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.25 | 0.833 | 0.908 | 0.075 | -15.358 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.3 | 0.833 | 0.933 | 0.100 | -30.608 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.4 | 0.833 | 0.892 | 0.058 | -11.683 |
-| antmaze-giant-navigate-v0 | 20 | 2 | 0.5 | 0.833 | 0.850 | 0.017 | 7.450 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.1 | 0.758 | 0.708 | -0.050 | 8.358 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.2 | 0.758 | 0.833 | 0.075 | -14.742 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.25 | 0.758 | 0.867 | 0.108 | -17.842 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.3 | 0.758 | 0.750 | -0.008 | 9.700 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.4 | 0.758 | 0.708 | -0.050 | 43.517 |
-| antmaze-giant-navigate-v0 | 20 | 3 | 0.5 | 0.758 | 0.617 | -0.142 | 73.800 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.1 | 0.800 | 0.742 | -0.058 | 13.100 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.2 | 0.800 | 0.825 | 0.025 | 0.933 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.25 | 0.800 | 0.883 | 0.083 | -31.283 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.3 | 0.800 | 0.833 | 0.033 | 2.858 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.4 | 0.800 | 0.842 | 0.042 | -24.333 |
-| antmaze-giant-navigate-v0 | 20 | 4 | 0.5 | 0.800 | 0.850 | 0.050 | -19.967 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.1 | 0.717 | 0.758 | 0.042 | -11.058 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.2 | 0.717 | 0.783 | 0.067 | -37.308 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.25 | 0.717 | 0.775 | 0.058 | -29.150 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.3 | 0.717 | 0.792 | 0.075 | -11.850 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.4 | 0.717 | 0.783 | 0.067 | -27.033 |
-| antmaze-giant-navigate-v0 | 20 | 5 | 0.5 | 0.717 | 0.775 | 0.058 | -13.292 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.1 | 0.437 | 0.217 | -0.220 | 36.748 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.2 | 0.437 | 0.175 | -0.262 | 37.590 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.25 | 0.437 | 0.490 | 0.053 | -5.527 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.3 | 0.437 | 0.142 | -0.295 | 35.407 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.4 | 0.437 | 0.225 | -0.212 | 32.998 |
+| antmaze-giant-navigate-v0 | 20 | 1 | 0.5 | 0.437 | 0.175 | -0.262 | 40.232 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.1 | 0.887 | 0.875 | -0.012 | 25.497 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.2 | 0.887 | 0.883 | -0.003 | 19.680 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.25 | 0.887 | 0.937 | 0.050 | -11.103 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.3 | 0.887 | 0.933 | 0.047 | 1.222 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.4 | 0.887 | 0.892 | 0.005 | 20.147 |
+| antmaze-giant-navigate-v0 | 20 | 2 | 0.5 | 0.887 | 0.850 | -0.037 | 39.280 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.1 | 0.823 | 0.708 | -0.115 | 35.185 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.2 | 0.823 | 0.833 | 0.010 | 12.085 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.25 | 0.823 | 0.880 | 0.057 | -9.630 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.3 | 0.823 | 0.750 | -0.073 | 36.527 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.4 | 0.823 | 0.708 | -0.115 | 70.343 |
+| antmaze-giant-navigate-v0 | 20 | 3 | 0.5 | 0.823 | 0.617 | -0.207 | 100.627 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.1 | 0.870 | 0.742 | -0.128 | 58.370 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.2 | 0.870 | 0.825 | -0.045 | 46.203 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.25 | 0.870 | 0.897 | 0.027 | -8.023 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.3 | 0.870 | 0.833 | -0.037 | 48.128 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.4 | 0.870 | 0.842 | -0.028 | 20.937 |
+| antmaze-giant-navigate-v0 | 20 | 4 | 0.5 | 0.870 | 0.850 | -0.020 | 25.303 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.1 | 0.823 | 0.758 | -0.065 | 85.072 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.2 | 0.823 | 0.783 | -0.040 | 58.822 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.25 | 0.823 | 0.863 | 0.040 | -17.373 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.3 | 0.823 | 0.792 | -0.032 | 84.280 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.4 | 0.823 | 0.783 | -0.040 | 69.097 |
+| antmaze-giant-navigate-v0 | 20 | 5 | 0.5 | 0.823 | 0.775 | -0.048 | 82.838 |
 | antmaze-giant-navigate-v0 | 50 | 1 | 0.25 | 0.180 | 0.233 | 0.053 | -7.873 |
 | antmaze-giant-navigate-v0 | 50 | 2 | 0.25 | 0.877 | 0.903 | 0.027 | 3.663 |
 | antmaze-giant-navigate-v0 | 50 | 3 | 0.25 | 0.780 | 0.833 | 0.053 | -17.813 |
 | antmaze-giant-navigate-v0 | 50 | 4 | 0.25 | 0.787 | 0.820 | 0.033 | -21.807 |
 | antmaze-giant-navigate-v0 | 50 | 5 | 0.25 | 0.760 | 0.777 | 0.017 | -9.280 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.1 | 0.750 | 0.708 | -0.042 | 7.283 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.2 | 0.750 | 0.808 | 0.058 | -0.850 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.25 | 0.750 | 0.708 | -0.042 | 23.650 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.3 | 0.750 | 0.692 | -0.058 | 19.933 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.4 | 0.750 | 0.742 | -0.008 | 2.600 |
-| antmaze-giant-stitch-v0 | 20 | 1 | 0.5 | 0.750 | 0.758 | 0.008 | 5.625 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.1 | 0.942 | 0.908 | -0.033 | 9.217 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.2 | 0.942 | 0.917 | -0.025 | 14.792 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.25 | 0.942 | 0.942 | 0.000 | 4.933 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.3 | 0.942 | 0.908 | -0.033 | 12.442 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.4 | 0.942 | 0.892 | -0.050 | 24.025 |
-| antmaze-giant-stitch-v0 | 20 | 2 | 0.5 | 0.942 | 0.917 | -0.025 | 10.533 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.1 | 0.775 | 0.842 | 0.067 | -23.200 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.2 | 0.775 | 0.817 | 0.042 | -25.483 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.25 | 0.775 | 0.858 | 0.083 | -38.492 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.3 | 0.775 | 0.825 | 0.050 | -26.700 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.4 | 0.775 | 0.808 | 0.033 | -23.567 |
-| antmaze-giant-stitch-v0 | 20 | 3 | 0.5 | 0.775 | 0.833 | 0.058 | -30.733 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.1 | 0.917 | 0.925 | 0.008 | -0.167 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.2 | 0.917 | 0.867 | -0.050 | 28.517 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.25 | 0.917 | 0.942 | 0.025 | -14.267 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.3 | 0.917 | 0.908 | -0.008 | 10.325 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.4 | 0.917 | 0.883 | -0.033 | 5.958 |
-| antmaze-giant-stitch-v0 | 20 | 4 | 0.5 | 0.917 | 0.942 | 0.025 | -3.983 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.1 | 0.942 | 0.950 | 0.008 | -13.367 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.2 | 0.942 | 0.900 | -0.042 | 15.808 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.25 | 0.942 | 0.933 | -0.008 | -0.667 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.3 | 0.942 | 0.908 | -0.033 | 8.342 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.4 | 0.942 | 0.933 | -0.008 | -0.617 |
-| antmaze-giant-stitch-v0 | 20 | 5 | 0.5 | 0.942 | 0.917 | -0.025 | 4.583 |
-| antmaze-medium-navigate-v0 | 20 | 1 | 0.1 | 0.963 | 0.925 | -0.037 | 20.550 |
-| antmaze-medium-navigate-v0 | 20 | 1 | 0.25 | 0.963 | 0.912 | -0.050 | 32.375 |
-| antmaze-medium-navigate-v0 | 20 | 2 | 0.1 | 0.975 | 0.963 | -0.012 | 10.312 |
-| antmaze-medium-navigate-v0 | 20 | 2 | 0.25 | 0.975 | 0.988 | 0.013 | -3.000 |
-| antmaze-medium-navigate-v0 | 20 | 3 | 0.1 | 0.912 | 0.950 | 0.037 | -34.037 |
-| antmaze-medium-navigate-v0 | 20 | 3 | 0.25 | 0.912 | 0.988 | 0.075 | -61.388 |
-| antmaze-medium-navigate-v0 | 20 | 4 | 0.1 | 0.963 | 1.000 | 0.037 | -28.213 |
-| antmaze-medium-navigate-v0 | 20 | 4 | 0.25 | 0.963 | 1.000 | 0.037 | -32.063 |
-| antmaze-medium-navigate-v0 | 20 | 5 | 0.1 | 0.975 | 0.988 | 0.013 | -12.625 |
-| antmaze-medium-navigate-v0 | 20 | 5 | 0.25 | 0.975 | 0.988 | 0.013 | -5.162 |
-| antmaze-medium-stitch-v0 | 20 | 1 | 0.1 | 0.938 | 0.975 | 0.037 | -29.875 |
-| antmaze-medium-stitch-v0 | 20 | 1 | 0.25 | 0.938 | 0.975 | 0.037 | -29.712 |
-| antmaze-medium-stitch-v0 | 20 | 2 | 0.1 | 1.000 | 1.000 | 0.000 | -10.412 |
-| antmaze-medium-stitch-v0 | 20 | 2 | 0.25 | 1.000 | 0.975 | -0.025 | 10.137 |
-| antmaze-medium-stitch-v0 | 20 | 3 | 0.1 | 1.000 | 1.000 | 0.000 | -0.075 |
-| antmaze-medium-stitch-v0 | 20 | 3 | 0.25 | 1.000 | 0.988 | -0.012 | 8.838 |
-| antmaze-medium-stitch-v0 | 20 | 4 | 0.1 | 0.975 | 0.988 | 0.013 | 9.250 |
-| antmaze-medium-stitch-v0 | 20 | 4 | 0.25 | 0.975 | 0.988 | 0.013 | 1.450 |
-| antmaze-medium-stitch-v0 | 20 | 5 | 0.1 | 0.975 | 0.963 | -0.012 | 21.488 |
-| antmaze-medium-stitch-v0 | 20 | 5 | 0.25 | 0.975 | 0.988 | 0.013 | -10.150 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.1 | 0.803 | 0.708 | -0.095 | 14.365 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.2 | 0.803 | 0.808 | 0.005 | 6.232 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.25 | 0.803 | 0.723 | -0.080 | 26.753 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.3 | 0.803 | 0.692 | -0.112 | 27.015 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.4 | 0.803 | 0.742 | -0.062 | 9.682 |
+| antmaze-giant-stitch-v0 | 20 | 1 | 0.5 | 0.803 | 0.758 | -0.045 | 12.707 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.1 | 0.940 | 0.908 | -0.032 | 7.898 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.2 | 0.940 | 0.917 | -0.023 | 13.473 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.25 | 0.940 | 0.927 | -0.013 | 3.183 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.3 | 0.940 | 0.908 | -0.032 | 11.123 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.4 | 0.940 | 0.892 | -0.048 | 22.707 |
+| antmaze-giant-stitch-v0 | 20 | 2 | 0.5 | 0.940 | 0.917 | -0.023 | 9.215 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.1 | 0.803 | 0.842 | 0.038 | 6.248 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.2 | 0.803 | 0.817 | 0.013 | 3.965 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.25 | 0.803 | 0.867 | 0.063 | -23.130 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.3 | 0.803 | 0.825 | 0.022 | 2.748 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.4 | 0.803 | 0.808 | 0.005 | 5.882 |
+| antmaze-giant-stitch-v0 | 20 | 3 | 0.5 | 0.803 | 0.833 | 0.030 | -1.285 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.1 | 0.913 | 0.925 | 0.012 | -4.050 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.2 | 0.913 | 0.867 | -0.047 | 24.633 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.25 | 0.913 | 0.897 | -0.017 | -1.550 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.3 | 0.913 | 0.908 | -0.005 | 6.442 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.4 | 0.913 | 0.883 | -0.030 | 2.075 |
+| antmaze-giant-stitch-v0 | 20 | 4 | 0.5 | 0.913 | 0.942 | 0.028 | -7.867 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.1 | 0.930 | 0.950 | 0.020 | -14.368 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.2 | 0.930 | 0.900 | -0.030 | 14.807 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.25 | 0.930 | 0.907 | -0.023 | 6.590 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.3 | 0.930 | 0.908 | -0.022 | 7.340 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.4 | 0.930 | 0.933 | 0.003 | -1.618 |
+| antmaze-giant-stitch-v0 | 20 | 5 | 0.5 | 0.930 | 0.917 | -0.013 | 3.582 |
+| antmaze-large-navigate-v0 | 10 | 1 | 0.25 | 0.967 | 0.967 | 0.000 | 1.067 |
+| antmaze-large-navigate-v0 | 10 | 2 | 0.25 | 0.900 | 0.900 | 0.000 | -17.500 |
+| antmaze-large-navigate-v0 | 10 | 3 | 0.25 | 1.000 | 1.000 | 0.000 | 9.567 |
+| antmaze-large-navigate-v0 | 10 | 4 | 0.25 | 0.900 | 0.933 | 0.033 | -14.133 |
+| antmaze-large-navigate-v0 | 10 | 5 | 0.25 | 0.967 | 0.967 | 0.000 | 8.467 |
+| antmaze-large-stitch-v0 | 10 | 1 | 0.25 | 0.933 | 0.967 | 0.033 | -14.300 |
+| antmaze-large-stitch-v0 | 10 | 2 | 0.25 | 0.900 | 0.900 | 0.000 | 7.500 |
+| antmaze-large-stitch-v0 | 10 | 3 | 0.25 | 1.000 | 1.000 | 0.000 | 1.133 |
+| antmaze-large-stitch-v0 | 10 | 4 | 0.25 | 0.967 | 0.933 | -0.033 | 19.300 |
+| antmaze-large-stitch-v0 | 10 | 5 | 0.25 | 1.000 | 1.000 | 0.000 | 1.200 |
+| antmaze-medium-navigate-v0 | 20 | 1 | 0.1 | 0.962 | 0.925 | -0.037 | 19.132 |
+| antmaze-medium-navigate-v0 | 20 | 1 | 0.25 | 0.962 | 0.923 | -0.038 | 29.262 |
+| antmaze-medium-navigate-v0 | 20 | 2 | 0.1 | 0.985 | 0.963 | -0.022 | 19.131 |
+| antmaze-medium-navigate-v0 | 20 | 2 | 0.25 | 0.985 | 0.977 | -0.008 | 11.777 |
+| antmaze-medium-navigate-v0 | 20 | 3 | 0.1 | 0.958 | 0.950 | -0.008 | 5.305 |
+| antmaze-medium-navigate-v0 | 20 | 3 | 0.25 | 0.958 | 0.969 | 0.012 | -13.619 |
+| antmaze-medium-navigate-v0 | 20 | 4 | 0.1 | 0.962 | 1.000 | 0.038 | -34.344 |
+| antmaze-medium-navigate-v0 | 20 | 4 | 0.25 | 0.962 | 0.981 | 0.019 | -15.108 |
+| antmaze-medium-navigate-v0 | 20 | 5 | 0.1 | 0.988 | 0.988 | -0.001 | -7.601 |
+| antmaze-medium-navigate-v0 | 20 | 5 | 0.25 | 0.988 | 0.985 | -0.004 | 7.719 |
+| antmaze-medium-stitch-v0 | 20 | 1 | 0.1 | 0.958 | 0.975 | 0.017 | -18.176 |
+| antmaze-medium-stitch-v0 | 20 | 1 | 0.25 | 0.958 | 0.962 | 0.004 | -9.427 |
+| antmaze-medium-stitch-v0 | 20 | 2 | 0.1 | 0.985 | 1.000 | 0.015 | -35.071 |
+| antmaze-medium-stitch-v0 | 20 | 2 | 0.25 | 0.985 | 0.981 | -0.004 | 5.612 |
+| antmaze-medium-stitch-v0 | 20 | 3 | 0.1 | 0.969 | 1.000 | 0.031 | -25.931 |
+| antmaze-medium-stitch-v0 | 20 | 3 | 0.25 | 0.969 | 0.973 | 0.004 | -3.946 |
+| antmaze-medium-stitch-v0 | 20 | 4 | 0.1 | 0.946 | 0.988 | 0.041 | -26.257 |
+| antmaze-medium-stitch-v0 | 20 | 4 | 0.25 | 0.946 | 0.923 | -0.023 | 20.373 |
+| antmaze-medium-stitch-v0 | 20 | 5 | 0.1 | 0.981 | 0.963 | -0.018 | 21.253 |
+| antmaze-medium-stitch-v0 | 20 | 5 | 0.25 | 0.981 | 0.969 | -0.012 | 12.788 |
 
 
 ## Phase D Low-Level Condition Comparisons
@@ -128,6 +140,13 @@ Graph rows: 26
 | antmaze-giant-navigate-v0 | 5 | lowcond_full_rawdist_nearestgoal | 25 | 0.520 | 25 | 0.000 | -0.520 | -0.716 | -0.324 | -0.800 | -0.240 | 138.680 |
 | antmaze-giant-navigate-v0 | 5 | lowcond_full_trajend | 25 | 0.520 | 25 | 0.080 | -0.440 | -0.663 | -0.217 | -0.760 | -0.120 | 115.640 |
 | antmaze-giant-navigate-v0 | 5 | lowcond_tdr_only_local | 25 | 0.520 | 25 | 0.200 | -0.320 | -0.571 | -0.069 | -0.760 | 0.160 | 98.120 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_factor_only_nearestgoal | 25 | 0.920 | 25 | 0.000 | -0.920 | -1.026 | -0.814 | -1.000 | -0.840 | 293.400 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_full_localres | 25 | 0.920 | 25 | 0.120 | -0.800 | -0.966 | -0.634 | -0.960 | -0.600 | 252.400 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_full_nearestgoal | 25 | 0.920 | 25 | 0.120 | -0.800 | -0.966 | -0.634 | -0.960 | -0.600 | 248.480 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_full_nomask_nearestgoal | 25 | 0.920 | 25 | 0.200 | -0.720 | -0.909 | -0.531 | -0.880 | -0.560 | 242.600 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_full_rawdist_nearestgoal | 25 | 0.920 | 25 | 0.120 | -0.800 | -0.966 | -0.634 | -0.960 | -0.600 | 259.040 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_full_trajend | 25 | 0.920 | 25 | 0.000 | -0.920 | -1.026 | -0.814 | -1.000 | -0.840 | 293.400 |
+| antmaze-giant-stitch-v0 | 5 | lowcond_tdr_only_local | 25 | 0.920 | 25 | 0.200 | -0.720 | -0.909 | -0.531 | -0.880 | -0.560 | 252.840 |
 | antmaze-medium-navigate-v0 | 5 | lowcond_factor_only_nearestgoal | 25 | 1.000 | 25 | 0.000 | -1.000 | -1.000 | -1.000 | -1.000 | -1.000 | 771.320 |
 | antmaze-medium-navigate-v0 | 5 | lowcond_full_localres | 25 | 1.000 | 25 | 0.880 | -0.120 | -0.247 | 0.007 | -0.360 | 0.000 | 250.480 |
 | antmaze-medium-navigate-v0 | 5 | lowcond_full_nearestgoal | 25 | 1.000 | 25 | 0.720 | -0.280 | -0.456 | -0.104 | -0.560 | -0.080 | 392.720 |
@@ -185,6 +204,41 @@ Graph rows: 26
 | antmaze-giant-navigate-v0 | 5 | 5 | lowcond_full_rawdist_nearestgoal | 0.400 | 0.000 | -0.400 | 200.400 |
 | antmaze-giant-navigate-v0 | 5 | 5 | lowcond_full_trajend | 0.400 | 0.400 | 0.000 | 85.200 |
 | antmaze-giant-navigate-v0 | 5 | 5 | lowcond_tdr_only_local | 0.400 | 1.000 | 0.600 | -2.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_factor_only_nearestgoal | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_full_localres | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_full_nearestgoal | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_full_nomask_nearestgoal | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_full_rawdist_nearestgoal | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_full_trajend | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 1 | lowcond_tdr_only_local | 1.000 | 0.000 | -1.000 | 153.400 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_factor_only_nearestgoal | 1.000 | 0.000 | -1.000 | 314.200 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_full_localres | 1.000 | 0.000 | -1.000 | 314.200 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_full_nearestgoal | 1.000 | 0.000 | -1.000 | 314.200 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_full_nomask_nearestgoal | 1.000 | 0.400 | -0.600 | 295.600 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_full_rawdist_nearestgoal | 1.000 | 0.000 | -1.000 | 314.200 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_full_trajend | 1.000 | 0.000 | -1.000 | 314.200 |
+| antmaze-giant-stitch-v0 | 5 | 2 | lowcond_tdr_only_local | 1.000 | 0.400 | -0.600 | 277.800 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_factor_only_nearestgoal | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_full_localres | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_full_nearestgoal | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_full_nomask_nearestgoal | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_full_rawdist_nearestgoal | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_full_trajend | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 3 | lowcond_tdr_only_local | 0.800 | 0.000 | -0.800 | 193.200 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_factor_only_nearestgoal | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_full_localres | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_full_nearestgoal | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_full_nomask_nearestgoal | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_full_rawdist_nearestgoal | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_full_trajend | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 4 | lowcond_tdr_only_local | 0.800 | 0.000 | -0.800 | 254.800 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_factor_only_nearestgoal | 1.000 | 0.000 | -1.000 | 551.400 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_full_localres | 1.000 | 0.600 | -0.400 | 346.400 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_full_nearestgoal | 1.000 | 0.600 | -0.400 | 326.800 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_full_nomask_nearestgoal | 1.000 | 0.600 | -0.400 | 316.000 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_full_rawdist_nearestgoal | 1.000 | 0.600 | -0.400 | 379.600 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_full_trajend | 1.000 | 0.000 | -1.000 | 551.400 |
+| antmaze-giant-stitch-v0 | 5 | 5 | lowcond_tdr_only_local | 1.000 | 0.600 | -0.400 | 385.000 |
 | antmaze-medium-navigate-v0 | 5 | 1 | lowcond_factor_only_nearestgoal | 1.000 | 0.000 | -1.000 | 729.400 |
 | antmaze-medium-navigate-v0 | 5 | 1 | lowcond_full_localres | 1.000 | 1.000 | 0.000 | 177.200 |
 | antmaze-medium-navigate-v0 | 5 | 1 | lowcond_full_nearestgoal | 1.000 | 0.200 | -0.800 | 628.400 |
