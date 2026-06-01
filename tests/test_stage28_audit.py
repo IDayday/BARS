@@ -59,3 +59,6 @@ def test_run_stage28_audit_logs(tmp_path):
     text = (tmp_path / "stage28_graph_audit.csv").read_text()
     assert "stage28_graph_summary" in text
     assert "stage28_failure_taxonomy_proxy" in text
+    assert "PASS_STAGE28_GRAPH_COUNTERFACTUALS" in text
+    assert "path_search_counterfactual" in text
+    assert "report_file" in text

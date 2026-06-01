@@ -13,6 +13,18 @@ The audit reuses existing run artifacts whenever possible:
 
 No low-level policy or representation retraining is required for the graph-only audit.
 
+Every audit row carries `gate`, `evidence_class`, and `report_file` fields. The cached graph is explicitly labeled as the SOTA study baseline for this diagnostic round, not as a newly promoted planner.
+
+## Evidence gates
+
+| gate | evidence_class | report file |
+|---|---|---|
+| `PASS_STAGE28_CACHE_ARTIFACTS` | `cache_artifact_reuse` | `<run-dir>/logs/stage28_graph_audit.csv` or matrix output CSV |
+| `PASS_STAGE28_DATASET_SUPPORT_AUDIT` | `dataset_support` | `<run-dir>/logs/stage28_graph_audit.csv` or matrix output CSV |
+| `PASS_STAGE28_GRAPH_COUNTERFACTUALS` | `graph_abstraction_counterfactual` | `<run-dir>/logs/stage28_graph_audit.csv` or matrix output CSV |
+| `PASS_STAGE28_PATH_PROBE` | `path_search_counterfactual` | `<run-dir>/logs/stage28_graph_audit.csv` or matrix output CSV |
+| `PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY` | `failure_taxonomy_proxy` / `failure_taxonomy_summary` | `<run-dir>/logs/stage28_graph_audit.csv`, `stage28_failure_taxonomy.csv`, `stage28_recommendations.md` |
+
 ## Diagnostic layers
 
 The audit records evidence at five layers:

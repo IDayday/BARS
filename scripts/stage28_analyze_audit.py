@@ -142,6 +142,10 @@ def build_recommendations(tax: pd.DataFrame, graph_summary: pd.DataFrame, path_s
     lines.append("")
     lines.append("This report converts diagnostic evidence into research directions. It should be read before implementing new graph algorithms.")
     lines.append("")
+    lines.append("## Evidence contract")
+    lines.append("")
+    lines.append("All Stage28 audit CSV rows carry `gate`, `evidence_class`, and `report_file` fields. The recommendations below are derived from `PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY` rows, with graph and path context from `PASS_STAGE28_GRAPH_COUNTERFACTUALS` and `PASS_STAGE28_PATH_PROBE` rows.")
+    lines.append("")
     if len(tax) == 0:
         lines.append("No taxonomy rows were found. Run `scripts/stage28_graph_audit.py` first.")
         return "\n".join(lines) + "\n"

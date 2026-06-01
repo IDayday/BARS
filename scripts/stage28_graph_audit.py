@@ -20,13 +20,15 @@ from bars.graph.boundary import BoundaryIndex
 from bars.graph.types import BARSGraph
 
 
-def _default_fields(cfg: dict, run_dir: Path) -> dict:
+def _default_fields(cfg: dict, run_dir: Path, out_path: Path) -> dict:
     return {
         "run_id": cfg.get("run_id", run_dir.name),
         "env": cfg.get("data", {}).get("env_name", cfg.get("env_name", "unknown")),
         "seed": cfg.get("seed", 0),
         "variant": cfg.get("planner", {}).get("variant", "full_bars"),
         "stage": "stage28_graph_audit",
+        "report_file": str(out_path),
+        "baseline_graph_role": "sota_study_baseline_cached_bars_gas_aligned",
     }
 
 
@@ -57,6 +59,7 @@ def _load_cached_artifacts(cfg: dict, run_dir: Path, device):
     emb_path = run_dir / "cache" / "embeddings.npy"
     graph_path = run_dir / "cache" / "graph.npz"
     boundary_path = run_dir / "cache" / "boundary.npz"
+    reachability_path = run_dir / "checkpoints" / "reachability.pt"
     if not emb_path.exists():
         raise FileNotFoundError(f"Missing cached embeddings: {emb_path}")
     if not graph_path.exists():
@@ -69,7 +72,22 @@ def _load_cached_artifacts(cfg: dict, run_dir: Path, device):
     reach_model = None
     if bool(cfg.get("stage28_audit", {}).get("load_reachability", True)):
         reach_model = _load_reachability_if_available(cfg, str(run_dir), embeddings.shape[1], device)
-    return embeddings, graph, boundary, reach_model
+    artifact_meta = {
+        "phase": "stage28_cache_artifacts",
+        "event": "completed",
+        "gate": "PASS_STAGE28_CACHE_ARTIFACTS",
+        "evidence_class": "cache_artifact_reuse",
+        "embeddings_path": str(emb_path),
+        "graph_path": str(graph_path),
+        "boundary_path": str(boundary_path),
+        "boundary_loaded": int(boundary is not None),
+        "reachability_path": str(reachability_path),
+        "reachability_loaded": int(reach_model is not None),
+        "embeddings_shape": list(embeddings.shape),
+        "graph_nodes": graph.num_nodes,
+        "graph_edges": graph.num_edges,
+    }
+    return embeddings, graph, boundary, reach_model, artifact_meta
 
 
 def main(argv=None) -> None:
@@ -115,8 +133,9 @@ def main(argv=None) -> None:
 
     device = get_torch_device(str(cfg.get("device", "cuda")))
     _, dataset = _load_data(cfg)
-    embeddings, graph, boundary, reach_model = _load_cached_artifacts(cfg, run_dir, device)
-    logger = CSVLogger(str(out_path), _default_fields(cfg, run_dir))
+    embeddings, graph, boundary, reach_model, artifact_meta = _load_cached_artifacts(cfg, run_dir, device)
+    logger = CSVLogger(str(out_path), _default_fields(cfg, run_dir, out_path))
+    logger.log(artifact_meta)
     run_graph_method_audit(dataset, embeddings, graph, cfg, logger, reach_model=reach_model, device=device, boundary=boundary)
     print(str(out_path))
 

@@ -68,6 +68,10 @@ def _safe_div(a: float, b: float) -> float:
     return float(a / b) if b else float("nan")
 
 
+def _evidence_fields(gate: str, evidence_class: str) -> Dict[str, str]:
+    return {"gate": gate, "evidence_class": evidence_class}
+
+
 def _endpoint_indices(dataset: OfflineDataset) -> np.ndarray:
     out: list[int] = []
     for sl in dataset.traj_slices:
@@ -399,6 +403,7 @@ def _log_graph_summary(dataset: OfflineDataset, embeddings: np.ndarray, graph_id
     row: Dict[str, float | int | str] = {
         "phase": "stage28_graph_summary",
         "event": "completed",
+        **_evidence_fields("PASS_STAGE28_GRAPH_COUNTERFACTUALS", "graph_abstraction_counterfactual"),
         "graph_id": graph_id,
         "audit_metric": str(getattr(graph, "audit_metric", "")),
         "ann_backend": str(getattr(graph, "audit_knn_backend", "")),
@@ -575,11 +580,15 @@ def run_graph_method_audit(
     existing edge_rollout diagnostics; this function focuses on graph evidence.
     """
     acfg = cfg.get("stage28_audit", {})
+    if hasattr(logger, "default_fields"):
+        logger.default_fields.setdefault("report_file", getattr(logger, "path", ""))
+        logger.default_fields.setdefault("baseline_graph_role", "sota_study_baseline_cached_bars_gas_aligned")
     embeddings = np.asarray(embeddings, dtype=np.float32)
     traj_lens = [sl.end - sl.start for sl in dataset.traj_slices]
     logger.log({
         "phase": "stage28_dataset_support",
         "event": "completed",
+        **_evidence_fields("PASS_STAGE28_DATASET_SUPPORT_AUDIT", "dataset_support"),
         "dataset_size": dataset.size,
         "num_trajectories": dataset.num_trajectories,
         "obs_dim": dataset.obs_dim,
@@ -597,7 +606,14 @@ def run_graph_method_audit(
         _log_graph_summary(dataset, embeddings, graph_id, graph, cfg, logger)
 
     pairs = _sample_audit_pairs(dataset, cfg)
-    logger.log({"phase": "stage28_pair_sampling", "event": "completed", "num_pairs": len(pairs), "num_future_pairs": sum(p.pair_type == "future_same_traj" for p in pairs), "num_cross_pairs": sum(p.pair_type == "cross_traj_random" for p in pairs)})
+    logger.log({
+        "phase": "stage28_pair_sampling",
+        "event": "completed",
+        **_evidence_fields("PASS_STAGE28_PAIR_SAMPLING", "audit_pair_sampling"),
+        "num_pairs": len(pairs),
+        "num_future_pairs": sum(p.pair_type == "future_same_traj" for p in pairs),
+        "num_cross_pairs": sum(p.pair_type == "cross_traj_random" for p in pairs),
+    })
     if not pairs:
         return variants
 
@@ -617,6 +633,7 @@ def run_graph_method_audit(
     for pair in pairs:
         pair_summary: Dict[str, float | int | str] = {
             "phase": "stage28_failure_taxonomy_proxy",
+            **_evidence_fields("PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY", "failure_taxonomy_proxy"),
             "pair_id": pair.pair_id,
             "pair_type": pair.pair_type,
             "start_index": pair.start_index,
@@ -638,6 +655,7 @@ def run_graph_method_audit(
                     diversity_stats = _alternative_path_stats(graph, s_node, g_node, result, planner_variant, cfg, boundary=use_boundary)
                 row = {
                     "phase": "stage28_path_probe",
+                    **_evidence_fields("PASS_STAGE28_PATH_PROBE", "path_search_counterfactual"),
                     "graph_id": graph_id,
                     "pair_id": pair.pair_id,
                     "pair_type": pair.pair_type,
@@ -682,6 +700,7 @@ def run_graph_method_audit(
             logger.log({
                 "phase": "stage28_failure_taxonomy_summary",
                 "event": "completed",
+                **_evidence_fields("PASS_STAGE28_DIAGNOSE_FIRST_TAXONOMY", "failure_taxonomy_summary"),
                 "failure_label": label,
                 "count": int(count),
                 "rate": float(count / max(1, len(taxonomy_rows))),
