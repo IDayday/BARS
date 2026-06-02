@@ -1,0 +1,3 @@
+planner_id,gate,ready_for_50ep_confirm,stitch_regression_gate,navigate_regression_gate,no_path_gate,false_shortcut_gate,envs_compared
+STAGE29_LEXICOGRAPHIC,BLOCKED_BY_20EP_GATE,0,1,1,1,1,1
+SUPPORT_BUDGET_K1,BLOCKED_BY_20EP_GATE,0,1,1,1,1,1
