@@ -5,6 +5,7 @@ import argparse
 import csv
 import math
 import os
+import shlex
 import sys
 import time
 from collections import Counter, defaultdict
@@ -17,10 +18,12 @@ from stage30_official_gas_common import (
     ARCHIVED_PRE_STAGE30_STATUS,
     configure_official_env,
     final_goal_threshold,
+    gas_source_identity,
     gas_config_overrides,
     load_dataset_arrays,
     parse_csv_list,
     parse_seed_list,
+    protocol_lock_row,
     recover_node_dataset_indices,
     scan_official_artifacts,
     trajectory_ids_from_dataset,
@@ -105,20 +108,55 @@ def _shortest_path_indices(key_graph: Any, task_id: int, source: np.ndarray, for
     return best_path, "ok" if best_path is not None else "no_path"
 
 
+def _is_exact_node_match(match: dict[str, Any] | None) -> bool:
+    if not match:
+        return False
+    if "exact_embedding_match" in match:
+        try:
+            return bool(int(match["exact_embedding_match"]))
+        except Exception:
+            return False
+    try:
+        return float(match.get("embedding_match_dist", float("inf"))) <= 1e-5
+    except Exception:
+        return False
+
+
 def _edge_metadata(key_graph: Any, u: int, v: int, node_map: dict[int, dict[str, Any]], traj_ids: dict[int, int]) -> dict[str, Any]:
     data = key_graph.graph.get_edge_data(u, v, default={}) or {}
+    te_score = data.get("te_score", data.get("te", ""))
+    tdr_distance = data.get("tdr_distance", data.get("distance", data.get("weight", "")))
     row: dict[str, Any] = {
         "u": u,
         "v": v,
+        "edge_id": f"{u}->{v}",
         "edge_weight": data.get("weight", ""),
+        "edge_weight_available": int("weight" in data),
         "edge_metadata_keys": ",".join(sorted(str(k) for k in data.keys())),
-        "te_score": data.get("te_score", data.get("te", "")),
-        "tdr_distance": data.get("tdr_distance", data.get("distance", data.get("weight", ""))),
+        "te_score": te_score,
+        "te_score_available": int(te_score != ""),
+        "tdr_distance": tdr_distance,
+        "tdr_distance_available": int(tdr_distance != ""),
         "is_task_goal_edge": int(u >= key_graph.base_node_cnt or v >= key_graph.base_node_cnt),
     }
     mu = node_map.get(u)
     mv = node_map.get(v)
-    if mu and mv and traj_ids:
+    u_exact = _is_exact_node_match(mu)
+    v_exact = _is_exact_node_match(mv)
+    row.update(
+        {
+            "u_dataset_idx": mu.get("dataset_idx", "") if mu else "",
+            "v_dataset_idx": mv.get("dataset_idx", "") if mv else "",
+            "u_embedding_match_dist": mu.get("embedding_match_dist", "") if mu else "",
+            "v_embedding_match_dist": mv.get("embedding_match_dist", "") if mv else "",
+            "u_embedding_match_tolerance": mu.get("embedding_match_tolerance", "") if mu else "",
+            "v_embedding_match_tolerance": mv.get("embedding_match_tolerance", "") if mv else "",
+            "u_exact_embedding_match": int(u_exact),
+            "v_exact_embedding_match": int(v_exact),
+            "edge_dataset_mapping_exact": int(u_exact and v_exact),
+        }
+    )
+    if mu and mv and traj_ids and u_exact and v_exact:
         iu = int(mu["dataset_idx"])
         iv = int(mv["dataset_idx"])
         tu = traj_ids.get(iu)
@@ -129,36 +167,29 @@ def _edge_metadata(key_graph: Any, u: int, v: int, node_map: dict[int, dict[str,
             {
                 "u_dataset_idx": iu,
                 "v_dataset_idx": iv,
-                "u_embedding_match_dist": mu.get("embedding_match_dist", ""),
-                "v_embedding_match_dist": mv.get("embedding_match_dist", ""),
                 "u_traj_id": tu if tu is not None else "",
                 "v_traj_id": tv if tv is not None else "",
                 "same_trajectory": same,
+                "same_trajectory_available": int(same != ""),
                 "dt": dt,
+                "dt_available": int(dt != ""),
                 "cross_trajectory": int(same == 0) if same != "" else "",
+                "cross_trajectory_available": int(same != ""),
                 "edge_category": "cross_trajectory_keygraph_edge"
                 if same == 0
-                else ("temporal_like_edge" if same == 1 and abs(int(dt)) <= int(key_graph.way_steps) else "same_trajectory_long_dt_edge"),
+                else ("same_trajectory_temporal_like_edge" if same == 1 and abs(int(dt)) <= int(key_graph.way_steps) else "same_trajectory_nonlocal_edge"),
             }
         )
     else:
-        weight = data.get("weight", float("nan"))
-        try:
-            weight_f = float(weight)
-        except Exception:
-            weight_f = float("nan")
         row.update(
             {
-                "u_dataset_idx": mu.get("dataset_idx", "") if mu else "",
-                "v_dataset_idx": mv.get("dataset_idx", "") if mv else "",
-                "u_embedding_match_dist": mu.get("embedding_match_dist", "") if mu else "",
-                "v_embedding_match_dist": mv.get("embedding_match_dist", "") if mv else "",
                 "same_trajectory": "",
+                "same_trajectory_available": 0,
                 "dt": "",
+                "dt_available": 0,
                 "cross_trajectory": "",
-                "edge_category": "temporal_like_distance_proxy"
-                if math.isfinite(weight_f) and weight_f <= float(key_graph.way_steps)
-                else "long_hop_or_component_bridge_proxy",
+                "cross_trajectory_available": 0,
+                "edge_category": "official_keygraph_edge_metadata_only",
             }
         )
     return row
@@ -193,9 +224,9 @@ def _run_episode(
     task_id: int,
     episode_id: int,
     components: dict[str, Any],
+    actor_fn: Any,
     node_map: dict[int, dict[str, Any]],
     traj_ids: dict[int, int],
-    eval_on_cpu: int,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     mods = components["mods"]
     env = components["env"]
@@ -203,7 +234,6 @@ def _run_episode(
     agent = components["agent"]
     config = components["config"]
     get_phi_fn = agent.get_phi
-    actor_fn = mods["supply_rng"](agent.sample_actions, rng=mods["jax"].random.PRNGKey(seed + 1000003 * task_id + episode_id))
     eval_seed = seed + episode_id
     env, observation, goal, _, done, _ = mods["setup_task_env"](env, art.env_name, task_id, False, seed=eval_seed)
     epsilon = 1e-10
@@ -226,6 +256,24 @@ def _run_episode(
                 "no_path": 1,
                 "no_path_reason": path_status,
                 "steps": 0,
+                "planned_path_nodes": "",
+                "planned_path_edges": "",
+                "planned_path_len": 0,
+                "planned_edge_count": 0,
+                "num_subgoals": 0,
+                "subgoal_reached_count": 0,
+                "subgoal_reach_rate": 0.0,
+                "first_failed_subgoal_index": "",
+                "first_failed_subgoal": "",
+                "first_failed_edge_id": "",
+                "first_failed_edge": "",
+                "timeout": 0,
+                "stuck": 0,
+                "divergence": 0,
+                "initial_goal_dist_phi": initial_goal_dist_phi,
+                "final_goal_dist_phi": "",
+                "final_goal_threshold": final_goal_threshold(art.env_name),
+                "way_steps": int(config["way_steps"]),
             },
             [],
         )
@@ -281,6 +329,7 @@ def _run_episode(
     progress_norm = (initial_goal_dist_phi - final_goal_dist_phi) / max(initial_goal_dist_phi, 1e-10)
     first_failed_subgoal = ""
     first_failed_edge = ""
+    first_failed_subgoal_idx: int | str = ""
     if not success:
         first_failed_subgoal_idx = min(max_reached_path_index + 1, max(len(initial_path_indices) - 1, 0))
         first_failed_subgoal = initial_path_indices[first_failed_subgoal_idx] if initial_path_indices else ""
@@ -307,7 +356,9 @@ def _run_episode(
         "num_subgoals": max(0, len(initial_path_indices) - final_goal_threshold(art.env_name)),
         "subgoal_reached_count": max_reached_path_index + 1,
         "subgoal_reach_rate": (max_reached_path_index + 1) / max(1, len(initial_path_indices)),
+        "first_failed_subgoal_index": first_failed_subgoal_idx,
         "first_failed_subgoal": first_failed_subgoal,
+        "first_failed_edge_id": first_failed_edge,
         "first_failed_edge": first_failed_edge,
         "no_path": 0,
         "no_path_reason": "",
@@ -338,6 +389,7 @@ def _run_episode(
                 "success": success,
                 "path_usage_count": count,
                 "path_usage": "success_path" if success else "failure_path",
+                "edge_id": f"{u}->{v}",
                 "failure_association": int(first_failed_edge == f"{u}->{v}"),
             }
         )
@@ -373,6 +425,7 @@ def _write_report(out_dir: Path, episode_rows: list[dict[str, Any]], edge_rows: 
     for category, count in sorted(edge_categories.items()):
         lines.append(f"- {category}: {count}")
     lines.extend(["", "## Files", ""])
+    lines.append(f"- protocol lock: `{out_dir / 'protocol_lock.csv'}`")
     lines.append(f"- episode traces: `{out_dir / 'official_gas_episode_traces.csv'}`")
     lines.append(f"- path edge traces: `{out_dir / 'official_gas_path_edges.csv'}`")
     (out_dir / "instrumentation_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -398,11 +451,35 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     artifacts = scan_official_artifacts(Path(args.artifact_root), parse_csv_list(args.envs), parse_seed_list(args.seeds))
     task_ids = [int(x) for x in parse_csv_list(args.task_ids)]
+    gas_repo = Path(args.gas_repo_path)
+    source_identity = gas_source_identity(gas_repo)
+    command_line = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
     all_episode_rows: list[dict[str, Any]] = []
     all_edge_rows: list[dict[str, Any]] = []
+    protocol_rows: list[dict[str, Any]] = []
     for art in artifacts:
-        components = _load_official_components(art, Path(args.gas_repo_path), art.seed, args.eval_on_cpu)
+        components = _load_official_components(art, gas_repo, art.seed, args.eval_on_cpu)
         key_graph = components["key_graph"]
+        protocol_rows.append(
+            protocol_lock_row(
+                art,
+                gas_repo,
+                stage="stage30_official_gas_instrumentation",
+                evidence_class="OFFICIAL_GAS_PROTOCOL_LOCK",
+                wrapper_status="OFFICIAL_GAS_NON_INVASIVE_TRACE_ACTIONS_UNCHANGED",
+                command_line=command_line,
+                task_id=",".join(str(x) for x in task_ids),
+                episode_count=args.episodes,
+                subgoal_horizon=int(key_graph.way_steps),
+                eval_on_cpu=args.eval_on_cpu,
+                gpu=args.gpu,
+                source_identity=source_identity,
+                extra={
+                    "recover_dataset_indices": args.recover_dataset_indices,
+                    "node_map_tolerance": args.node_map_tolerance,
+                },
+            )
+        )
         if args.recover_dataset_indices:
             node_map = recover_node_dataset_indices(
                 key_graph.nodes,
@@ -416,6 +493,10 @@ def main() -> None:
             node_map = {}
             traj_ids = {}
         for task_id in task_ids:
+            actor_fn = components["mods"]["supply_rng"](
+                components["agent"].sample_actions,
+                rng=components["mods"]["jax"].random.PRNGKey(art.seed),
+            )
             for episode_id in range(args.episodes):
                 episode_row, edge_rows = _run_episode(
                     art=art,
@@ -423,12 +504,13 @@ def main() -> None:
                     task_id=task_id,
                     episode_id=episode_id,
                     components=components,
+                    actor_fn=actor_fn,
                     node_map=node_map,
                     traj_ids=traj_ids,
-                    eval_on_cpu=args.eval_on_cpu,
                 )
                 all_episode_rows.append(episode_row)
                 all_edge_rows.extend(edge_rows)
+    write_csv(out_dir / "protocol_lock.csv", protocol_rows)
     write_csv(out_dir / "official_gas_episode_traces.csv", all_episode_rows)
     write_csv(out_dir / "official_gas_path_edges.csv", all_edge_rows)
     _write_report(out_dir, all_episode_rows, all_edge_rows)

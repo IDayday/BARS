@@ -4,24 +4,34 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import shlex
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from stage30_official_gas_common import ARCHIVED_PRE_STAGE30_STATUS, write_csv
+from stage30_official_gas_common import (
+    ARCHIVED_PRE_STAGE30_STATUS,
+    gas_source_identity,
+    parse_csv_list,
+    parse_seed_list,
+    protocol_lock_row,
+    scan_official_artifacts,
+    write_csv,
+)
 
 
 TAXONOMY = [
+    "SUCCESS_WITH_CROSS_STITCHING",
     "NO_OFFICIAL_GRAPH_PATH",
     "KEYGRAPH_ABSTRACTION_LOST_SUPPORT",
-    "LOW_TE_OR_NOISY_NODE_FAILURE",
     "CROSS_EDGE_EXECUTION_FAILURE",
     "TEMPORAL_EDGE_EXECUTION_FAILURE",
-    "SUBGOAL_SEQUENCE_DRIFT",
     "LONG_HOP_FAILURE",
+    "SUBGOAL_SEQUENCE_DRIFT",
     "GOAL_INTERFACE_FAILURE",
     "POLICY_LOCAL_FAILURE",
-    "SUCCESS_WITH_CROSS_STITCHING",
+    "LOW_TE_OR_NOISY_NODE_FAILURE",
     "UNRESOLVED",
 ]
 
@@ -65,21 +75,36 @@ def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge
     if _truthy(ep.get("no_path")):
         return "NO_OFFICIAL_GRAPH_PATH", "official episode trace has no_path=1"
     if _truthy(ep.get("success")):
-        used_cross = any(str(e.get("cross_trajectory")) in {"1", "1.0"} or str(e.get("edge_category")) == "cross_trajectory_keygraph_edge" for e in edges)
+        used_cross = any(
+            str(e.get("cross_trajectory_available")) in {"1", "1.0"}
+            and (str(e.get("cross_trajectory")) in {"1", "1.0"} or str(e.get("edge_category")) == "cross_trajectory_keygraph_edge")
+            for e in edges
+        )
         if used_cross:
             return "SUCCESS_WITH_CROSS_STITCHING", "successful official episode used cross-trajectory path edge evidence"
         return "UNRESOLVED", "successful episode without cross-stitch evidence"
 
-    failed_edge = ep.get("first_failed_edge", "")
+    failed_edge = ep.get("first_failed_edge_id", "") or ep.get("first_failed_edge", "")
     probes = probe_by_edge.get(failed_edge, []) if failed_edge else []
     valid_probes = [p for p in probes if _truthy(p.get("valid_probe"))]
     failed_probe = any(_truthy(p.get("valid_probe")) and not _truthy(p.get("reach")) for p in valid_probes)
     if valid_probes and failed_probe:
         edge_categories = {str(p.get("edge_category", "")) for p in valid_probes}
-        if "cross_trajectory_keygraph_edge" in edge_categories:
+        sample_categories = {str(p.get("category", "")) for p in valid_probes}
+        recoverable_cross_failure = any(
+            str(p.get("cross_trajectory_available")) in {"1", "1.0"}
+            and (str(p.get("cross_trajectory")) in {"1", "1.0"} or str(p.get("edge_category")) == "cross_trajectory_keygraph_edge")
+            for p in valid_probes
+        )
+        recoverable_temporal_failure = any("same_trajectory_temporal_like" in c for c in edge_categories)
+        if recoverable_cross_failure:
             return "CROSS_EDGE_EXECUTION_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
-        if any("temporal" in c for c in edge_categories):
+        if recoverable_temporal_failure:
             return "TEMPORAL_EDGE_EXECUTION_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
+        if "long_hop_edges" in sample_categories or "high_cost_edges" in sample_categories:
+            return "LONG_HOP_FAILURE", f"first_failed_edge={failed_edge} failed in official long-hop/high-cost probe category"
+        if "low_te_edges" in sample_categories:
+            return "LOW_TE_OR_NOISY_NODE_FAILURE", f"first_failed_edge={failed_edge} failed in official low-TE probe category"
         return "POLICY_LOCAL_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
     if _truthy(ep.get("timeout")):
         return "SUBGOAL_SEQUENCE_DRIFT", "episode timed out without edge-probe-supported first-edge label"
@@ -99,10 +124,32 @@ def _wilson(k: int, n: int) -> tuple[float, float]:
     return center - half, center + half
 
 
-def _write_report(out_dir: Path, rows: list[dict[str, Any]]) -> None:
-    by_env: dict[str, list[dict[str, Any]]] = defaultdict(list)
+def _summary_rows(rows: list[dict[str, Any]], group_fields: list[str]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, ...], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        by_env[str(row.get("env_name", ""))].append(row)
+        grouped[tuple(str(row.get(field, "")) for field in group_fields)].append(row)
+    out: list[dict[str, Any]] = []
+    for key, part in sorted(grouped.items()):
+        n = len(part)
+        counts = Counter(str(r.get("taxonomy_label", "")) for r in part)
+        for label in TAXONOMY:
+            k = counts.get(label, 0)
+            lo, hi = _wilson(k, n)
+            row = {field: value for field, value in zip(group_fields, key)}
+            row.update({"taxonomy_label": label, "count": k, "episodes": n, "rate": k / max(1, n), "ci95_low": lo, "ci95_high": hi})
+            out.append(row)
+    return out
+
+
+def _dominant_label(rows: list[dict[str, Any]]) -> tuple[str, int, float]:
+    labels = [str(r.get("taxonomy_label", "")) for r in rows if str(r.get("taxonomy_label", "")) not in {"", "UNRESOLVED"}]
+    if not labels:
+        return "NO_STABLE_DOMINANT_FAILURE_MODE", 0, 0.0
+    label, count = Counter(labels).most_common(1)[0]
+    return label, count, count / max(1, len(rows))
+
+
+def _write_report(out_dir: Path, rows: list[dict[str, Any]], by_env_rows: list[dict[str, Any]]) -> None:
     lines = [
         "# Stage30 Official GAS Failure Taxonomy Report",
         "",
@@ -113,17 +160,40 @@ def _write_report(out_dir: Path, rows: list[dict[str, Any]]) -> None:
         "| env_name | label | count | rate | ci95_low | ci95_high |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
+    for row in by_env_rows:
+        if int(row.get("count", 0) or 0) == 0:
+            continue
+        lines.append(
+            f"| {row.get('env_name', '')} | {row.get('taxonomy_label', '')} | {row.get('count', '')} | {float(row.get('rate', 0) or 0):.4f} | {float(row.get('ci95_low', 0) or 0):.4f} | {float(row.get('ci95_high', 0) or 0):.4f} |"
+        )
+    by_env: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_env[str(row.get("env_name", ""))].append(row)
+    overall_label, overall_count, overall_rate = _dominant_label(rows)
+    lines.extend(["", "## Dominant Evidence-Backed Labels", ""])
+    lines.append(f"- overall: `{overall_label}` count={overall_count}, rate={overall_rate:.4f}")
     for env_name, part in sorted(by_env.items()):
-        n = len(part)
-        counts = Counter(str(r.get("taxonomy_label", "")) for r in part)
-        for label in TAXONOMY:
-            k = counts.get(label, 0)
-            if k == 0:
-                continue
-            lo, hi = _wilson(k, n)
-            lines.append(f"| {env_name} | {label} | {k} | {k / max(1, n):.4f} | {lo:.4f} | {hi:.4f} |")
+        label, count, rate = _dominant_label(part)
+        lines.append(f"- {env_name}: `{label}` count={count}, rate={rate:.4f}")
     lines.extend(["", "## Files", "", f"- taxonomy CSV: `{out_dir / 'official_gas_failure_taxonomy.csv'}`"])
+    lines.append(f"- by seed aggregate: `{out_dir / 'official_gas_failure_taxonomy_by_seed.csv'}`")
+    lines.append(f"- by env aggregate: `{out_dir / 'official_gas_failure_taxonomy_by_env.csv'}`")
+    lines.append(f"- protocol lock: `{out_dir / 'protocol_lock.csv'}`")
     (out_dir / "failure_taxonomy_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _infer_envs(episodes: list[dict[str, str]]) -> list[str]:
+    return sorted({str(r.get("env_name", "")) for r in episodes if r.get("env_name")})
+
+
+def _infer_seeds(episodes: list[dict[str, str]]) -> list[int]:
+    out: set[int] = set()
+    for row in episodes:
+        try:
+            out.add(int(float(row.get("seed", ""))))
+        except Exception:
+            pass
+    return sorted(out)
 
 
 def main() -> None:
@@ -132,6 +202,10 @@ def main() -> None:
     parser.add_argument("--path-edge-csv", required=True)
     parser.add_argument("--edge-probe-csv", default="")
     parser.add_argument("--out-root", default="runs_stage30_official_gas/taxonomy")
+    parser.add_argument("--artifact-root", default="artifacts/gas_ogbench_offline_full_20260522_165138")
+    parser.add_argument("--gas-repo-path", default="external_src/GAS")
+    parser.add_argument("--envs", default="auto")
+    parser.add_argument("--seeds", default="auto")
     args = parser.parse_args()
     episodes = _read_csv(Path(args.episode_csv))
     path_edges = _read_csv(Path(args.path_edge_csv))
@@ -153,8 +227,39 @@ def main() -> None:
         )
     out_dir = Path(args.out_root)
     out_dir.mkdir(parents=True, exist_ok=True)
+    by_seed_rows = _summary_rows(out_rows, ["env_name", "seed"])
+    by_env_rows = _summary_rows(out_rows, ["env_name"])
+    overall_rows = _summary_rows(out_rows, ["stage"])
+    envs = parse_csv_list(args.envs) if args.envs.lower() != "auto" else _infer_envs(episodes)
+    seeds = parse_seed_list(args.seeds) if args.seeds.lower() != "auto" else _infer_seeds(episodes)
+    gas_repo = Path(args.gas_repo_path)
+    source_identity = gas_source_identity(gas_repo)
+    command_line = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
+    protocol_rows = [
+        protocol_lock_row(
+            art,
+            gas_repo,
+            stage="stage30_official_gas_failure_taxonomy",
+            evidence_class="OFFICIAL_GAS_PROTOCOL_LOCK",
+            wrapper_status="OFFICIAL_GAS_ONLY_FAILURE_TAXONOMY",
+            command_line=command_line,
+            task_id="taxonomy",
+            episode_count=len([r for r in episodes if r.get("env_name") == art.env_name and str(r.get("seed")) in {str(art.seed), f"{float(art.seed):.1f}"}]),
+            source_identity=source_identity,
+            extra={
+                "episode_csv": args.episode_csv,
+                "path_edge_csv": args.path_edge_csv,
+                "edge_probe_csv": args.edge_probe_csv,
+            },
+        )
+        for art in scan_official_artifacts(Path(args.artifact_root), envs, seeds)
+    ]
     write_csv(out_dir / "official_gas_failure_taxonomy.csv", out_rows)
-    _write_report(out_dir, out_rows)
+    write_csv(out_dir / "official_gas_failure_taxonomy_by_seed.csv", by_seed_rows)
+    write_csv(out_dir / "official_gas_failure_taxonomy_by_env.csv", by_env_rows)
+    write_csv(out_dir / "official_gas_failure_taxonomy_overall.csv", overall_rows)
+    write_csv(out_dir / "protocol_lock.csv", protocol_rows)
+    _write_report(out_dir, out_rows, by_env_rows)
     print(out_dir / "failure_taxonomy_report.md")
 
 

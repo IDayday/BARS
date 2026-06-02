@@ -89,6 +89,12 @@ def gas_source_identity(gas_repo: Path) -> dict[str, str]:
     }
 
 
+def _safe_file_sha256(path: Path | None) -> str:
+    if path is None or not path.exists():
+        return ""
+    return file_sha256(path)
+
+
 def env_to_hf_slug(env_name: str) -> str:
     return env_name[:-3] if env_name.endswith("-v0") else env_name
 
@@ -136,6 +142,73 @@ def gas_config_overrides(env_name: str) -> dict[str, Any]:
 
 def final_goal_threshold(env_name: str) -> int:
     return 1 if "kitchen" in env_name else 2
+
+
+def read_artifact_manifest(art: OfficialGASArtifacts) -> dict[str, Any]:
+    if not art.manifest_path or not art.manifest_path.exists():
+        return {}
+    try:
+        return json.loads(art.manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def artifact_identity_fields(art: OfficialGASArtifacts) -> dict[str, Any]:
+    manifest = read_artifact_manifest(art)
+    return {
+        "artifact_root": str(art.root),
+        "env_name": art.env_name,
+        "seed": art.seed,
+        "keygraph_path": str(art.keygraph_path),
+        "keygraph_sha256": manifest.get("keygraph_sha256") or _safe_file_sha256(art.keygraph_path),
+        "policy_path": str(art.policy_path),
+        "policy_sha256": manifest.get("policy_checkpoint_sha256") or _safe_file_sha256(art.policy_path),
+        "tdr_path": str(art.tdr_path) if art.tdr_path else "",
+        "tdr_sha256": manifest.get("tdr_checkpoint_sha256") or _safe_file_sha256(art.tdr_path),
+        "official_eval_csv": str(art.eval_csv) if art.eval_csv else "",
+        "artifact_manifest": str(art.manifest_path) if art.manifest_path else "",
+    }
+
+
+def protocol_lock_row(
+    art: OfficialGASArtifacts,
+    gas_repo: Path,
+    *,
+    stage: str,
+    evidence_class: str,
+    wrapper_status: str,
+    command_line: str,
+    task_id: str = "",
+    episode_count: int | str = "",
+    goal_threshold: int | str | None = None,
+    subgoal_horizon: int | str = "",
+    eval_on_cpu: int | str = "",
+    gpu: int | str = "",
+    source_identity: dict[str, str] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "stage": stage,
+        "evidence_class": evidence_class,
+        "pre_stage30_results_status": ARCHIVED_PRE_STAGE30_STATUS,
+        **(source_identity or gas_source_identity(gas_repo)),
+        **artifact_identity_fields(art),
+        "task_id": task_id,
+        "episode_count": episode_count,
+        "goal_threshold": final_goal_threshold(art.env_name) if goal_threshold is None else goal_threshold,
+        "subgoal_horizon": subgoal_horizon,
+        "evaluation_command": command_line,
+        "wrapper_status": wrapper_status,
+        "eval_on_cpu": eval_on_cpu,
+        "gpu": gpu,
+        "official_graph_modified": 0,
+        "official_planner_modified": 0,
+        "official_policy_modified": 0,
+        "official_action_outputs_modified": 0,
+    }
+    if extra:
+        row.update(extra)
+    return row
 
 
 def scan_official_artifacts(artifact_root: Path, envs: Sequence[str] | None, seeds: Sequence[int] | None) -> list[OfficialGASArtifacts]:
@@ -337,7 +410,12 @@ def recover_node_dataset_indices(
     for node_idx, (dataset_idx, dist2) in enumerate(zip(best_idx.tolist(), best_dist.tolist())):
         dist = math.sqrt(float(dist2)) if math.isfinite(float(dist2)) else float("inf")
         if dataset_idx >= 0 and dist <= tolerance:
-            out[node_idx] = {"dataset_idx": int(dataset_idx), "embedding_match_dist": dist}
+            out[node_idx] = {
+                "dataset_idx": int(dataset_idx),
+                "embedding_match_dist": dist,
+                "embedding_match_tolerance": tolerance,
+                "exact_embedding_match": int(dist <= 1e-5),
+            }
     return out
 
 

@@ -1,0 +1,12 @@
+stage,taxonomy_label,count,episodes,rate,ci95_low,ci95_high
+stage30_official_gas_instrumentation,SUCCESS_WITH_CROSS_STITCHING,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,NO_OFFICIAL_GRAPH_PATH,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,KEYGRAPH_ABSTRACTION_LOST_SUPPORT,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,CROSS_EDGE_EXECUTION_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,TEMPORAL_EDGE_EXECUTION_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,LONG_HOP_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,SUBGOAL_SEQUENCE_DRIFT,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,GOAL_INTERFACE_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,POLICY_LOCAL_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,LOW_TE_OR_NOISY_NODE_FAILURE,0,1,0.0,0.0,0.7934567085261071
+stage30_official_gas_instrumentation,UNRESOLVED,1,1,1.0,0.20654329147389294,1.0

@@ -5,6 +5,8 @@ import argparse
 import csv
 import math
 import os
+import shlex
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -14,9 +16,11 @@ import numpy as np
 from stage30_official_gas_common import (
     ARCHIVED_PRE_STAGE30_STATUS,
     configure_official_env,
+    gas_source_identity,
     load_dataset_arrays,
     parse_csv_list,
     parse_seed_list,
+    protocol_lock_row,
     recover_node_dataset_indices,
     scan_official_artifacts,
     trajectory_ids_from_dataset,
@@ -26,12 +30,16 @@ from stage30_official_gas_instrument import _edge_metadata, _env_step_with_flags
 
 
 MEANINGFUL_CATEGORY_ORDER = [
-    "temporal_like_edges",
-    "cross_trajectory_keygraph_edges",
     "frequently_used_success_path_edges",
     "first_failed_failure_path_edges",
+    "high_use_edges",
+    "long_hop_edges",
+    "low_cost_edges",
+    "high_cost_edges",
+    "cross_trajectory_edges",
+    "same_trajectory_temporal_like_edges",
     "high_te_edges",
-    "low_te_or_boundary_edges",
+    "low_te_edges",
 ]
 
 
@@ -49,9 +57,18 @@ def _edge_key(row: dict[str, Any]) -> tuple[int, int] | None:
         return None
 
 
+def _finite_float(value: Any) -> float:
+    try:
+        x = float(value)
+        return x if math.isfinite(x) else float("nan")
+    except Exception:
+        return float("nan")
+
+
 def _build_edge_categories(key_graph: Any, node_map: dict[int, dict[str, Any]], traj_ids: dict[int, int], path_edge_rows: list[dict[str, str]]) -> dict[str, list[tuple[int, int]]]:
     categories: dict[str, list[tuple[int, int]]] = defaultdict(list)
     te_edges: list[tuple[float, tuple[int, int]]] = []
+    weighted_edges: list[tuple[float, tuple[int, int]]] = []
     for u, v, data in key_graph.graph.edges(data=True):
         u = int(u)
         v = int(v)
@@ -59,25 +76,32 @@ def _build_edge_categories(key_graph: Any, node_map: dict[int, dict[str, Any]], 
         if u >= key_graph.base_node_cnt:
             continue
         cat = str(meta.get("edge_category", ""))
-        if cat in {"temporal_like_edge", "temporal_like_distance_proxy"}:
-            categories["temporal_like_edges"].append((u, v))
+        if cat == "same_trajectory_temporal_like_edge":
+            categories["same_trajectory_temporal_like_edges"].append((u, v))
         if cat == "cross_trajectory_keygraph_edge":
-            categories["cross_trajectory_keygraph_edges"].append((u, v))
-        te = meta.get("te_score", "")
-        try:
-            te_f = float(te)
-            if math.isfinite(te_f):
-                te_edges.append((te_f, (u, v)))
-        except Exception:
-            pass
+            categories["cross_trajectory_edges"].append((u, v))
+        te_f = _finite_float(meta.get("te_score", ""))
+        if math.isfinite(te_f):
+            te_edges.append((te_f, (u, v)))
+        weight_f = _finite_float(meta.get("edge_weight", ""))
+        if math.isfinite(weight_f):
+            weighted_edges.append((weight_f, (u, v)))
+            if weight_f > float(key_graph.way_steps):
+                categories["long_hop_edges"].append((u, v))
     if te_edges:
         te_edges.sort()
         n = len(te_edges)
-        categories["low_te_or_boundary_edges"].extend(edge for _, edge in te_edges[: max(1, n // 5)])
+        categories["low_te_edges"].extend(edge for _, edge in te_edges[: max(1, n // 5)])
         categories["high_te_edges"].extend(edge for _, edge in te_edges[-max(1, n // 5) :])
+    if weighted_edges:
+        weighted_edges.sort()
+        n = len(weighted_edges)
+        categories["low_cost_edges"].extend(edge for _, edge in weighted_edges[: max(1, n // 5)])
+        categories["high_cost_edges"].extend(edge for _, edge in weighted_edges[-max(1, n // 5) :])
 
     success_counts: Counter[tuple[int, int]] = Counter()
     failed_counts: Counter[tuple[int, int]] = Counter()
+    all_counts: Counter[tuple[int, int]] = Counter()
     for row in path_edge_rows:
         edge = _edge_key(row)
         if edge is None:
@@ -86,12 +110,14 @@ def _build_edge_categories(key_graph: Any, node_map: dict[int, dict[str, Any]], 
             count = int(float(row.get("path_usage_count", 1) or 1))
         except Exception:
             count = 1
+        all_counts[edge] += count
         if str(row.get("path_usage", "")) == "success_path" or str(row.get("success", "")) in {"1", "1.0"}:
             success_counts[edge] += count
         if str(row.get("failure_association", "")) in {"1", "1.0"}:
             failed_counts[edge] += count
     categories["frequently_used_success_path_edges"].extend(edge for edge, _ in success_counts.most_common())
     categories["first_failed_failure_path_edges"].extend(edge for edge, _ in failed_counts.most_common())
+    categories["high_use_edges"].extend(edge for edge, _ in all_counts.most_common())
     deduped: dict[str, list[tuple[int, int]]] = {}
     for category, edges in categories.items():
         seen: set[tuple[int, int]] = set()
@@ -201,6 +227,7 @@ def _execute_edge(
     done = False
     truncated = 0
     steps = 0
+    action_norms: list[float] = []
     for step in range(horizon):
         phi_obs = np.asarray(get_phi_fn(observation))
         cur_dist = float(np.linalg.norm(phi_obs - target_phi))
@@ -210,6 +237,7 @@ def _execute_edge(
         skill = (target_phi - phi_obs) / (np.linalg.norm(target_phi - phi_obs) + 1e-10)
         action = actor_fn(observations=observation, goals=skill, temperature=0.0)
         action = np.clip(np.asarray(action), -1, 1)
+        action_norms.append(float(np.linalg.norm(action)))
         observation, _, done, _, _, truncated = _env_step_with_flags(env, art.env_name, action)
         steps = step + 1
         if done:
@@ -229,6 +257,8 @@ def _execute_edge(
             "reach": reach,
             "progress_norm": progress_norm,
             "steps": steps,
+            "action_norm_mean": float(np.mean(action_norms)) if action_norms else "",
+            "action_norm_max": float(np.max(action_norms)) if action_norms else "",
             "timeout": int(steps >= horizon and not reach),
             "stuck": int((not reach) and progress_norm < 0.05),
             "divergence": int((not reach) and final_dist > initial_dist + 1e-6),
@@ -261,6 +291,7 @@ def _write_report(out_dir: Path, rows: list[dict[str, Any]], required: int) -> N
         status = "PASS_SAMPLE_COUNT" if len(valid) >= required else "INSUFFICIENT_SAMPLE"
         lines.append(f"| {category} | {len(part)} | {len(valid)} | {reach:.4f} | {set_state:.4f} | {status} |")
     lines.extend(["", "## Files", "", f"- edge probe CSV: `{out_dir / 'official_gas_edge_probe.csv'}`"])
+    lines.append(f"- protocol lock: `{out_dir / 'protocol_lock.csv'}`")
     (out_dir / "edge_probe_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -285,10 +316,37 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     path_edge_rows = _read_path_edge_csv(Path(args.path_edge_csv) if args.path_edge_csv else None)
     artifacts = scan_official_artifacts(Path(args.artifact_root), parse_csv_list(args.envs), parse_seed_list(args.seeds))
+    gas_repo = Path(args.gas_repo_path)
+    source_identity = gas_source_identity(gas_repo)
+    command_line = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
     all_rows: list[dict[str, Any]] = []
+    protocol_rows: list[dict[str, Any]] = []
     for art in artifacts:
-        components = _load_official_components(art, Path(args.gas_repo_path), art.seed, args.eval_on_cpu)
+        components = _load_official_components(art, gas_repo, art.seed, args.eval_on_cpu)
         key_graph = components["key_graph"]
+        protocol_rows.append(
+            protocol_lock_row(
+                art,
+                gas_repo,
+                stage="stage30_official_gas_edge_probe",
+                evidence_class="OFFICIAL_GAS_PROTOCOL_LOCK",
+                wrapper_status="OFFICIAL_GAS_EDGE_EXECUTION_PROBE_OFFICIAL_POLICY",
+                command_line=command_line,
+                task_id="edge_probe",
+                episode_count="",
+                subgoal_horizon=int(key_graph.way_steps),
+                eval_on_cpu=args.eval_on_cpu,
+                gpu=args.gpu,
+                source_identity=source_identity,
+                extra={
+                    "edges_per_category": args.edges_per_category,
+                    "probe_horizon_arg": args.horizon,
+                    "probe_threshold_arg": args.threshold,
+                    "node_map_tolerance": args.node_map_tolerance,
+                    "path_edge_csv": args.path_edge_csv,
+                },
+            )
+        )
         node_map = recover_node_dataset_indices(
             key_graph.nodes,
             art.dataset_embeddings_path,
@@ -320,6 +378,7 @@ def main() -> None:
                     )
                 )
     write_csv(out_dir / "official_gas_edge_probe.csv", all_rows)
+    write_csv(out_dir / "protocol_lock.csv", protocol_rows)
     _write_report(out_dir, all_rows, args.edges_per_category)
     print(out_dir / "edge_probe_report.md")
 
