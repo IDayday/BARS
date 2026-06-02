@@ -202,6 +202,9 @@ class OnlinePlan:
     node_path: list[int]
     edge_path: list[int]
     subgoal_phis: list[np.ndarray]
+    execution_subgoal_phis: list[np.ndarray]
+    execution_subgoal_edge_index: list[int]
+    execution_subgoal_completes_edge: list[int]
     edge_type_sequence: list[str]
     support_scores: np.ndarray
     support_risks: np.ndarray
@@ -261,6 +264,8 @@ def _base_plan(dataset, graph: BARSGraph, initial_phi: np.ndarray, goal_phi: np.
         "base_planner_variant": variant,
         "num_edges": len(edge_path),
         "num_subgoals": max(0, len(plan.node_path) - 2),
+        "execution_subgoal_count": len(subgoals),
+        "densified_subgoal_count": 0,
         "total_cost": float(plan.total_cost),
         "total_risk": float(plan.total_risk),
         "objective": float(plan.objective),
@@ -281,6 +286,9 @@ def _base_plan(dataset, graph: BARSGraph, initial_phi: np.ndarray, goal_phi: np.
         node_path=[int(n) for n in plan.node_path],
         edge_path=edge_path,
         subgoal_phis=subgoals,
+        execution_subgoal_phis=subgoals,
+        execution_subgoal_edge_index=list(range(len(edge_path))),
+        execution_subgoal_completes_edge=[1] * len(edge_path),
         edge_type_sequence=edge_types,
         support_scores=support_scores,
         support_risks=support_risks,
@@ -300,6 +308,7 @@ def _stage29_result_for_planner(dataset, evidence: SupportEvidenceGraph, planner
             start,
             goal,
             lambda_support_risk=float(scfg.get("lambda_support_risk", 1.0)),
+            lambda_execution_risk=float(scfg.get("lambda_execution_risk", 1.0)),
             max_edges=max_edges,
             variant="STAGE29_LEXICOGRAPHIC",
         )
@@ -313,6 +322,7 @@ def _stage29_result_for_planner(dataset, evidence: SupportEvidenceGraph, planner
             unsupported_budget=k,
             support_risk_budget=float(support_risk_budget),
             support_risk_bin=float(scfg.get("support_risk_bin", 0.05)),
+            lambda_execution_risk=float(scfg.get("lambda_execution_risk", 1.0)),
             max_edges=max_edges,
             variant=planner_id,
         )
@@ -322,6 +332,7 @@ def _stage29_result_for_planner(dataset, evidence: SupportEvidenceGraph, planner
 def _stage29_plan(
     dataset,
     evidence: SupportEvidenceGraph,
+    embeddings: np.ndarray,
     initial_phi: np.ndarray,
     goal_phi: np.ndarray,
     planner_id: str,
@@ -342,11 +353,14 @@ def _stage29_plan(
     support_risks = evidence.support_risk[e].astype(np.float32) if len(e) else np.empty(0, dtype=np.float32)
     unsupported = evidence.unsupported_shortcut[e].astype(bool) if len(e) else np.empty(0, dtype=bool)
     subgoals = [np.asarray(graph.node_embeddings[int(n)], dtype=np.float32) for n in plan.node_path[1:]] if plan.found else []
+    exec_subgoals, exec_edge_index, exec_completes = _stage29_execution_subgoals(dataset, evidence, embeddings, edge_path, cfg) if plan.found else ([], [], [])
     metrics = res.to_row()
     metrics.update(
         {
             "found": int(plan.found),
             "num_edges": len(edge_path),
+            "execution_subgoal_count": len(exec_subgoals),
+            "densified_subgoal_count": max(0, len(exec_subgoals) - len(edge_path)),
             "path_cross_rate": float(cross.mean()) if len(cross) else float("nan"),
             "cross_edge_count": int(cross.sum()),
             "unsupported_edge_count": int(unsupported.sum()),
@@ -363,6 +377,9 @@ def _stage29_plan(
         node_path=[int(n) for n in plan.node_path],
         edge_path=edge_path,
         subgoal_phis=subgoals,
+        execution_subgoal_phis=exec_subgoals,
+        execution_subgoal_edge_index=exec_edge_index,
+        execution_subgoal_completes_edge=exec_completes,
         edge_type_sequence=edge_types,
         support_scores=support_scores,
         support_risks=support_risks,
@@ -372,11 +389,53 @@ def _stage29_plan(
     )
 
 
+def _stage29_execution_subgoals(
+    dataset,
+    evidence: SupportEvidenceGraph,
+    embeddings: np.ndarray,
+    edge_path: Sequence[int],
+    cfg: Dict[str, Any],
+) -> tuple[list[np.ndarray], list[int], list[int]]:
+    graph = evidence.graph
+    scfg = cfg.get("stage29_support", {})
+    enabled = bool(scfg.get("execution_densify_temporal_edges", False))
+    step = int(scfg.get("execution_temporal_densify_step", cfg.get("reachability", {}).get("horizon", 50)))
+    min_dt = int(scfg.get("execution_temporal_densify_min_dt", step))
+    max_insert = int(scfg.get("execution_temporal_densify_max_insert_per_edge", 4))
+    out_phis: list[np.ndarray] = []
+    out_edge: list[int] = []
+    out_complete: list[int] = []
+    for edge_i, raw_eid in enumerate(edge_path):
+        eid = int(raw_eid)
+        src_node = int(graph.src[eid])
+        dst_node = int(graph.dst[eid])
+        src_idx = int(graph.node_indices[src_node])
+        dst_idx = int(graph.node_indices[dst_node])
+        same = bool(dataset.traj_id[src_idx] == dataset.traj_id[dst_idx])
+        dt = int(dataset.timestep[dst_idx] - dataset.timestep[src_idx]) if same else -1
+        if enabled and same and step > 0 and dt > min_dt and dst_idx > src_idx:
+            inserted = 0
+            for mid_idx in range(src_idx + step, dst_idx, step):
+                if inserted >= max_insert:
+                    break
+                if int(dataset.traj_id[mid_idx]) != int(dataset.traj_id[src_idx]):
+                    break
+                out_phis.append(np.asarray(embeddings[mid_idx], dtype=np.float32))
+                out_edge.append(edge_i)
+                out_complete.append(0)
+                inserted += 1
+        out_phis.append(np.asarray(graph.node_embeddings[dst_node], dtype=np.float32))
+        out_edge.append(edge_i)
+        out_complete.append(1)
+    return out_phis, out_edge, out_complete
+
+
 def _make_plan(
     planner_id: str,
     dataset,
     base_graph: BARSGraph,
     evidence: SupportEvidenceGraph,
+    embeddings: np.ndarray,
     initial_phi: np.ndarray,
     goal_phi: np.ndarray,
     cfg: Dict[str, Any],
@@ -386,7 +445,7 @@ def _make_plan(
         return _base_plan(dataset, base_graph, initial_phi, goal_phi, cfg)
     if planner_id == "SUPPORT_PLUS_ENDPOINT":
         raise NotImplementedError("SUPPORT_PLUS_ENDPOINT is not implemented in this branch")
-    return _stage29_plan(dataset, evidence, initial_phi, goal_phi, planner_id, cfg, support_risk_budget)
+    return _stage29_plan(dataset, evidence, embeddings, initial_phi, goal_phi, planner_id, cfg, support_risk_budget)
 
 
 def _info_success(info: Any) -> bool:
@@ -422,6 +481,7 @@ def _execute_episode(
     dataset,
     base_graph: BARSGraph,
     evidence: SupportEvidenceGraph,
+    embeddings: np.ndarray,
     cfg: Dict[str, Any],
     planner_id: str,
     task_id: int,
@@ -440,6 +500,7 @@ def _execute_episode(
         dataset,
         base_graph,
         evidence,
+        embeddings,
         initial_phi,
         actual_goal_phi,
         cfg,
@@ -476,6 +537,8 @@ def _execute_episode(
                 "edge_reach": float("nan"),
                 "subgoal_reached_count": 0,
                 "planned_subgoal_count": 0,
+                "execution_subgoal_count": 0,
+                "densified_subgoal_count": 0,
                 "planned_edge_count": 0,
                 "attempted_edge_count": 0,
                 "executed_unsupported_edge_count": 0,
@@ -516,18 +579,21 @@ def _execute_episode(
         if final_goal_dist <= final_goal_threshold:
             success = True
             break
-        while subgoal_idx < len(plan.subgoal_phis):
-            subgoal_dist = float(np.linalg.norm(np.asarray(plan.subgoal_phis[subgoal_idx]) - phi_obs))
+        while subgoal_idx < len(plan.execution_subgoal_phis):
+            subgoal_dist = float(np.linalg.norm(np.asarray(plan.execution_subgoal_phis[subgoal_idx]) - phi_obs))
             if subgoal_dist > subgoal_threshold:
                 break
-            if subgoal_idx < len(edge_reached):
-                edge_reached[subgoal_idx] = True
+            edge_i = int(plan.execution_subgoal_edge_index[subgoal_idx]) if subgoal_idx < len(plan.execution_subgoal_edge_index) else subgoal_idx
+            completes_edge = int(plan.execution_subgoal_completes_edge[subgoal_idx]) if subgoal_idx < len(plan.execution_subgoal_completes_edge) else 1
+            if completes_edge and edge_i < len(edge_reached):
+                edge_reached[edge_i] = True
             subgoal_idx += 1
-        if subgoal_idx >= len(plan.subgoal_phis):
+        if subgoal_idx >= len(plan.execution_subgoal_phis):
             target_phi = actual_goal_phi
         else:
-            target_phi = np.asarray(plan.subgoal_phis[subgoal_idx], dtype=np.float32)
-            max_attempted_edge = max(max_attempted_edge, subgoal_idx + 1)
+            target_phi = np.asarray(plan.execution_subgoal_phis[subgoal_idx], dtype=np.float32)
+            edge_i = int(plan.execution_subgoal_edge_index[subgoal_idx]) if subgoal_idx < len(plan.execution_subgoal_edge_index) else subgoal_idx
+            max_attempted_edge = max(max_attempted_edge, edge_i + 1)
         action = backbone.sample_action(observation, target_phi)
         observation, reward, done, info = backbone.step_env(env, env_name, action)
         last_info = info if isinstance(info, dict) else {}
@@ -546,7 +612,9 @@ def _execute_episode(
     elif len(plan.edge_path) == 0:
         first_failed = "FINAL_GOAL"
     elif reached_edges < len(plan.edge_path):
-        first_failed = plan.edge_type_sequence[reached_edges] if reached_edges < len(plan.edge_type_sequence) else "UNKNOWN_EDGE"
+        failed_ids = np.flatnonzero(~edge_reached)
+        failed_i = int(failed_ids[0]) if len(failed_ids) else reached_edges
+        first_failed = plan.edge_type_sequence[failed_i] if failed_i < len(plan.edge_type_sequence) else "UNKNOWN_EDGE"
     else:
         first_failed = "FINAL_GOAL"
 
@@ -567,6 +635,8 @@ def _execute_episode(
             "edge_reach": float(reached_edges / max(1, len(plan.edge_path))) if plan.edge_path else 1.0,
             "subgoal_reached_count": reached_edges,
             "planned_subgoal_count": len(plan.subgoal_phis),
+            "execution_subgoal_count": len(plan.execution_subgoal_phis),
+            "densified_subgoal_count": max(0, len(plan.execution_subgoal_phis) - len(plan.edge_path)),
             "planned_edge_count": len(plan.edge_path),
             "attempted_edge_count": attempted_edges,
             "executed_unsupported_edge_count": int(attempted_unsupported.sum()) if len(attempted_unsupported) else 0,
@@ -754,6 +824,7 @@ def run_online_eval(dataset, embeddings: np.ndarray, base_graph: BARSGraph, cfg:
                 dataset,
                 base_graph,
                 evidence,
+                embeddings,
                 cfg,
                 planner_id,
                 task_id,

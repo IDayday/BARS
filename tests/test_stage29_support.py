@@ -89,6 +89,8 @@ def test_stage29_support_planners_return_rows():
     lex = plan_support_lexicographic(dataset, ev, start, goal, max_edges=12)
     budget = plan_support_budgeted(dataset, ev, start, goal, unsupported_budget=2, support_risk_budget=2.0, support_risk_bin=0.1, max_edges=12)
     assert "unsupported_edges" in lex.to_row()
+    assert "execution_risk" in lex.to_row()
+    assert "path_temporal_dt_mean" in lex.to_row()
     assert "support_risk" in budget.to_row()
     assert np.isfinite(budget.to_row()["support_risk"]) or not budget.plan.found
 

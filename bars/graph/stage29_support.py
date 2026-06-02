@@ -45,6 +45,7 @@ class SupportEvidenceGraph:
     support_density: np.ndarray
     support_score: np.ndarray
     support_risk: np.ndarray
+    execution_risk: np.ndarray
     unsupported_shortcut: np.ndarray
     protected_node: np.ndarray
     projected_node: np.ndarray
@@ -58,6 +59,7 @@ class SupportPlanResult:
     unsupported_edges: int
     support_risk: float
     cross_support_risk: float
+    execution_risk: float
     path_cross_edge_rate: float
     path_temporal_backbone_rate: float
     path_projected_support_rate: float
@@ -66,6 +68,10 @@ class SupportPlanResult:
     path_unsupported_shortcut_rate: float
     path_min_support_score: float
     path_mean_support_score: float
+    path_mean_execution_risk: float
+    path_max_execution_risk: float
+    path_temporal_dt_mean: float
+    path_temporal_dt_max: float
 
     def to_row(self) -> Dict[str, float | int | str]:
         row = self.plan.to_row()
@@ -74,6 +80,7 @@ class SupportPlanResult:
                 "unsupported_edges": int(self.unsupported_edges),
                 "support_risk": float(self.support_risk),
                 "cross_support_risk": float(self.cross_support_risk),
+                "execution_risk": float(self.execution_risk),
                 "path_cross_edge_rate": float(self.path_cross_edge_rate),
                 "path_temporal_backbone_rate": float(self.path_temporal_backbone_rate),
                 "path_projected_support_rate": float(self.path_projected_support_rate),
@@ -82,6 +89,10 @@ class SupportPlanResult:
                 "path_unsupported_shortcut_rate": float(self.path_unsupported_shortcut_rate),
                 "path_min_support_score": float(self.path_min_support_score),
                 "path_mean_support_score": float(self.path_mean_support_score),
+                "path_mean_execution_risk": float(self.path_mean_execution_risk),
+                "path_max_execution_risk": float(self.path_max_execution_risk),
+                "path_temporal_dt_mean": float(self.path_temporal_dt_mean),
+                "path_temporal_dt_max": float(self.path_temporal_dt_max),
             }
         )
         return row
@@ -458,7 +469,8 @@ def build_support_evidence_graph(dataset: OfflineDataset, embeddings: np.ndarray
     support_count, support_density, support_score = _support_arrays(src, dst, support_counts, support_out_count, cfg)
     edge_type = _edge_type_for(dataset, node_indices, src, dst, kind, support_count, support_score, protected_node, cfg)
     unsupported = edge_type == UNSUPPORTED_SHORTCUT
-    support_risk = _edge_support_risk(dataset, node_indices, src, dst, edge_type, support_score, cfg)
+    support_risk = _edge_support_risk(dataset, node_indices, src, dst, edge_type, support_score, support_count, cfg)
+    execution_risk = _edge_execution_risk(dataset, node_indices, src, dst, edge_type, support_score, support_count, cfg)
     graph = BARSGraph(node_indices, node_embeddings, src, dst, cost, risk, p_exec, kind)
     metadata: Dict[str, float | int | str] = {
         **node_meta,
@@ -475,6 +487,7 @@ def build_support_evidence_graph(dataset: OfflineDataset, embeddings: np.ndarray
         support_density=support_density.astype(np.float32),
         support_score=support_score.astype(np.float32),
         support_risk=support_risk.astype(np.float32),
+        execution_risk=execution_risk.astype(np.float32),
         unsupported_shortcut=unsupported.astype(bool),
         protected_node=protected_node.astype(bool),
         projected_node=projection.astype(np.int64),
@@ -483,7 +496,16 @@ def build_support_evidence_graph(dataset: OfflineDataset, embeddings: np.ndarray
     )
 
 
-def _edge_support_risk(dataset: OfflineDataset, node_indices: np.ndarray, src: np.ndarray, dst: np.ndarray, edge_type: np.ndarray, support_score: np.ndarray, cfg: Dict) -> np.ndarray:
+def _edge_support_risk(
+    dataset: OfflineDataset,
+    node_indices: np.ndarray,
+    src: np.ndarray,
+    dst: np.ndarray,
+    edge_type: np.ndarray,
+    support_score: np.ndarray,
+    support_count: np.ndarray,
+    cfg: Dict,
+) -> np.ndarray:
     same_traj = dataset.traj_id[node_indices[src]] == dataset.traj_id[node_indices[dst]]
     cross = ~same_traj
     bridge_thr = float(_cfg(cfg, "supported_bridge_score", 0.35))
@@ -491,12 +513,60 @@ def _edge_support_risk(dataset: OfflineDataset, node_indices: np.ndarray, src: n
     cross_base_risk = float(_cfg(cfg, "cross_edge_base_risk", 0.25))
     supported_cross_min_risk = float(_cfg(cfg, "supported_cross_min_risk", cross_base_risk))
     risk = np.zeros(len(src), dtype=np.float32)
+    same_support_weight = float(_cfg(cfg, "same_traj_support_risk_weight", 0.0))
+    same_zero_count_penalty = float(_cfg(cfg, "same_traj_zero_count_penalty", 0.0))
+    same_floor = float(_cfg(cfg, "same_traj_support_min_risk", 0.0))
+    if same_support_weight > 0.0 or same_zero_count_penalty > 0.0 or same_floor > 0.0:
+        same = ~cross
+        same_deficit = np.clip(1.0 - support_score, 0.0, 1.0)
+        risk[same] = same_floor + same_support_weight * same_deficit[same]
+        zero_count = same & (support_count <= 0)
+        risk[zero_count] += same_zero_count_penalty
     cross_deficit = np.clip((bridge_thr - support_score) / max(bridge_thr, 1e-6), 0.0, 1.0)
     risk[cross] = cross_base_risk + cross_deficit[cross]
     supported = edge_type == SUPPORTED_CROSS_BRIDGE
     risk[supported] = np.maximum(supported_cross_min_risk, cross_base_risk * np.clip(1.0 - support_score[supported], 0.0, 1.0))
     unsupported = edge_type == UNSUPPORTED_SHORTCUT
     risk[unsupported] = np.maximum(risk[unsupported], 1.0 - np.clip(support_score[unsupported] / max(candidate_thr, 1e-6), 0.0, 1.0))
+    return risk.astype(np.float32)
+
+
+def _edge_execution_risk(
+    dataset: OfflineDataset,
+    node_indices: np.ndarray,
+    src: np.ndarray,
+    dst: np.ndarray,
+    edge_type: np.ndarray,
+    support_score: np.ndarray,
+    support_count: np.ndarray,
+    cfg: Dict,
+) -> np.ndarray:
+    same_traj = dataset.traj_id[node_indices[src]] == dataset.traj_id[node_indices[dst]]
+    dt = dataset.timestep[node_indices[dst]] - dataset.timestep[node_indices[src]]
+    deficit = np.clip(1.0 - support_score, 0.0, 1.0)
+    risk = np.zeros(len(src), dtype=np.float32)
+
+    temporal = same_traj & (edge_type == TEMPORAL_BACKBONE)
+    projected = same_traj & (edge_type == PROJECTED_TEMPORAL_SUPPORT)
+    cross = ~same_traj
+    temporal_weight = float(_cfg(cfg, "temporal_execution_support_weight", 0.0))
+    projected_weight = float(_cfg(cfg, "projected_execution_support_weight", temporal_weight))
+    cross_weight = float(_cfg(cfg, "cross_execution_support_weight", 0.0))
+    zero_penalty = float(_cfg(cfg, "execution_zero_support_penalty", 0.0))
+    if temporal_weight:
+        risk[temporal] += temporal_weight * deficit[temporal]
+    if projected_weight:
+        risk[projected] += projected_weight * deficit[projected]
+    if cross_weight:
+        risk[cross] += cross_weight * deficit[cross]
+    if zero_penalty:
+        risk[(temporal | projected) & (support_count <= 0)] += zero_penalty
+
+    dt_weight = float(_cfg(cfg, "temporal_execution_dt_weight", 0.0))
+    if dt_weight:
+        horizon = float(_cfg(cfg, "temporal_support_horizon", cfg.get("reachability", {}).get("horizon", 50)))
+        dt_ratio = np.clip(np.maximum(dt.astype(np.float32), 0.0) / max(horizon, 1e-6), 0.0, 2.0)
+        risk[temporal] += dt_weight * dt_ratio[temporal]
     return risk.astype(np.float32)
 
 
@@ -536,6 +606,7 @@ def graph_support_summary(dataset: OfflineDataset, evidence: SupportEvidenceGrap
         "support_score_p50": float(np.quantile(evidence.support_score, 0.50)) if graph.num_edges else float("nan"),
         "support_score_p90": float(np.quantile(evidence.support_score, 0.90)) if graph.num_edges else float("nan"),
         "support_risk_mean": float(np.mean(evidence.support_risk)) if graph.num_edges else float("nan"),
+        "execution_risk_mean": float(np.mean(evidence.execution_risk)) if graph.num_edges else float("nan"),
     }
     for name, count in edge_type_counts(evidence).items():
         row[f"edge_type_{name}_count"] = int(count)
@@ -550,6 +621,7 @@ def _empty_support_result(variant: str, exec_budget: Optional[float] = None) -> 
         unsupported_edges=0,
         support_risk=float("inf"),
         cross_support_risk=float("inf"),
+        execution_risk=float("inf"),
         path_cross_edge_rate=float("nan"),
         path_temporal_backbone_rate=float("nan"),
         path_projected_support_rate=float("nan"),
@@ -558,6 +630,10 @@ def _empty_support_result(variant: str, exec_budget: Optional[float] = None) -> 
         path_unsupported_shortcut_rate=float("nan"),
         path_min_support_score=float("nan"),
         path_mean_support_score=float("nan"),
+        path_mean_execution_risk=float("nan"),
+        path_max_execution_risk=float("nan"),
+        path_temporal_dt_mean=float("nan"),
+        path_temporal_dt_max=float("nan"),
     )
 
 
@@ -567,6 +643,7 @@ def _support_path_stats(dataset: OfflineDataset, evidence: SupportEvidenceGraph,
             "unsupported_edges": 0,
             "support_risk": 0.0,
             "cross_support_risk": 0.0,
+            "execution_risk": 0.0,
             "path_cross_edge_rate": float("nan"),
             "path_temporal_backbone_rate": float("nan"),
             "path_projected_support_rate": float("nan"),
@@ -575,15 +652,22 @@ def _support_path_stats(dataset: OfflineDataset, evidence: SupportEvidenceGraph,
             "path_unsupported_shortcut_rate": float("nan"),
             "path_min_support_score": float("nan"),
             "path_mean_support_score": float("nan"),
+            "path_mean_execution_risk": float("nan"),
+            "path_max_execution_risk": float("nan"),
+            "path_temporal_dt_mean": float("nan"),
+            "path_temporal_dt_max": float("nan"),
         }
     e = np.asarray(edges, dtype=np.int64)
     graph = evidence.graph
     same = dataset.traj_id[graph.node_indices[graph.src[e]]] == dataset.traj_id[graph.node_indices[graph.dst[e]]]
+    dt = dataset.timestep[graph.node_indices[graph.dst[e]]] - dataset.timestep[graph.node_indices[graph.src[e]]]
     et = evidence.edge_type[e]
+    temporal_dt = dt[(et == TEMPORAL_BACKBONE) & (dt > 0)]
     return {
         "unsupported_edges": int(evidence.unsupported_shortcut[e].sum()),
         "support_risk": float(evidence.support_risk[e].sum()),
         "cross_support_risk": float(evidence.support_risk[e][~same].sum()) if (~same).any() else 0.0,
+        "execution_risk": float(evidence.execution_risk[e].sum()),
         "path_cross_edge_rate": float((~same).mean()),
         "path_temporal_backbone_rate": float((et == TEMPORAL_BACKBONE).mean()),
         "path_projected_support_rate": float((et == PROJECTED_TEMPORAL_SUPPORT).mean()),
@@ -592,6 +676,10 @@ def _support_path_stats(dataset: OfflineDataset, evidence: SupportEvidenceGraph,
         "path_unsupported_shortcut_rate": float((et == UNSUPPORTED_SHORTCUT).mean()),
         "path_min_support_score": float(np.min(evidence.support_score[e])),
         "path_mean_support_score": float(np.mean(evidence.support_score[e])),
+        "path_mean_execution_risk": float(np.mean(evidence.execution_risk[e])),
+        "path_max_execution_risk": float(np.max(evidence.execution_risk[e])),
+        "path_temporal_dt_mean": float(np.mean(temporal_dt)) if len(temporal_dt) else float("nan"),
+        "path_temporal_dt_max": float(np.max(temporal_dt)) if len(temporal_dt) else float("nan"),
     }
 
 
@@ -606,6 +694,7 @@ def _make_support_plan_result(dataset: OfflineDataset, evidence: SupportEvidence
         unsupported_edges=int(stats["unsupported_edges"]),
         support_risk=float(stats["support_risk"]),
         cross_support_risk=float(stats["cross_support_risk"]),
+        execution_risk=float(stats["execution_risk"]),
         path_cross_edge_rate=float(stats["path_cross_edge_rate"]),
         path_temporal_backbone_rate=float(stats["path_temporal_backbone_rate"]),
         path_projected_support_rate=float(stats["path_projected_support_rate"]),
@@ -614,6 +703,10 @@ def _make_support_plan_result(dataset: OfflineDataset, evidence: SupportEvidence
         path_unsupported_shortcut_rate=float(stats["path_unsupported_shortcut_rate"]),
         path_min_support_score=float(stats["path_min_support_score"]),
         path_mean_support_score=float(stats["path_mean_support_score"]),
+        path_mean_execution_risk=float(stats["path_mean_execution_risk"]),
+        path_max_execution_risk=float(stats["path_max_execution_risk"]),
+        path_temporal_dt_mean=float(stats["path_temporal_dt_mean"]),
+        path_temporal_dt_max=float(stats["path_temporal_dt_max"]),
     )
 
 
@@ -625,6 +718,7 @@ def plan_support_lexicographic(
     *,
     lambda_cost: float = 1.0,
     lambda_support_risk: float = 1.0,
+    lambda_execution_risk: float = 1.0,
     max_edges: Optional[int] = None,
     variant: str = "stage29_lexicographic",
 ) -> SupportPlanResult:
@@ -654,7 +748,7 @@ def plan_support_lexicographic(
             ns = (
                 int(unsup + int(evidence.unsupported_shortcut[eid])),
                 float(srisk + lambda_support_risk * float(evidence.support_risk[eid])),
-                float(cost + lambda_cost * float(graph.cost[eid])),
+                float(cost + lambda_cost * float(graph.cost[eid]) + lambda_execution_risk * float(evidence.execution_risk[eid])),
             )
             st = (v, nd)
             if ns < dist.get(st, (math.inf, math.inf, math.inf)):
@@ -687,6 +781,7 @@ def plan_support_budgeted(
     support_risk_budget: float,
     max_edges: Optional[int] = None,
     support_risk_bin: float = 0.05,
+    lambda_execution_risk: float = 1.0,
     variant: Optional[str] = None,
 ) -> SupportPlanResult:
     graph = evidence.graph
@@ -726,7 +821,7 @@ def plan_support_budgeted(
                 continue
             v = int(graph.dst[eid])
             n_depth = depth + 1
-            n_cost = float(cost + float(graph.cost[eid]))
+            n_cost = float(cost + float(graph.cost[eid]) + lambda_execution_risk * float(evidence.execution_risk[eid]))
             st = (v, n_depth, n_unsup, n_bin)
             if n_cost < dist.get(st, math.inf):
                 dist[st] = n_cost
