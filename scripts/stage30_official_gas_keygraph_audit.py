@@ -126,6 +126,10 @@ def _edge_rows(
         u = int(u)
         v = int(v)
         meta = _edge_metadata(key_graph, u, v, node_map, traj_ids)
+        trajectory_semantics_valid = int(
+            str(meta.get("edge_dataset_mapping_exact", "")) in {"1", "1.0"}
+            and str(meta.get("same_trajectory_available", "")) in {"1", "1.0"}
+        )
         counts = usage.get((u, v), {})
         rows.append(
             {
@@ -135,6 +139,7 @@ def _edge_rows(
                 "env_name": art.env_name,
                 "seed": art.seed,
                 **meta,
+                "trajectory_semantics_valid": trajectory_semantics_valid,
                 "src_degree": _degree(key_graph.graph, u, "degree"),
                 "dst_degree": _degree(key_graph.graph, v, "degree"),
                 "src_out_degree": _degree(key_graph.graph, u, "out_degree"),

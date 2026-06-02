@@ -65,7 +65,13 @@ def _finite_float(value: Any) -> float:
         return float("nan")
 
 
-def _build_edge_categories(key_graph: Any, node_map: dict[int, dict[str, Any]], traj_ids: dict[int, int], path_edge_rows: list[dict[str, str]]) -> dict[str, list[tuple[int, int]]]:
+def _build_edge_categories(
+    key_graph: Any,
+    node_map: dict[int, dict[str, Any]],
+    traj_ids: dict[int, int],
+    path_edge_rows: list[dict[str, str]],
+    probe_mode: str,
+) -> dict[str, list[tuple[int, int]]]:
     categories: dict[str, list[tuple[int, int]]] = defaultdict(list)
     te_edges: list[tuple[float, tuple[int, int]]] = []
     weighted_edges: list[tuple[float, tuple[int, int]]] = []
@@ -76,10 +82,11 @@ def _build_edge_categories(key_graph: Any, node_map: dict[int, dict[str, Any]], 
         if u >= key_graph.base_node_cnt:
             continue
         cat = str(meta.get("edge_category", ""))
-        if cat == "same_trajectory_temporal_like_edge":
-            categories["same_trajectory_temporal_like_edges"].append((u, v))
-        if cat == "cross_trajectory_keygraph_edge":
-            categories["cross_trajectory_edges"].append((u, v))
+        if probe_mode == "exact_semantic_probe":
+            if cat == "same_trajectory_temporal_like_edge":
+                categories["same_trajectory_temporal_like_edges"].append((u, v))
+            if cat == "cross_trajectory_keygraph_edge":
+                categories["cross_trajectory_edges"].append((u, v))
         te_f = _finite_float(meta.get("te_score", ""))
         if math.isfinite(te_f):
             te_edges.append((te_f, (u, v)))
@@ -138,6 +145,20 @@ def _sample_edges(edges: list[tuple[int, int]], n: int, seed: int) -> list[tuple
     return [edges[int(i)] for i in idx]
 
 
+def _clear_trajectory_semantics(meta: dict[str, Any]) -> None:
+    meta.update(
+        {
+            "same_trajectory": "",
+            "same_trajectory_available": 0,
+            "dt": "",
+            "dt_available": 0,
+            "cross_trajectory": "",
+            "cross_trajectory_available": 0,
+            "edge_category": "official_keygraph_edge_metadata_only",
+        }
+    )
+
+
 def _set_state_from_dataset(env: Any, dataset: Any, dataset_idx: int, seed: int) -> tuple[bool, str, np.ndarray | None]:
     if dataset is None or "observations" not in dataset.files:
         return False, "dataset_observations_unavailable", None
@@ -189,6 +210,7 @@ def _execute_edge(
     horizon: int,
     threshold: float,
     seed: int,
+    probe_mode: str,
 ) -> dict[str, Any]:
     u, v = edge
     key_graph = components["key_graph"]
@@ -196,12 +218,21 @@ def _execute_edge(
     mods = components["mods"]
     env = components["env"]
     meta = _edge_metadata(key_graph, u, v, node_map, traj_ids)
+    if probe_mode == "nearest_execution_probe":
+        _clear_trajectory_semantics(meta)
+    trajectory_semantics_valid = int(
+        probe_mode == "exact_semantic_probe"
+        and str(meta.get("edge_dataset_mapping_exact", "")) in {"1", "1.0"}
+        and str(meta.get("same_trajectory_available", "")) in {"1", "1.0"}
+    )
     row: dict[str, Any] = {
         "stage": "stage30_official_gas_edge_probe",
         "evidence_class": "OFFICIAL_GAS_EDGE_EXECUTION_PROBE",
         "pre_stage30_results_status": ARCHIVED_PRE_STAGE30_STATUS,
         "env_name": art.env_name,
         "seed": art.seed,
+        "probe_mode": probe_mode,
+        "trajectory_semantics_valid": trajectory_semantics_valid,
         "category": category,
         "sample_index": edge_idx,
         **meta,
@@ -279,6 +310,7 @@ def _write_report(out_dir: Path, rows: list[dict[str, Any]], required: int) -> N
         "Status: OFFICIAL_GAS_EDGE_EXECUTION_PROBE.",
         f"Pre-Stage30 BARS/Stage28/Stage29 evidence: {ARCHIVED_PRE_STAGE30_STATUS}.",
         "A category is promotion-grade only when valid sampled edges meet the requested count.",
+        "Nearest execution probes may provide execution evidence, but never trajectory semantics.",
         "",
         "| category | rows | valid | reach_rate | set_state_rate | status |",
         "| --- | --- | --- | --- | --- | --- |",
@@ -308,6 +340,8 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=-1.0)
     parser.add_argument("--eval-on-cpu", type=int, default=1)
     parser.add_argument("--gpu", default="0")
+    parser.add_argument("--probe-mode", choices=["exact_semantic_probe", "nearest_execution_probe"], default="exact_semantic_probe")
+    parser.add_argument("--fallback-mode", default="none")
     parser.add_argument("--node-map-batch-size", type=int, default=4096)
     parser.add_argument("--node-map-tolerance", type=float, default=1e-5)
     args = parser.parse_args()
@@ -339,11 +373,13 @@ def main() -> None:
                 gpu=args.gpu,
                 source_identity=source_identity,
                 extra={
+                    "probe_mode": args.probe_mode,
                     "edges_per_category": args.edges_per_category,
                     "probe_horizon_arg": args.horizon,
                     "probe_threshold_arg": args.threshold,
                     "node_map_tolerance": args.node_map_tolerance,
                     "path_edge_csv": args.path_edge_csv,
+                    "fallback_mode": args.fallback_mode,
                 },
             )
         )
@@ -356,7 +392,7 @@ def main() -> None:
         )
         traj_ids = trajectory_ids_from_dataset(art.dataset_npz_path)
         dataset = load_dataset_arrays(art.dataset_npz_path)
-        categories = _build_edge_categories(key_graph, node_map, traj_ids, path_edge_rows)
+        categories = _build_edge_categories(key_graph, node_map, traj_ids, path_edge_rows, args.probe_mode)
         horizon = int(args.horizon if args.horizon > 0 else key_graph.way_steps)
         threshold = float(args.threshold if args.threshold > 0 else key_graph.way_steps)
         for category in MEANINGFUL_CATEGORY_ORDER:
@@ -375,6 +411,7 @@ def main() -> None:
                         horizon=horizon,
                         threshold=threshold,
                         seed=art.seed,
+                        probe_mode=args.probe_mode,
                     )
                 )
     write_csv(out_dir / "official_gas_edge_probe.csv", all_rows)

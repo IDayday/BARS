@@ -43,6 +43,13 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fh))
 
 
+def _read_many_csvs(raw: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for item in [x.strip() for x in raw.split(",") if x.strip()]:
+        rows.extend(_read_csv(Path(item)))
+    return rows
+
+
 def _edge_key_text(u: Any, v: Any) -> str:
     try:
         return f"{int(float(u))}->{int(float(v))}"
@@ -76,6 +83,8 @@ def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge
         return "NO_OFFICIAL_GRAPH_PATH", "official episode trace has no_path=1"
     if _truthy(ep.get("success")):
         used_cross = any(
+            str(e.get("trajectory_semantics_valid", e.get("cross_trajectory_available"))) in {"1", "1.0"}
+            and
             str(e.get("cross_trajectory_available")) in {"1", "1.0"}
             and (str(e.get("cross_trajectory")) in {"1", "1.0"} or str(e.get("edge_category")) == "cross_trajectory_keygraph_edge")
             for e in edges
@@ -85,18 +94,24 @@ def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge
         return "UNRESOLVED", "successful episode without cross-stitch evidence"
 
     failed_edge = ep.get("first_failed_edge_id", "") or ep.get("first_failed_edge", "")
-    probes = probe_by_edge.get(failed_edge, []) if failed_edge else []
+    first_failed_edge_reliable = _truthy(ep.get("first_failed_edge_reliable", "1" if failed_edge else "0"))
+    probes = probe_by_edge.get(failed_edge, []) if failed_edge and first_failed_edge_reliable else []
     valid_probes = [p for p in probes if _truthy(p.get("valid_probe"))]
     failed_probe = any(_truthy(p.get("valid_probe")) and not _truthy(p.get("reach")) for p in valid_probes)
     if valid_probes and failed_probe:
         edge_categories = {str(p.get("edge_category", "")) for p in valid_probes}
         sample_categories = {str(p.get("category", "")) for p in valid_probes}
         recoverable_cross_failure = any(
+            str(p.get("trajectory_semantics_valid")) in {"1", "1.0"}
+            and
             str(p.get("cross_trajectory_available")) in {"1", "1.0"}
             and (str(p.get("cross_trajectory")) in {"1", "1.0"} or str(p.get("edge_category")) == "cross_trajectory_keygraph_edge")
             for p in valid_probes
         )
-        recoverable_temporal_failure = any("same_trajectory_temporal_like" in c for c in edge_categories)
+        recoverable_temporal_failure = any(
+            str(p.get("trajectory_semantics_valid")) in {"1", "1.0"} and "same_trajectory_temporal_like" in str(p.get("edge_category", ""))
+            for p in valid_probes
+        )
         if recoverable_cross_failure:
             return "CROSS_EDGE_EXECUTION_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
         if recoverable_temporal_failure:
@@ -209,7 +224,7 @@ def main() -> None:
     args = parser.parse_args()
     episodes = _read_csv(Path(args.episode_csv))
     path_edges = _read_csv(Path(args.path_edge_csv))
-    probes = _read_csv(Path(args.edge_probe_csv)) if args.edge_probe_csv else []
+    probes = _read_many_csvs(args.edge_probe_csv) if args.edge_probe_csv else []
     probe_by_edge = _edge_probe_index(probes)
     out_rows: list[dict[str, Any]] = []
     for ep in episodes:

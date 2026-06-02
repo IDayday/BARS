@@ -192,6 +192,10 @@ def _edge_metadata(key_graph: Any, u: int, v: int, node_map: dict[int, dict[str,
                 "edge_category": "official_keygraph_edge_metadata_only",
             }
         )
+    row["trajectory_semantics_valid"] = int(
+        str(row.get("edge_dataset_mapping_exact", "")) in {"1", "1.0"}
+        and str(row.get("same_trajectory_available", "")) in {"1", "1.0"}
+    )
     return row
 
 
@@ -215,6 +219,22 @@ def _dist_stats(values: list[float], prefix: str) -> dict[str, Any]:
         f"{prefix}_p50": float(np.quantile(arr, 0.5)),
         f"{prefix}_max": float(np.max(arr)),
     }
+
+
+def _official_task_ids(env: Any, env_name: str) -> list[int]:
+    if env_name in ["kitchen-partial-v0"]:
+        return [1]
+    raw = getattr(env, "unwrapped", env)
+    task_infos = getattr(raw, "task_infos", getattr(env, "task_infos", []))
+    return list(range(1, len(task_infos) + 1)) if task_infos else [1]
+
+
+def _path_edges_text(path_indices: list[int]) -> str:
+    return " ".join(f"{u}->{v}" for u, v in zip(path_indices[:-1], path_indices[1:]))
+
+
+def _path_nodes_text(path_indices: list[int]) -> str:
+    return " ".join(str(x) for x in path_indices)
 
 
 def _run_episode(
@@ -259,6 +279,10 @@ def _run_episode(
                 "planned_path_nodes": "",
                 "planned_path_edges": "",
                 "planned_path_len": 0,
+                "final_active_path_nodes": "",
+                "final_active_path_edges": "",
+                "final_active_path_len": 0,
+                "active_path_trace_count": 0,
                 "planned_edge_count": 0,
                 "num_subgoals": 0,
                 "subgoal_reached_count": 0,
@@ -267,6 +291,8 @@ def _run_episode(
                 "first_failed_subgoal": "",
                 "first_failed_edge_id": "",
                 "first_failed_edge": "",
+                "first_failed_edge_source": "no_official_graph_path",
+                "first_failed_edge_reliable": 0,
                 "timeout": 0,
                 "stuck": 0,
                 "divergence": 0,
@@ -279,6 +305,8 @@ def _run_episode(
         )
     shortest_path_nodes = key_graph.nodes[path_indices]
     initial_path_indices = list(path_indices)
+    active_path_indices = list(path_indices)
+    active_path_trace: list[list[int]] = [list(path_indices)]
     final_goal_on = False
     step = 0
     terminated = 0
@@ -286,6 +314,7 @@ def _run_episode(
     max_reached_path_index = 0
     cached_path_miss_count = 0
     path_update_count = 0
+    last_active_cur_node_idx = 0
     support_dists: list[float] = []
     used_edges: Counter[tuple[int, int]] = Counter()
     for u, v in zip(path_indices[:-1], path_indices[1:]):
@@ -300,15 +329,18 @@ def _run_episode(
             if cached_indices is not None:
                 if cached_indices != path_indices:
                     path_update_count += 1
+                    active_path_trace.append(list(cached_indices))
                     for u, v in zip(cached_indices[:-1], cached_indices[1:]):
                         used_edges[(int(u), int(v))] += 1
                 path_indices = cached_indices
+                active_path_indices = list(cached_indices)
                 shortest_path_nodes = key_graph.nodes[path_indices]
             elif cached_status != "ok":
                 cached_path_miss_count += 1
             distances = np.linalg.norm(np.asarray(shortest_path_nodes) - phi_obs, axis=1)
             valid_indices = np.where(distances <= int(config["way_steps"]))[0]
             cur_node_idx = int(valid_indices[-1]) if len(valid_indices) > 0 else 0
+            last_active_cur_node_idx = cur_node_idx
             max_reached_path_index = max(max_reached_path_index, cur_node_idx)
             if len(shortest_path_nodes) <= final_goal_threshold(art.env_name):
                 final_goal_on = True
@@ -330,11 +362,20 @@ def _run_episode(
     first_failed_subgoal = ""
     first_failed_edge = ""
     first_failed_subgoal_idx: int | str = ""
+    first_failed_edge_source = ""
+    first_failed_edge_reliable = 0
     if not success:
-        first_failed_subgoal_idx = min(max_reached_path_index + 1, max(len(initial_path_indices) - 1, 0))
-        first_failed_subgoal = initial_path_indices[first_failed_subgoal_idx] if initial_path_indices else ""
-        if first_failed_subgoal_idx > 0 and first_failed_subgoal_idx < len(initial_path_indices):
-            first_failed_edge = f"{initial_path_indices[first_failed_subgoal_idx - 1]}->{initial_path_indices[first_failed_subgoal_idx]}"
+        if final_goal_on:
+            first_failed_edge_source = "final_goal_phase_no_keygraph_edge"
+        elif active_path_indices:
+            first_failed_edge_source = "active_final_path_trace"
+            first_failed_subgoal_idx = min(last_active_cur_node_idx + 1, max(len(active_path_indices) - 1, 0))
+            first_failed_subgoal = active_path_indices[first_failed_subgoal_idx] if active_path_indices else ""
+            if first_failed_subgoal_idx > 0 and first_failed_subgoal_idx < len(active_path_indices):
+                first_failed_edge = f"{active_path_indices[first_failed_subgoal_idx - 1]}->{active_path_indices[first_failed_subgoal_idx]}"
+                first_failed_edge_reliable = 1
+        else:
+            first_failed_edge_source = "active_path_unavailable"
     episode_row: dict[str, Any] = {
         "stage": "stage30_official_gas_instrumentation",
         "evidence_class": "OFFICIAL_GAS_EPISODE_TRACE",
@@ -349,9 +390,13 @@ def _run_episode(
         "normalized_return": flat.get("episode.normalized_return", ""),
         "steps": step,
         "duration_sec": time.time() - start_time,
-        "planned_path_nodes": " ".join(str(x) for x in initial_path_indices),
-        "planned_path_edges": " ".join(f"{u}->{v}" for u, v in zip(initial_path_indices[:-1], initial_path_indices[1:])),
+        "planned_path_nodes": _path_nodes_text(initial_path_indices),
+        "planned_path_edges": _path_edges_text(initial_path_indices),
         "planned_path_len": len(initial_path_indices),
+        "final_active_path_nodes": _path_nodes_text(active_path_indices),
+        "final_active_path_edges": _path_edges_text(active_path_indices),
+        "final_active_path_len": len(active_path_indices),
+        "active_path_trace_count": len(active_path_trace),
         "planned_edge_count": max(0, len(initial_path_indices) - 1),
         "num_subgoals": max(0, len(initial_path_indices) - final_goal_threshold(art.env_name)),
         "subgoal_reached_count": max_reached_path_index + 1,
@@ -360,6 +405,8 @@ def _run_episode(
         "first_failed_subgoal": first_failed_subgoal,
         "first_failed_edge_id": first_failed_edge,
         "first_failed_edge": first_failed_edge,
+        "first_failed_edge_source": first_failed_edge_source,
+        "first_failed_edge_reliable": first_failed_edge_reliable,
         "no_path": 0,
         "no_path_reason": "",
         "cached_path_miss_count": cached_path_miss_count,
@@ -438,10 +485,11 @@ def main() -> None:
     parser.add_argument("--out-root", default="runs_stage30_official_gas/instrumentation")
     parser.add_argument("--envs", default="antmaze-medium-navigate-v0")
     parser.add_argument("--seeds", default="44")
-    parser.add_argument("--task-ids", default="1")
+    parser.add_argument("--task-ids", default="auto")
     parser.add_argument("--episodes", type=int, default=2)
     parser.add_argument("--eval-on-cpu", type=int, default=1)
     parser.add_argument("--gpu", default="0")
+    parser.add_argument("--fallback-mode", default="none")
     parser.add_argument("--recover-dataset-indices", type=int, default=0)
     parser.add_argument("--node-map-batch-size", type=int, default=4096)
     parser.add_argument("--node-map-tolerance", type=float, default=1e-5)
@@ -450,7 +498,7 @@ def main() -> None:
     out_dir = Path(args.out_root)
     out_dir.mkdir(parents=True, exist_ok=True)
     artifacts = scan_official_artifacts(Path(args.artifact_root), parse_csv_list(args.envs), parse_seed_list(args.seeds))
-    task_ids = [int(x) for x in parse_csv_list(args.task_ids)]
+    task_ids_arg = [int(x) for x in parse_csv_list(args.task_ids)]
     gas_repo = Path(args.gas_repo_path)
     source_identity = gas_source_identity(gas_repo)
     command_line = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
@@ -460,6 +508,7 @@ def main() -> None:
     for art in artifacts:
         components = _load_official_components(art, gas_repo, art.seed, args.eval_on_cpu)
         key_graph = components["key_graph"]
+        task_ids = task_ids_arg or _official_task_ids(components["env"], art.env_name)
         protocol_rows.append(
             protocol_lock_row(
                 art,
@@ -477,6 +526,8 @@ def main() -> None:
                 extra={
                     "recover_dataset_indices": args.recover_dataset_indices,
                     "node_map_tolerance": args.node_map_tolerance,
+                    "fallback_mode": args.fallback_mode,
+                    "official_task_id_source": "auto_env_task_infos" if not task_ids_arg else "explicit_cli",
                 },
             )
         )
