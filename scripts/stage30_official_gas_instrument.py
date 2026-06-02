@@ -486,6 +486,7 @@ def main() -> None:
     parser.add_argument("--envs", default="antmaze-medium-navigate-v0")
     parser.add_argument("--seeds", default="44")
     parser.add_argument("--task-ids", default="auto")
+    parser.add_argument("--max-task-id", type=int, default=0)
     parser.add_argument("--episodes", type=int, default=2)
     parser.add_argument("--eval-on-cpu", type=int, default=1)
     parser.add_argument("--gpu", default="0")
@@ -509,6 +510,8 @@ def main() -> None:
         components = _load_official_components(art, gas_repo, art.seed, args.eval_on_cpu)
         key_graph = components["key_graph"]
         task_ids = task_ids_arg or _official_task_ids(components["env"], art.env_name)
+        if args.max_task_id > 0:
+            task_ids = [int(x) for x in task_ids if int(x) <= args.max_task_id]
         protocol_rows.append(
             protocol_lock_row(
                 art,
@@ -527,6 +530,7 @@ def main() -> None:
                     "recover_dataset_indices": args.recover_dataset_indices,
                     "node_map_tolerance": args.node_map_tolerance,
                     "fallback_mode": args.fallback_mode,
+                    "max_task_id": args.max_task_id,
                     "official_task_id_source": "auto_env_task_infos" if not task_ids_arg else "explicit_cli",
                 },
             )

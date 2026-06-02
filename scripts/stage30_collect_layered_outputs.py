@@ -9,7 +9,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from stage30_official_gas_analyze import TAXONOMY, _assign_label, _edge_probe_index, _summary_rows
+from stage30_official_gas_analyze import TAXONOMY, _assign_taxonomy_row, _edge_probe_index, _summary_rows
 from stage30_official_gas_common import ARCHIVED_PRE_STAGE30_STATUS, write_csv
 
 
@@ -53,31 +53,32 @@ def _taxonomy_rows(episodes: list[dict[str, Any]], path_edges: list[dict[str, An
     out: list[dict[str, Any]] = []
     for ep in episodes:
         edges = edges_by_episode.get(_episode_key(ep), [])
-        label, evidence = _assign_label(ep, edges, probe_by_edge)
+        labels = _assign_taxonomy_row(ep, edges, probe_by_edge)
         out.append(
             {
                 "stage": "stage30_official_gas_global_failure_taxonomy",
                 "evidence_class": "OFFICIAL_GAS_EPISODE_PATH_AND_EDGE_EVIDENCE",
                 "pre_stage30_results_status": ARCHIVED_PRE_STAGE30_STATUS,
                 **ep,
-                "taxonomy_label": label,
-                "taxonomy_evidence": evidence,
+                **labels,
             }
         )
     return out
 
 
 def _dominant_label(rows: list[dict[str, Any]]) -> tuple[str, int, float]:
-    labels = [str(r.get("taxonomy_label", "")) for r in rows if str(r.get("taxonomy_label", "")) not in {"", "UNRESOLVED"}]
+    failed = [r for r in rows if str(r.get("outcome_label", "")) == "FAILURE"]
+    labels = [str(r.get("failure_label", "")) for r in failed if str(r.get("failure_label", "")) not in {"", "UNRESOLVED_FAILURE"}]
     if not labels:
         return "NO_STABLE_DOMINANT_FAILURE_MODE", 0, 0.0
     label, count = Counter(labels).most_common(1)[0]
-    return label, count, count / max(1, len(rows))
+    return label, count, count / max(1, len(failed))
 
 
 def _write_report(out_dir: Path, episodes: list[dict[str, Any]], probes: list[dict[str, Any]], taxonomy: list[dict[str, Any]], by_env: list[dict[str, Any]]) -> None:
     by_probe_mode = Counter(str(r.get("probe_mode", "unavailable")) for r in probes)
-    unresolved = sum(1 for r in taxonomy if str(r.get("taxonomy_label")) == "UNRESOLVED")
+    failed = [r for r in taxonomy if str(r.get("outcome_label", "")) == "FAILURE"]
+    unresolved = sum(1 for r in failed if str(r.get("failure_label")) == "UNRESOLVED_FAILURE")
     dominant, dominant_count, dominant_rate = _dominant_label(taxonomy)
     lines = [
         "# Stage30 Official GAS Global Diagnosis Collector",
@@ -90,7 +91,7 @@ def _write_report(out_dir: Path, episodes: list[dict[str, Any]], probes: list[di
         "",
         f"- episodes: {len(episodes)}",
         f"- edge probe rows: {len(probes)}",
-        f"- unresolved taxonomy: {unresolved}/{len(taxonomy)} ({unresolved / max(1, len(taxonomy)):.4f})",
+        f"- unresolved failures: {unresolved}/{len(failed)} ({unresolved / max(1, len(failed)):.4f})",
         f"- dominant evidence-backed label: `{dominant}` count={dominant_count}, rate={dominant_rate:.4f}",
         "",
         "## Probe Modes",

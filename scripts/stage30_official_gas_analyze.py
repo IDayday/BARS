@@ -21,8 +21,12 @@ from stage30_official_gas_common import (
 )
 
 
-TAXONOMY = [
-    "SUCCESS_WITH_CROSS_STITCHING",
+OUTCOME_LABELS = [
+    "SUCCESS",
+    "FAILURE",
+]
+
+FAILURE_TAXONOMY = [
     "NO_OFFICIAL_GRAPH_PATH",
     "KEYGRAPH_ABSTRACTION_LOST_SUPPORT",
     "CROSS_EDGE_EXECUTION_FAILURE",
@@ -32,8 +36,10 @@ TAXONOMY = [
     "GOAL_INTERFACE_FAILURE",
     "POLICY_LOCAL_FAILURE",
     "LOW_TE_OR_NOISY_NODE_FAILURE",
-    "UNRESOLVED",
+    "UNRESOLVED_FAILURE",
 ]
+
+TAXONOMY = ["SUCCESS", *FAILURE_TAXONOMY]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -78,20 +84,26 @@ def _episode_edges(path_edges: list[dict[str, str]], env_name: str, seed: str, t
     ]
 
 
-def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge: dict[str, list[dict[str, str]]]) -> tuple[str, str]:
+def _used_recoverable_cross_edge(edges: list[dict[str, str]]) -> bool:
+    return any(
+        str(e.get("trajectory_semantics_valid", e.get("cross_trajectory_available"))) in {"1", "1.0"}
+        and str(e.get("cross_trajectory_available")) in {"1", "1.0"}
+        and (str(e.get("cross_trajectory")) in {"1", "1.0"} or str(e.get("edge_category")) == "cross_trajectory_keygraph_edge")
+        for e in edges
+    )
+
+
+def _assign_outcome_failure(
+    ep: dict[str, str],
+    edges: list[dict[str, str]],
+    probe_by_edge: dict[str, list[dict[str, str]]],
+) -> tuple[str, str, str, str]:
     if _truthy(ep.get("no_path")):
-        return "NO_OFFICIAL_GRAPH_PATH", "official episode trace has no_path=1"
+        return "FAILURE", "NO_OFFICIAL_GRAPH_PATH", "NO_PATH", "official episode trace has no_path=1"
     if _truthy(ep.get("success")):
-        used_cross = any(
-            str(e.get("trajectory_semantics_valid", e.get("cross_trajectory_available"))) in {"1", "1.0"}
-            and
-            str(e.get("cross_trajectory_available")) in {"1", "1.0"}
-            and (str(e.get("cross_trajectory")) in {"1", "1.0"} or str(e.get("edge_category")) == "cross_trajectory_keygraph_edge")
-            for e in edges
-        )
-        if used_cross:
-            return "SUCCESS_WITH_CROSS_STITCHING", "successful official episode used cross-trajectory path edge evidence"
-        return "UNRESOLVED", "successful episode without cross-stitch evidence"
+        if _used_recoverable_cross_edge(edges):
+            return "SUCCESS", "NOT_FAILED", "SUCCESS_WITH_CROSS_STITCHING", "successful official episode used recoverable cross-trajectory path edge evidence"
+        return "SUCCESS", "NOT_FAILED", "SUCCESS_WITHOUT_RECOVERABLE_CROSS_STITCHING", "successful official episode; no failure label assigned"
 
     failed_edge = ep.get("first_failed_edge_id", "") or ep.get("first_failed_edge", "")
     first_failed_edge_reliable = _truthy(ep.get("first_failed_edge_reliable", "1" if failed_edge else "0"))
@@ -113,19 +125,36 @@ def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge
             for p in valid_probes
         )
         if recoverable_cross_failure:
-            return "CROSS_EDGE_EXECUTION_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
+            return "FAILURE", "CROSS_EDGE_EXECUTION_FAILURE", "FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
         if recoverable_temporal_failure:
-            return "TEMPORAL_EDGE_EXECUTION_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
+            return "FAILURE", "TEMPORAL_EDGE_EXECUTION_FAILURE", "FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
         if "long_hop_edges" in sample_categories or "high_cost_edges" in sample_categories:
-            return "LONG_HOP_FAILURE", f"first_failed_edge={failed_edge} failed in official long-hop/high-cost probe category"
+            return "FAILURE", "LONG_HOP_FAILURE", "FAILURE", f"first_failed_edge={failed_edge} failed in official long-hop/high-cost probe category"
         if "low_te_edges" in sample_categories:
-            return "LOW_TE_OR_NOISY_NODE_FAILURE", f"first_failed_edge={failed_edge} failed in official low-TE probe category"
-        return "POLICY_LOCAL_FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
+            return "FAILURE", "LOW_TE_OR_NOISY_NODE_FAILURE", "FAILURE", f"first_failed_edge={failed_edge} failed in official low-TE probe category"
+        return "FAILURE", "POLICY_LOCAL_FAILURE", "FAILURE", f"first_failed_edge={failed_edge} has failed official edge probe"
     if _truthy(ep.get("timeout")):
-        return "SUBGOAL_SEQUENCE_DRIFT", "episode timed out without edge-probe-supported first-edge label"
+        return "FAILURE", "SUBGOAL_SEQUENCE_DRIFT", "FAILURE", "episode timed out without edge-probe-supported first-edge label"
     if _truthy(ep.get("stuck")):
-        return "POLICY_LOCAL_FAILURE", "episode stuck by progress heuristic without edge-probe-supported edge label"
-    return "UNRESOLVED", "no sufficient episode + edge execution evidence for taxonomy label"
+        return "FAILURE", "POLICY_LOCAL_FAILURE", "FAILURE", "episode stuck by progress heuristic without edge-probe-supported edge label"
+    return "FAILURE", "UNRESOLVED_FAILURE", "FAILURE", "no sufficient episode + edge execution evidence for failure label"
+
+
+def _assign_label(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge: dict[str, list[dict[str, str]]]) -> tuple[str, str]:
+    outcome_label, failure_label, _, evidence = _assign_outcome_failure(ep, edges, probe_by_edge)
+    taxonomy_label = "SUCCESS" if outcome_label == "SUCCESS" else failure_label
+    return taxonomy_label, evidence
+
+
+def _assign_taxonomy_row(ep: dict[str, str], edges: list[dict[str, str]], probe_by_edge: dict[str, list[dict[str, str]]]) -> dict[str, str]:
+    outcome_label, failure_label, outcome_detail, evidence = _assign_outcome_failure(ep, edges, probe_by_edge)
+    return {
+        "outcome_label": outcome_label,
+        "failure_label": failure_label,
+        "outcome_detail": outcome_detail,
+        "taxonomy_label": "SUCCESS" if outcome_label == "SUCCESS" else failure_label,
+        "taxonomy_evidence": evidence,
+    }
 
 
 def _wilson(k: int, n: int) -> tuple[float, float]:
@@ -157,11 +186,12 @@ def _summary_rows(rows: list[dict[str, Any]], group_fields: list[str]) -> list[d
 
 
 def _dominant_label(rows: list[dict[str, Any]]) -> tuple[str, int, float]:
-    labels = [str(r.get("taxonomy_label", "")) for r in rows if str(r.get("taxonomy_label", "")) not in {"", "UNRESOLVED"}]
+    failed = [r for r in rows if str(r.get("outcome_label", "")) == "FAILURE"]
+    labels = [str(r.get("failure_label", "")) for r in failed if str(r.get("failure_label", "")) not in {"", "UNRESOLVED_FAILURE"}]
     if not labels:
         return "NO_STABLE_DOMINANT_FAILURE_MODE", 0, 0.0
     label, count = Counter(labels).most_common(1)[0]
-    return label, count, count / max(1, len(rows))
+    return label, count, count / max(1, len(failed))
 
 
 def _write_report(out_dir: Path, rows: list[dict[str, Any]], by_env_rows: list[dict[str, Any]]) -> None:
@@ -170,7 +200,7 @@ def _write_report(out_dir: Path, rows: list[dict[str, Any]], by_env_rows: list[d
         "",
         "Status: OFFICIAL_GAS_ONLY_FAILURE_TAXONOMY.",
         f"Pre-Stage30 BARS/Stage28/Stage29 evidence: {ARCHIVED_PRE_STAGE30_STATUS}.",
-        "Labels are assigned only from official episode traces plus official edge execution probes; otherwise the label remains UNRESOLVED.",
+        "Outcome and failure labels are separated. Successful episodes are never counted as unresolved failures.",
         "",
         "| env_name | label | count | rate | ci95_low | ci95_high |",
         "| --- | --- | --- | --- | --- | --- |",
@@ -184,8 +214,13 @@ def _write_report(out_dir: Path, rows: list[dict[str, Any]], by_env_rows: list[d
     by_env: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         by_env[str(row.get("env_name", ""))].append(row)
+    failed_rows = [r for r in rows if str(r.get("outcome_label", "")) == "FAILURE"]
+    unresolved_failed = sum(1 for r in failed_rows if str(r.get("failure_label", "")) == "UNRESOLVED_FAILURE")
     overall_label, overall_count, overall_rate = _dominant_label(rows)
-    lines.extend(["", "## Dominant Evidence-Backed Labels", ""])
+    lines.extend(["", "## Failed Episode Semantics", ""])
+    lines.append(f"- failed episodes: {len(failed_rows)}")
+    lines.append(f"- unresolved failures: {unresolved_failed}/{max(1, len(failed_rows))} ({unresolved_failed / max(1, len(failed_rows)):.4f})")
+    lines.extend(["", "## Dominant Evidence-Backed Failure Labels", ""])
     lines.append(f"- overall: `{overall_label}` count={overall_count}, rate={overall_rate:.4f}")
     for env_name, part in sorted(by_env.items()):
         label, count, rate = _dominant_label(part)
@@ -229,15 +264,14 @@ def main() -> None:
     out_rows: list[dict[str, Any]] = []
     for ep in episodes:
         edges = _episode_edges(path_edges, ep.get("env_name", ""), ep.get("seed", ""), ep.get("task_id", ""), ep.get("episode_id", ""))
-        label, evidence = _assign_label(ep, edges, probe_by_edge)
+        labels = _assign_taxonomy_row(ep, edges, probe_by_edge)
         out_rows.append(
             {
                 "stage": "stage30_official_gas_failure_taxonomy",
                 "evidence_class": "OFFICIAL_GAS_EPISODE_AND_EDGE_EVIDENCE",
                 "pre_stage30_results_status": ARCHIVED_PRE_STAGE30_STATUS,
                 **ep,
-                "taxonomy_label": label,
-                "taxonomy_evidence": evidence,
+                **labels,
             }
         )
     out_dir = Path(args.out_root)
