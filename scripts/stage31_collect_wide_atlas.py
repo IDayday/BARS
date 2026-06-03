@@ -32,6 +32,13 @@ def _collect(run_root: Path, relative_paths: list[str]) -> list[dict[str, Any]]:
     return rows
 
 
+def _collect_many(run_roots: list[Path], relative_paths: list[str]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for run_root in run_roots:
+        rows.extend(_collect(run_root, relative_paths))
+    return rows
+
+
 def _truthy(value: Any) -> bool:
     return str(value) in {"1", "1.0", "true", "True"}
 
@@ -258,7 +265,7 @@ def _path_dynamics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def _compute_manifest(protocols: list[dict[str, Any]], episodes: list[dict[str, Any]], run_root: Path, out_dir: Path, command_line: str) -> list[dict[str, Any]]:
+def _compute_manifest(protocols: list[dict[str, Any]], episodes: list[dict[str, Any]], run_root: str, out_dir: Path, command_line: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for row in protocols:
         rows.append(
@@ -349,19 +356,25 @@ def _write_report(out_dir: Path, episodes: list[dict[str, Any]], by_env: list[di
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect Stage31 wide official GAS behavior atlas outputs.")
-    parser.add_argument("--run-root", required=True)
+    parser.add_argument("--run-root", default="")
+    parser.add_argument("--run-roots", default="", help="Comma-separated run roots. Overrides --run-root when set.")
     parser.add_argument("--inventory-csv", default="")
     parser.add_argument("--out-root", default="")
     args = parser.parse_args()
 
-    run_root = Path(args.run_root)
-    out_dir = Path(args.out_root) if args.out_root else run_root / "global"
+    run_roots = [Path(x.strip()) for x in args.run_roots.split(",") if x.strip()] if args.run_roots else []
+    if not run_roots and args.run_root:
+        run_roots = [Path(args.run_root)]
+    if not run_roots:
+        raise SystemExit("--run-root or --run-roots is required")
+    run_root_label = ",".join(str(x) for x in run_roots)
+    out_dir = Path(args.out_root) if args.out_root else run_roots[0] / "global"
     out_dir.mkdir(parents=True, exist_ok=True)
     inventory = _inventory_index(Path(args.inventory_csv)) if args.inventory_csv else {}
 
-    episodes_raw = _collect(run_root, ["*/seed*/instrumentation/official_gas_episode_traces.csv"])
-    path_edges = _collect(run_root, ["*/seed*/instrumentation/official_gas_path_edges.csv"])
-    protocols = _collect(run_root, ["*/seed*/instrumentation/protocol_lock.csv"])
+    episodes_raw = _collect_many(run_roots, ["*/seed*/instrumentation/official_gas_episode_traces.csv"])
+    path_edges = _collect_many(run_roots, ["*/seed*/instrumentation/official_gas_path_edges.csv"])
+    protocols = _collect_many(run_roots, ["*/seed*/instrumentation/protocol_lock.csv"])
     episodes = _annotate_episodes(episodes_raw, inventory)
 
     by_env_seed_task = _summary(episodes, ["env_name", "seed", "task_id", "env_family", "dataset_type", "observation_type", "target_tier"])
@@ -372,7 +385,7 @@ def main() -> None:
     task_rows = _summary(episodes, ["env_name", "task_id", "env_family", "dataset_type", "observation_type", "target_tier"])
     dynamics_rows = _path_dynamics(episodes)
     command_line = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
-    manifest_rows = _compute_manifest(protocols, episodes, run_root, out_dir, command_line)
+    manifest_rows = _compute_manifest(protocols, episodes, run_root_label, out_dir, command_line)
 
     write_csv(out_dir / "stage31_all_episode_traces.csv", episodes)
     write_csv(out_dir / "stage31_all_path_edges.csv", path_edges)
