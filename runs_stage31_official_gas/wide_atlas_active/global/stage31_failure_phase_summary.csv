@@ -1,0 +1,16 @@
+env_name,env_family,dataset_type,observation_type,failure_phase,count,denominator,rate,ci95_low,ci95_high
+antmaze-giant-navigate-v0,antmaze,ogbench,state,final_goal_phase,38,113,0.336283185840708,0.2558324486519233,0.42749951530611924
+antmaze-giant-navigate-v0,antmaze,ogbench,state,keygraph_subgoal,75,113,0.6637168141592921,0.5725004846938809,0.7441675513480769
+antmaze-giant-stitch-v0,antmaze,ogbench,state,final_goal_phase,10,71,0.14084507042253522,0.07834118071720814,0.24021961969325883
+antmaze-giant-stitch-v0,antmaze,ogbench,state,keygraph_subgoal,61,71,0.8591549295774648,0.7597803803067411,0.9216588192827919
+antmaze-large-explore-v0,antmaze,ogbench,state,final_goal_phase,2,37,0.05405405405405406,0.01495066277053994,0.1770496506353991
+antmaze-large-explore-v0,antmaze,ogbench,state,keygraph_subgoal,35,37,0.9459459459459459,0.822950349364601,0.9850493372294601
+antmaze-large-navigate-v0,antmaze,ogbench,state,final_goal_phase,4,32,0.125,0.04970053844474301,0.2806864978482796
+antmaze-large-navigate-v0,antmaze,ogbench,state,keygraph_subgoal,28,32,0.875,0.7193135021517204,0.950299461555257
+antmaze-large-stitch-v0,antmaze,ogbench,state,final_goal_phase,2,36,0.05555555555555555,0.015369663767066846,0.18144974107611211
+antmaze-large-stitch-v0,antmaze,ogbench,state,keygraph_subgoal,34,36,0.9444444444444444,0.8185502589238878,0.9846303362329332
+antmaze-medium-explore-v0,antmaze,ogbench,state,keygraph_subgoal,22,22,1.0,0.8513404742740388,1.0
+antmaze-medium-navigate-v0,antmaze,ogbench,state,final_goal_phase,8,19,0.42105263157894735,0.2314162039203038,0.6372444853483988
+antmaze-medium-navigate-v0,antmaze,ogbench,state,keygraph_subgoal,11,19,0.5789473684210527,0.36275551465160105,0.7685837960796962
+antmaze-medium-stitch-v0,antmaze,ogbench,state,final_goal_phase,7,34,0.20588235294117646,0.1034939602235132,0.3679871610821398
+antmaze-medium-stitch-v0,antmaze,ogbench,state,keygraph_subgoal,27,34,0.7941176470588235,0.6320128389178601,0.8965060397764868

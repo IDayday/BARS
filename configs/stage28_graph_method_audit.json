@@ -1,0 +1,113 @@
+{
+  "seed": 0,
+  "device": "cuda",
+  "data": {
+    "source": "ogbench",
+    "env_name": "antmaze-medium-stitch-v0",
+    "dataset_limit": 0,
+    "compact_dataset": false
+  },
+  "ann": {
+    "backend": "auto",
+    "use_gpu": false,
+    "gpu_id": 0,
+    "n_threads": 1
+  },
+  "reachability": {
+    "enabled": true,
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "horizon": 50
+  },
+  "graph": {
+    "node_method": "bars",
+    "edge_knn": 16,
+    "bidirectional_knn": true,
+    "temporal_connect": 4,
+    "temporal_edge_horizon": 100,
+    "top_outgoing": 16,
+    "min_outgoing": 4,
+    "preserve_temporal_edges": true,
+    "prune_lambda_risk": 0.25,
+    "p_clip": 0.0001,
+    "score_batch_size": 65536,
+    "ann_backend": "auto",
+    "ann_use_gpu": false,
+    "ann_threads": 1
+  },
+  "boundary": {
+    "enabled": true,
+    "method": "support_modes"
+  },
+  "planner": {
+    "variant": "full_bars",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 0.1,
+    "max_edges": 12
+  },
+  "stage28_audit": {
+    "graph_variants": [
+      "base_cached",
+      "projection_temporal",
+      "dense_knn",
+      "xy_knn",
+      "endpoint_aug",
+      "bottleneck_aug"
+    ],
+    "base_planner_variants": [
+      "shortest",
+      "reachability",
+      "full_bars"
+    ],
+    "planner_variants": [
+      "shortest",
+      "reachability"
+    ],
+    "base_reference_variant": "full_bars",
+    "projection_reference_variant": "shortest",
+    "num_future_pairs": 256,
+    "num_cross_pairs": 128,
+    "path_min_dt": 80,
+    "path_max_dt": 250,
+    "edge_knn": 32,
+    "temporal_connect": 4,
+    "temporal_edge_horizon": 100,
+    "projection_temporal_offsets": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "max_nodes_per_variant": 4096,
+    "bottleneck_extra_nodes": 256,
+    "top_outgoing": 0,
+    "coverage_sample": 200000,
+    "projection_batch_size": 131072,
+    "score_batch_size": 65536,
+    "selected_p_exec_threshold": 0.5,
+    "low_cost_quantile": 0.2,
+    "high_conf_p_exec": 0.5,
+    "edge_label_horizon": 50,
+    "lambda_risk": 1.0,
+    "lambda_boundary": 0.1,
+    "max_path_edges": 12,
+    "enable_path_diversity_probe": true,
+    "path_diversity_remove_edges": 8,
+    "risky_cross_rate_threshold": 0.5,
+    "largest_hop_ratio_threshold": 0.55,
+    "low_alt_path_rate_threshold": 0.2,
+    "load_reachability": true,
+    "load_boundary": true,
+    "xy_dims": [
+      0,
+      1
+    ]
+  },
+  "experiment": {
+    "condition": "stage28_graph_method_audit"
+  }
+}

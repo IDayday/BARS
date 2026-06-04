@@ -1,0 +1,3 @@
+env,env_family,planner_id,baseline_success_rate,planner_success_rate,success_delta_vs_base,baseline_no_path_rate,planner_no_path_rate,no_path_delta_vs_base,baseline_false_shortcut_proxy_rate,planner_false_shortcut_proxy_rate,false_shortcut_reduced_substantially,path_cross_rate,unsupported_edge_count_mean,subgoal_reach_rate,edge_reach_rate,pass_success_regression_gate,pass_no_path_gate,pass_false_shortcut_gate,ready_for_50ep_confirm
+antmaze-medium-stitch-v0,stitch,STAGE29_LEXICOGRAPHIC,0.1,0.4,0.30000000000000004,0.8,0.2,-0.6000000000000001,1.0,0.0,1,0.4930555555555556,0.0,0.459375,0.459375,1,1,1,1
+antmaze-medium-stitch-v0,stitch,SUPPORT_BUDGET_K1,0.1,0.6,0.5,0.8,0.0,-0.8,1.0,0.0,1,0.6537012987012986,0.0,0.5420111832611832,0.5420111832611832,1,1,1,1

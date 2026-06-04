@@ -1,0 +1,106 @@
+{
+  "seed": 0,
+  "device": "cpu",
+  "data": {
+    "source": "ogbench",
+    "env_name": "antmaze-medium-stitch-v0",
+    "dataset_dir": "/mnt/project/offlinerl_datasets/ogbench",
+    "dataset_limit": 0,
+    "compact_dataset": false
+  },
+  "ann": {
+    "backend": "auto",
+    "use_gpu": false,
+    "gpu_id": 0,
+    "n_threads": 1
+  },
+  "planner": {
+    "variant": "stage29_support_calibrated_gas",
+    "lambda_risk": 1.0,
+    "lambda_boundary": 0.1,
+    "max_edges": 12
+  },
+  "reachability": {
+    "enabled": false,
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "horizon": 50
+  },
+  "boundary": {
+    "enabled": false
+  },
+  "stage29_support": {
+    "use_run_config": true,
+    "load_reachability": true,
+    "load_boundary": true,
+    "num_future_pairs": 256,
+    "num_cross_pairs": 128,
+    "path_min_dt": 80,
+    "path_max_dt": 250,
+    "max_path_edges": 12,
+    "max_nodes": 20000,
+    "endpoint_window": 1,
+    "endpoint_max_nodes": 4096,
+    "trajectory_anchor_stride": 20,
+    "trajectory_anchor_nodes": 12000,
+    "projection_change_nodes": 4096,
+    "bottleneck_nodes": 2048,
+    "projected_support_offsets": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "projection_batch_size": 131072,
+    "temporal_backbone_connect": 16,
+    "temporal_support_horizon": 100,
+    "projected_support_min_count": 1,
+    "projected_support_top_per_src": 16,
+    "support_count_scale": 4.0,
+    "support_density_scale": 0.02,
+    "support_count_weight": 0.65,
+    "supported_bridge_score": 0.35,
+    "candidate_bridge_score": 0.08,
+    "cross_edge_base_risk": 0.25,
+    "supported_cross_min_risk": 0.25,
+    "same_traj_support_risk_weight": 0.0,
+    "same_traj_zero_count_penalty": 0.0,
+    "same_traj_support_min_risk": 0.0,
+    "temporal_execution_support_weight": 0.0,
+    "projected_execution_support_weight": 0.0,
+    "cross_execution_support_weight": 0.0,
+    "temporal_execution_dt_weight": 0.0,
+    "execution_zero_support_penalty": 0.0,
+    "lambda_execution_risk": 1.0,
+    "execution_densify_temporal_edges": false,
+    "execution_temporal_densify_step": 40,
+    "execution_temporal_densify_min_dt": 50,
+    "execution_temporal_densify_max_insert_per_edge": 4,
+    "run_lexicographic": true,
+    "unsupported_budgets": [
+      0,
+      1,
+      2
+    ],
+    "support_risk_budgets": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "default_planner_id": "stage29_lexicographic",
+    "support_risk_bin": 0.05,
+    "lambda_support_risk": 1.0,
+    "base_planner_variant": "reachability",
+    "risky_cross_rate_threshold": 0.5,
+    "largest_hop_ratio_threshold": 0.55
+  },
+  "experiment": {
+    "condition": "stage29_support_calibrated_graph"
+  }
+}

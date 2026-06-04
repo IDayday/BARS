@@ -1,0 +1,36 @@
+[stage30 dataset symlink] {"env_name": "antmaze-medium-navigate-v0", "source": "/mnt/project/offlinerl_datasets/ogbench/antmaze-medium-navigate-v0.npz", "status": "existing_symlink", "target": "/root/.ogbench/data/antmaze-medium-navigate-v0.npz"}
+[stage30 dataset symlink] {"env_name": "antmaze-medium-navigate-v0", "source": "/mnt/project/offlinerl_datasets/ogbench/antmaze-medium-navigate-v0-val.npz", "status": "existing_symlink", "target": "/root/.ogbench/data/antmaze-medium-navigate-v0-val.npz"}
+$ /root/miniconda3/envs/gcrlo/bin/python evaluate_gas.py --run_eval_project Stage30_Official_GAS_Reproduction --run_group stage30_official_antmaze-medium-navigate-v0_seed44 --env_name antmaze-medium-navigate-v0 --seed 44 --gpu 0 --save_eval_dir /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/evaluate_gas_output --eval_on_cpu 1 --eval_episodes 1 --eval_video_episodes 0 --eval_final_goal_threshold 2 --keygraph_path /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/official_artifact_copy/graph/keygraph.pkl --policy_path /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/official_artifact_copy/policy/params_1000000.pkl --agent_config.encoder not_used --agent_config.discount 0.99 --agent_config.tdr_expectile 0.999 --agent_config.alpha 1.0 --agent_config.batch_size 1024 --agent_config.p_aug 0.0 --agent_config.way_steps 8
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/Cython/Distutils/old_build_ext.py:15: DeprecationWarning: dep_util is Deprecated. Use functions from setuptools instead.
+  from distutils.dep_util import newer, newer_group
+<frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+pybullet build time: Jan 29 2025 23:16:28
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/pybullet_envs/env_bases.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import parse_version
+<frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+[38;5;208m==============
+ Using GPU: 0
+==============[0m
+[GAS logging] Using TensorBoard log dir: /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/tensorboard/Stage30_Official_GAS_Reproduction/stage30_official_antmaze-medium-navigate-v0_seed44/sd044__2026-06-02_13-59-40
+Using state-based observations (no encoder).
+Restored from /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/official_artifact_copy/policy/params_1000000.pkl
+[KeyGraph] Loaded from /mnt/project/BARS/runs_stage30_official_gas/reproduction_run_smoke/official_runs/antmaze-medium-navigate-v0/seed44/official_artifact_copy/graph/keygraph.pkl
+Evaluating Tasks:   0%|          | 0/5 [00:00<?, ?it/s]
+Task 1 Episodes:   0%|          | 0/1 [00:00<?, ?it/s][A
+Task 1 Episodes: 100%|██████████| 1/1 [00:01<00:00,  1.30s/it][A
+                                                              [AEvaluating Tasks:  20%|██        | 1/5 [00:01<00:05,  1.36s/it]
+Task 2 Episodes:   0%|          | 0/1 [00:00<?, ?it/s][A
+Task 2 Episodes: 100%|██████████| 1/1 [00:00<00:00,  1.89it/s][A
+                                                              [AEvaluating Tasks:  40%|████      | 2/5 [00:01<00:02,  1.14it/s]
+Task 3 Episodes:   0%|          | 0/1 [00:00<?, ?it/s][A
+Task 3 Episodes: 100%|██████████| 1/1 [00:00<00:00,  3.10it/s][A
+                                                              [AEvaluating Tasks:  60%|██████    | 3/5 [00:02<00:01,  1.60it/s]
+Task 4 Episodes:   0%|          | 0/1 [00:00<?, ?it/s][A
+Task 4 Episodes: 100%|██████████| 1/1 [00:00<00:00,  1.67it/s][A
+                                                              [AEvaluating Tasks:  80%|████████  | 4/5 [00:02<00:00,  1.62it/s]
+Task 5 Episodes:   0%|          | 0/1 [00:00<?, ?it/s][A
+Task 5 Episodes: 100%|██████████| 1/1 [00:00<00:00,  1.86it/s][A
+                                                              [AEvaluating Tasks: 100%|██████████| 5/5 [00:03<00:00,  1.70it/s]Evaluating Tasks: 100%|██████████| 5/5 [00:03<00:00,  1.48it/s]

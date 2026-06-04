@@ -138,9 +138,25 @@ class GASBackbone:
                 env, train_dataset = d4rl_make_env_and_dataset(self.env_name, self.seed)
                 val_dataset = None
             else:
-                from O_utils.env_utils import make_env_and_datasets
+                dataset_dir = os.environ.get("OGBENCH_DATASET_DIR") or os.environ.get("BARS_OGBENCH_DATASET_DIR")
+                if dataset_dir:
+                    try:
+                        import ogbench
 
-                env, train_dataset, val_dataset = make_env_and_datasets(self.env_name, self.seed)
+                        env, train_dataset, val_dataset = ogbench.make_env_and_datasets(
+                            self.env_name,
+                            compact_dataset=False,
+                            dataset_dir=dataset_dir,
+                        )
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"Failed to load OGBench dataset from OGBENCH_DATASET_DIR={dataset_dir}; "
+                            "refusing to fall back to GAS default download path."
+                        ) from exc
+                else:
+                    from O_utils.env_utils import make_env_and_datasets
+
+                    env, train_dataset, val_dataset = make_env_and_datasets(self.env_name, self.seed)
         self.env, self.train_dataset, self.val_dataset = env, train_dataset, val_dataset
         return env, train_dataset, val_dataset
 

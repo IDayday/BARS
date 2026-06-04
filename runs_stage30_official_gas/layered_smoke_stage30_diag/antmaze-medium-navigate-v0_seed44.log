@@ -1,0 +1,38 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/Cython/Distutils/old_build_ext.py:15: DeprecationWarning: dep_util is Deprecated. Use functions from setuptools instead.
+  from distutils.dep_util import newer, newer_group
+<frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+pybullet build time: Jan 29 2025 23:16:28
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/pybullet_envs/env_bases.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import parse_version
+Using state-based observations (no encoder).
+Restored from artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-medium-navigate-v0/seed44/policy/params_1000000.pkl
+[KeyGraph] Loaded from artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-medium-navigate-v0/seed44/graph/keygraph.pkl
+runs_stage30_official_gas/layered_smoke_stage30_diag/antmaze-medium-navigate-v0/seed44/instrumentation/instrumentation_report.md
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/Cython/Distutils/old_build_ext.py:15: DeprecationWarning: dep_util is Deprecated. Use functions from setuptools instead.
+  from distutils.dep_util import newer, newer_group
+<frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+pybullet build time: Jan 29 2025 23:16:28
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/pybullet_envs/env_bases.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import parse_version
+[KeyGraph] Loaded from artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-medium-navigate-v0/seed44/graph/keygraph.pkl
+runs_stage30_official_gas/layered_smoke_stage30_diag/antmaze-medium-navigate-v0/seed44/keygraph_audit/keygraph_audit_report.md
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/Cython/Distutils/old_build_ext.py:15: DeprecationWarning: dep_util is Deprecated. Use functions from setuptools instead.
+  from distutils.dep_util import newer, newer_group
+<frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+pybullet build time: Jan 29 2025 23:16:28
+/root/miniconda3/envs/gcrlo/lib/python3.10/site-packages/pybullet_envs/env_bases.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import parse_version
+Using state-based observations (no encoder).
+Restored from artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-medium-navigate-v0/seed44/policy/params_1000000.pkl
+[KeyGraph] Loaded from artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-medium-navigate-v0/seed44/graph/keygraph.pkl
+runs_stage30_official_gas/layered_smoke_stage30_diag/antmaze-medium-navigate-v0/seed44/edge_probe/edge_probe_report.md
+runs_stage30_official_gas/layered_smoke_stage30_diag/antmaze-medium-navigate-v0/seed44/taxonomy/failure_taxonomy_report.md

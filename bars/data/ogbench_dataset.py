@@ -161,7 +161,6 @@ def _call_ogbench(
     dataset_dir: str | None = None,
     compact_dataset: bool = False,
 ):
-    import ogbench  # type: ignore
     if dataset_path:
         dataset_path = os.path.expandvars(os.path.expanduser(str(dataset_path)))
         if os.path.isdir(dataset_path):
@@ -171,6 +170,10 @@ def _call_ogbench(
         dataset_dir = os.environ.get("OGBENCH_DATASET_DIR") or _default_dataset_dir()
     if dataset_dir:
         dataset_dir = os.path.expandvars(os.path.expanduser(str(dataset_dir)))
+    try:
+        import ogbench  # type: ignore
+    except ModuleNotFoundError:
+        return _call_local_ogbench_npz(env_name, dataset_path=dataset_path, dataset_dir=dataset_dir)
     if dataset_path is None and dataset_dir:
         ensure_ogbench_dataset_files(env_name, dataset_dir)
     # Common recent API.
@@ -201,6 +204,44 @@ def _call_ogbench(
         if isinstance(out, tuple) and len(out) >= 2:
             return out[0], out[1], out[2] if len(out) > 2 else None
     raise RuntimeError("Could not find a supported OGBench dataset API. Expected make_env_and_datasets.")
+
+
+def _call_local_ogbench_npz(
+    env_name: str,
+    dataset_path: str | None = None,
+    dataset_dir: str | None = None,
+):
+    """Load OGBench train/validation npz files without constructing a MuJoCo env.
+
+    Graph-only audits and cache materialization need only offline arrays.  This
+    fallback keeps those workflows independent of the optional `ogbench`,
+    `dm_control`, and MuJoCo runtime stack when dataset files already exist.
+    """
+    if dataset_path:
+        train_path = Path(os.path.expandvars(os.path.expanduser(str(dataset_path))))
+        if train_path.is_dir():
+            dataset_dir = str(train_path)
+            train_path = None
+    else:
+        train_path = None
+    val_path = None
+    if train_path is None:
+        if dataset_dir is None:
+            dataset_dir = _default_dataset_dir()
+        root = Path(os.path.expandvars(os.path.expanduser(str(dataset_dir))))
+        train_name, val_name = _dataset_file_names(env_name)
+        train_path = root / train_name
+        val_path = root / val_name
+    if not train_path.exists():
+        raise ModuleNotFoundError(
+            "No module named 'ogbench', and local OGBench npz was not found: "
+            f"{train_path}"
+        )
+    train = {k: np.asarray(v) for k, v in np.load(train_path).items()}
+    val = None
+    if val_path is not None and val_path.exists():
+        val = {k: np.asarray(v) for k, v in np.load(val_path).items()}
+    return None, train, val
 
 
 def _as_array(dataset: Dict[str, Any], *keys: str, required: bool = True) -> np.ndarray | None:
