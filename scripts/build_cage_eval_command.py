@@ -214,6 +214,19 @@ def build_eval_command(row: dict[str, Any]) -> list[str]:
     if variant != "gas":
         command.extend(["--cage_trace_path", str(row["cage_trace_path"])])
     command.extend(variant_args(variant, reachability_path=row.get("cage_reachability_path")))
+    if row.get("contract_trace_path"):
+        command.extend(["--contract_trace_path", str(row["contract_trace_path"])])
+        if row.get("store_contract_state_refs", False):
+            command.append("--store_contract_state_refs")
+        if row.get("contract_state_ref_mode"):
+            command.extend(["--contract_state_ref_mode", str(row["contract_state_ref_mode"])])
+        if row.get("contract_capture_variants"):
+            capture_variants = row["contract_capture_variants"]
+            if isinstance(capture_variants, (list, tuple)):
+                capture_variants = ",".join(str(x) for x in capture_variants)
+            command.extend(["--contract_capture_variants", str(capture_variants)])
+        if row.get("contract_trace_debug", False):
+            command.append("--contract_trace_debug")
     return command
 
 

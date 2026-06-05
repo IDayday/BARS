@@ -1,0 +1,2 @@
+eval/task1_episode.return,eval/task1_episode.length,eval/task1_episode.duration,eval/task1_episode.normalized_return,eval/task1_episode.success,eval/task2_episode.return,eval/task2_episode.length,eval/task2_episode.duration,eval/task2_episode.normalized_return,eval/task2_episode.success,eval/overall_episode.return,eval/overall_episode.length,eval/overall_episode.duration,eval/overall_episode.normalized_return,eval/overall_episode.success,step
+0.0,1000.0,7.674538731575012,0.0,0.0,1.0,730.0,6.659016847610474,100.0,1.0,0.5,865.0,7.166777789592743,50.0,0.5,0

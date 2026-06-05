@@ -1,0 +1,11 @@
+{
+  "contract_positive_auprc_train": 0.9904888864800584,
+  "contract_positive_auroc_train": 0.9902880921568394,
+  "hit_auprc_train": 0.9984631768836981,
+  "hit_auroc_train": 0.9987683619733925,
+  "negative_progress_auprc_train": 0.7202190371261329,
+  "negative_progress_auroc_train": 0.7959302661309401,
+  "num_examples": 1542,
+  "out_model": "results/cage_clp1/models/contract_model.json",
+  "status": "trained"
+}

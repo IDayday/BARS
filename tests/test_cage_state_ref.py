@@ -11,8 +11,11 @@ from cage.state_ref import (
     EXACT_MUJOCO_STATE,
     OBSERVATION_ONLY_NOT_EXACT,
     StateRef,
+    capture_state_ref,
     deserialize_state_ref,
+    is_exact_state_ref,
     make_state_ref_from_env,
+    restore_state_ref,
     restore_env_from_state_ref,
     serialize_state_ref,
     state_ref_is_exact,
@@ -57,3 +60,20 @@ def test_obs_only_state_ref_is_not_exact_and_restore_raises():
     assert not state_ref_is_exact(ref)
     with pytest.raises(RuntimeError, match="not exactly restorable"):
         restore_env_from_state_ref(FakeEnv(), ref)
+
+
+def test_clp1_aliases_and_goal_fields_roundtrip():
+    env = FakeEnv()
+    ref = capture_state_ref(
+        env,
+        obs=np.array([1.0, 2.0, 3.0]),
+        phi=np.array([0.1, 0.2]),
+        metadata={"env_name": "fake", "goal_phi": np.array([0.3, 0.4]), "source_variant": "gas"},
+    )
+    assert is_exact_state_ref(ref)
+    record = serialize_state_ref(ref)
+    assert np.allclose(record["goal_phi"], [0.3, 0.4])
+    assert record["source_variant"] == "gas"
+    loaded = deserialize_state_ref(record)
+    restore_state_ref(env, loaded)
+    assert np.allclose(env.unwrapped.restored[0], [1.0, 2.0])

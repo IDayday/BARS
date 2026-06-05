@@ -7,8 +7,10 @@ import numpy as np
 
 
 EXACT_MUJOCO_STATE = "exact_mujoco_state"
-DATASET_STATE_REF = "dataset_state_ref"
+EXACT_DATASET_STATE = "exact_dataset_state"
+DATASET_STATE_REF = EXACT_DATASET_STATE
 OBSERVATION_ONLY_NOT_EXACT = "observation_only_not_exact"
+OBS_ONLY_NOT_EXACT = "obs_only_not_exact"
 UNSUPPORTED = "unsupported"
 
 
@@ -24,9 +26,11 @@ class StateRef:
     obs: np.ndarray | None = None
     goal_obs: np.ndarray | None = None
     phi: np.ndarray | None = None
+    goal_phi: np.ndarray | None = None
     qpos: np.ndarray | None = None
     qvel: np.ndarray | None = None
     raw_state_dict: dict[str, Any] | None = None
+    source_variant: str | None = None
     source: str = "unknown"
     reset_mode: str = UNSUPPORTED
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -60,12 +64,14 @@ def make_state_ref_from_env(env: Any, obs: Any = None, phi: Any = None, metadata
         obs=_array_or_none(obs),
         goal_obs=_array_or_none(metadata.get("goal_obs")),
         phi=_array_or_none(phi),
+        goal_phi=_array_or_none(metadata.get("goal_phi")),
         qpos=qpos,
         qvel=qvel,
         raw_state_dict=metadata.get("raw_state_dict"),
+        source_variant=metadata.get("source_variant"),
         source=str(metadata.get("source", "env")),
         reset_mode=reset_mode,
-        metadata={k: v for k, v in metadata.items() if k not in {"goal_obs", "raw_state_dict", "source"}},
+        metadata={k: v for k, v in metadata.items() if k not in {"goal_obs", "goal_phi", "raw_state_dict", "source", "source_variant"}},
     )
 
 
@@ -77,6 +83,9 @@ def make_state_ref_from_observation(
     seed: int | None = None,
     dataset_name: str | None = None,
     source: str = "dataset",
+    source_variant: str | None = None,
+    goal_obs: Any = None,
+    goal_phi: Any = None,
     qpos: Any = None,
     qvel: Any = None,
     reset_mode: str | None = None,
@@ -92,9 +101,12 @@ def make_state_ref_from_observation(
         dataset_name=dataset_name,
         seed=seed,
         obs=obs_arr,
+        goal_obs=_array_or_none(goal_obs),
         phi=_array_or_none(phi),
+        goal_phi=_array_or_none(goal_phi),
         qpos=qpos_arr,
         qvel=qvel_arr,
+        source_variant=source_variant,
         source=source,
         reset_mode=reset_mode,
         metadata=dict(metadata or {}),
@@ -119,7 +131,7 @@ def restore_env_from_state_ref(env: Any, state_ref: StateRef, *, allow_approxima
 
 
 def state_ref_is_exact(state_ref: StateRef) -> bool:
-    return state_ref.reset_mode == EXACT_MUJOCO_STATE and state_ref.qpos is not None and state_ref.qvel is not None
+    return state_ref.reset_mode in {EXACT_MUJOCO_STATE, EXACT_DATASET_STATE} and state_ref.qpos is not None and state_ref.qvel is not None
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -144,9 +156,11 @@ def serialize_state_ref(state_ref: StateRef) -> dict[str, Any]:
         "obs": _to_jsonable(state_ref.obs),
         "goal_obs": _to_jsonable(state_ref.goal_obs),
         "phi": _to_jsonable(state_ref.phi),
+        "goal_phi": _to_jsonable(state_ref.goal_phi),
         "qpos": _to_jsonable(state_ref.qpos),
         "qvel": _to_jsonable(state_ref.qvel),
         "raw_state_dict": _to_jsonable(state_ref.raw_state_dict),
+        "source_variant": state_ref.source_variant,
         "source": state_ref.source,
         "reset_mode": state_ref.reset_mode,
         "exact_reset": state_ref_is_exact(state_ref),
@@ -164,10 +178,64 @@ def deserialize_state_ref(record: dict[str, Any]) -> StateRef:
         obs=_array_or_none(record.get("obs")),
         goal_obs=_array_or_none(record.get("goal_obs")),
         phi=_array_or_none(record.get("phi")),
+        goal_phi=_array_or_none(record.get("goal_phi")),
         qpos=_array_or_none(record.get("qpos")),
         qvel=_array_or_none(record.get("qvel")),
         raw_state_dict=record.get("raw_state_dict"),
+        source_variant=record.get("source_variant"),
         source=str(record.get("source", "unknown")),
         reset_mode=str(record.get("reset_mode", UNSUPPORTED)),
         metadata=dict(record.get("metadata") or {}),
     )
+
+
+def capture_state_ref(env: Any, obs: Any = None, phi: Any = None, metadata: dict[str, Any] | None = None) -> StateRef:
+    return make_state_ref_from_env(env, obs=obs, phi=phi, metadata=metadata)
+
+
+def restore_state_ref(env: Any, state_ref: StateRef, allow_approximate: bool = False) -> Any:
+    return restore_env_from_state_ref(env, state_ref, allow_approximate=allow_approximate)
+
+
+def is_exact_state_ref(state_ref: StateRef) -> bool:
+    return state_ref_is_exact(state_ref)
+
+
+def _current_obs(env: Any) -> np.ndarray:
+    unwrapped = getattr(env, "unwrapped", env)
+    if hasattr(unwrapped, "get_ob"):
+        return np.asarray(unwrapped.get_ob(), dtype=np.float32)
+    if hasattr(unwrapped, "state_vector"):
+        return np.asarray(unwrapped.state_vector(), dtype=np.float32)
+    raise RuntimeError("Environment does not expose get_ob/state_vector for restore comparison")
+
+
+def compare_state_ref_restore(env: Any, state_ref: StateRef, encoder: Any = None) -> dict[str, Any]:
+    if not state_ref_is_exact(state_ref):
+        return {
+            "exact_restore": False,
+            "restored": False,
+            "max_abs_obs_error": None,
+            "max_abs_phi_error": None,
+            "failure_reason": f"StateRef is not exact: {state_ref.reset_mode}",
+        }
+    restore_env_from_state_ref(env, state_ref)
+    obs = _current_obs(env)
+    max_abs_obs_error = None
+    if state_ref.obs is not None:
+        ref_obs = np.asarray(state_ref.obs, dtype=np.float32)
+        if obs.shape == ref_obs.shape:
+            max_abs_obs_error = float(np.max(np.abs(obs - ref_obs)))
+    max_abs_phi_error = None
+    if encoder is not None and state_ref.phi is not None:
+        phi = np.asarray(encoder(obs), dtype=np.float32)
+        ref_phi = np.asarray(state_ref.phi, dtype=np.float32)
+        if phi.shape == ref_phi.shape:
+            max_abs_phi_error = float(np.max(np.abs(phi - ref_phi)))
+    return {
+        "exact_restore": True,
+        "restored": True,
+        "max_abs_obs_error": max_abs_obs_error,
+        "max_abs_phi_error": max_abs_phi_error,
+        "failure_reason": None,
+    }

@@ -19,6 +19,8 @@ def test_contract_labels_mark_hit_as_good_contract():
     labels = label_closed_loop_contract(record, ContractThresholds(contractive_progress=0.2, action_norm_high=1.0))
     assert labels["label_hit"]
     assert labels["label_good_contract"]
+    assert labels["label_contract_positive"]
+    assert not labels["label_contract_negative"]
     assert not labels["label_unstable"]
 
 
@@ -32,6 +34,7 @@ def test_contract_labels_negative_progress_unstable():
     }
     labels = label_closed_loop_contract(record, ContractThresholds(contractive_progress=0.2, action_norm_high=1.0))
     assert labels["label_negative_progress"]
+    assert labels["label_contract_negative"]
     assert labels["label_unstable"]
     assert not labels["label_good_contract"]
 
@@ -55,3 +58,6 @@ def test_contract_dataset_row_preserves_features_and_labels():
     assert row["final_phase"]
     assert row["label_contractive"]
     assert row["label_good_contract"]
+    assert row["label_contract_positive"]
+    assert row["target_mode"] == "path_edge"
+    assert row["phi_delta"] == [1.0, 0.0]

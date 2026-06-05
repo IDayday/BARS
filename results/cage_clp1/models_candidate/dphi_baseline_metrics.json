@@ -1,0 +1,9 @@
+{
+  "dphi_only_contract_positive_auprc": 0.9758047986222992,
+  "dphi_only_contract_positive_auroc": 0.9856201616478533,
+  "dphi_only_hit_auprc": 0.9968891175081812,
+  "dphi_only_hit_auroc": 0.9990435232054473,
+  "dphi_only_negative_progress_auprc": 0.45896237692037006,
+  "dphi_only_negative_progress_auroc": 0.5955683886479564,
+  "num_examples": 3075
+}

@@ -40,6 +40,7 @@ from M_utils.agents import agents_dict
 from M_utils.flax_utils import restore_agent
 from cage.config import CAGEConfig
 from cage.tracing import CAGETraceWriter
+from cage.contract_tracing import ContractTraceWriter
 
 # Flags for task Planning and execution. (GAS Stage 4).
 FLAGS = flags.FLAGS
@@ -96,6 +97,17 @@ flags.DEFINE_integer('cage_min_steps_between_recovery_attempts', 20, 'Minimum st
 flags.DEFINE_float('cage_min_progress_for_recovery_success', 1e-4, 'Minimum recovery progress before considering recovery nonfailed.')
 flags.DEFINE_bool('cage_disable_recovery_after_churn', False, 'Disable further CAGE recovery attempts after churn guard triggers.')
 flags.DEFINE_bool('cage_log_churn_events', False, 'Include churn guard event fields in CAGE traces.')
+
+flags.DEFINE_string('contract_trace_path', '', 'Optional JSONL path for closed-loop segment contract traces.')
+flags.DEFINE_bool('contract_trace_debug', False, 'Enable verbose contract trace behavior.')
+flags.DEFINE_bool('store_contract_state_refs', False, 'Store exact StateRefs in contract traces when available.')
+flags.DEFINE_string('contract_state_ref_mode', 'metadata_only', 'StateRef mode: exact_only|best_effort|metadata_only.')
+flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full', 'Comma-separated variants to contract-capture.')
+flags.DEFINE_bool('contract_capture_segment_start', True, 'Capture segment starts in contract trace.')
+flags.DEFINE_bool('contract_capture_segment_end', True, 'Capture segment ends in contract trace.')
+flags.DEFINE_bool('contract_capture_qpos_qvel', True, 'Capture qpos/qvel in StateRefs when available.')
+flags.DEFINE_bool('contract_capture_phi', True, 'Capture phi in segment StateRefs.')
+flags.DEFINE_bool('contract_capture_action_stats', True, 'Capture action/skill norm stats in segment records.')
 
 config_flags.DEFINE_config_file('agent_config', 'M_utils/agents/gas.py', lock_config=False) 
 
@@ -155,16 +167,36 @@ def main(_):
     eval_video_episodes = 0 if FLAGS.env_name in ['kitchen-partial-v0'] else FLAGS.eval_video_episodes
     cage_config = None
     cage_trace_writer = None
+    contract_trace_writer = None
+    contract_config = None
     if FLAGS.use_cage:
         cage_trace_path = FLAGS.cage_trace_path or os.path.join(FLAGS.save_eval_dir, 'cage_trace.jsonl')
         cage_config = CAGEConfig.from_flags(FLAGS)
         cage_config = replace(cage_config, trace_path=cage_trace_path)
         cage_trace_writer = CAGETraceWriter(cage_trace_path, debug=FLAGS.cage_debug)
+    if FLAGS.contract_trace_path:
+        contract_trace_writer = ContractTraceWriter(FLAGS.contract_trace_path, debug=FLAGS.contract_trace_debug)
+        contract_config = {
+            "enabled": True,
+            "trace_path": FLAGS.contract_trace_path,
+            "debug": FLAGS.contract_trace_debug,
+            "store_state_refs": FLAGS.store_contract_state_refs,
+            "state_ref_mode": FLAGS.contract_state_ref_mode,
+            "capture_variants": [x.strip() for x in FLAGS.contract_capture_variants.split(",") if x.strip()],
+            "capture_segment_start": FLAGS.contract_capture_segment_start,
+            "capture_segment_end": FLAGS.contract_capture_segment_end,
+            "capture_qpos_qvel": FLAGS.contract_capture_qpos_qvel,
+            "capture_phi": FLAGS.contract_capture_phi,
+            "capture_action_stats": FLAGS.contract_capture_action_stats,
+            "hit_threshold": config["way_steps"],
+            "variant": infer_contract_variant(FLAGS),
+        }
     for task_id in tqdm(task_id_list, desc="Evaluating Tasks"):
         task_name = task_infos[task_id - 1]['task_name']
         eval_info, cur_renders = evaluate_with_graph(agent, key_graph, env, FLAGS.env_name, task_id, FLAGS.eval_episodes, eval_video_episodes, 
                                                      FLAGS.seed, FLAGS.eval_on_cpu, config['way_steps'], FLAGS.eval_final_goal_threshold, config,
-                                                     cage_config=cage_config, cage_trace_writer=cage_trace_writer,)
+                                                     cage_config=cage_config, cage_trace_writer=cage_trace_writer,
+                                                     contract_trace_writer=contract_trace_writer, contract_config=contract_config,)
         renders.extend(cur_renders)
         eval_metrics.update({f'eval/{task_name}_{k}': v for k, v in eval_info.items() if k in metric_names})
         for k, v in eval_info.items():
@@ -180,6 +212,20 @@ def main(_):
     eval_logger.close()
     if cage_trace_writer is not None:
         cage_trace_writer.close()
+    if contract_trace_writer is not None:
+        contract_trace_writer.close()
         
+def infer_contract_variant(flags_obj):
+    if not flags_obj.use_cage:
+        return 'gas'
+    if flags_obj.cage_trace_only:
+        return 'cage_trace_only'
+    if flags_obj.cage_enable_churn_guard:
+        return 'cage_safe_full'
+    if (flags_obj.cage_disable_drift_monitor and flags_obj.cage_disable_recovery
+            and flags_obj.cage_disable_adaptive_horizon and flags_obj.cage_disable_final_phase_controller):
+        return 'cage_fixed_commit'
+    return 'cage_full'
+
 if __name__ == '__main__':
     app.run(main)

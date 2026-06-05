@@ -1,0 +1,9 @@
+{
+  "contract_positive_auprc": 0.9904888864800584,
+  "contract_positive_auroc": 0.9902880921568394,
+  "hit_auprc": 0.9984631768836981,
+  "hit_auroc": 0.9987683619733925,
+  "negative_progress_auprc": 0.7202190371261329,
+  "negative_progress_auroc": 0.7959302661309401,
+  "num_examples": 1542
+}

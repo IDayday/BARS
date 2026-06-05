@@ -1,0 +1,88 @@
+{
+  "envs": [
+    {
+      "action_shape": [
+        8
+      ],
+      "can_construct": true,
+      "dataset_keys": [
+        "actions",
+        "next_observations",
+        "observations",
+        "terminals"
+      ],
+      "dataset_or_env_exposes_state_ids": false,
+      "env_name": "antmaze-giant-navigate-v0",
+      "has_mujoco_data_qpos_qvel": true,
+      "has_sim_set_state": false,
+      "has_unwrapped_set_state": true,
+      "max_abs_obs_error": 0.0,
+      "max_abs_phi_error": null,
+      "notes": [],
+      "observation_shape": [
+        29
+      ],
+      "qpos_qvel_available": true,
+      "recommended_state_ref_mode": "exact_mujoco_state",
+      "reset_seed_works": true,
+      "restore_test_passed": true,
+      "restore_test_ran": true
+    },
+    {
+      "action_shape": [
+        8
+      ],
+      "can_construct": true,
+      "dataset_keys": [
+        "actions",
+        "next_observations",
+        "observations",
+        "terminals"
+      ],
+      "dataset_or_env_exposes_state_ids": false,
+      "env_name": "antmaze-giant-stitch-v0",
+      "has_mujoco_data_qpos_qvel": true,
+      "has_sim_set_state": false,
+      "has_unwrapped_set_state": true,
+      "max_abs_obs_error": 0.0,
+      "max_abs_phi_error": null,
+      "notes": [],
+      "observation_shape": [
+        29
+      ],
+      "qpos_qvel_available": true,
+      "recommended_state_ref_mode": "exact_mujoco_state",
+      "reset_seed_works": true,
+      "restore_test_passed": true,
+      "restore_test_ran": true
+    },
+    {
+      "action_shape": [
+        21
+      ],
+      "can_construct": true,
+      "dataset_keys": [
+        "actions",
+        "next_observations",
+        "observations",
+        "terminals"
+      ],
+      "dataset_or_env_exposes_state_ids": false,
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "has_mujoco_data_qpos_qvel": true,
+      "has_sim_set_state": false,
+      "has_unwrapped_set_state": true,
+      "max_abs_obs_error": 0.0,
+      "max_abs_phi_error": null,
+      "notes": [],
+      "observation_shape": [
+        69
+      ],
+      "qpos_qvel_available": true,
+      "recommended_state_ref_mode": "exact_mujoco_state",
+      "reset_seed_works": true,
+      "restore_test_passed": true,
+      "restore_test_ran": true
+    }
+  ]
+}

@@ -1,0 +1,664 @@
+{
+  "correlations": {
+    "hit_vs_d_phi": -0.8902062346414396,
+    "hit_vs_progress": -0.026378884838285727,
+    "hit_vs_q_train_support": null
+  },
+  "failure_modes": {
+    "all_candidates_non_contractive": 331,
+    "no_contract_target_available": 7674,
+    "original_target_non_contractive": 331,
+    "recovery_target_non_contractive": 1530
+  },
+  "num_probe_rows": 9216,
+  "num_valid_probe_rows": 1542,
+  "oracle": {
+    "num_segments": 1536,
+    "oracle_hit_rate": 0.4140625,
+    "oracle_progress_mean": -0.010976943666857803,
+    "original_hit_rate": 0.4140625,
+    "original_progress_mean": -0.010976943666857803
+  },
+  "table": [
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.703125,
+      "horizon": 16,
+      "mean_delta_phi": 0.3343149721622467,
+      "mean_normalized_progress": 0.05203433682338661,
+      "negative_progress_rate": 0.28515625,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.703125,
+      "horizon": 32,
+      "mean_delta_phi": 0.38839893229305744,
+      "mean_normalized_progress": 0.050467448788791364,
+      "negative_progress_rate": 0.296875,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.70703125,
+      "horizon": 64,
+      "mean_delta_phi": 0.6270907698199153,
+      "mean_normalized_progress": 0.07347866880083125,
+      "negative_progress_rate": 0.26953125,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.5,
+      "horizon": 16,
+      "mean_delta_phi": 1.2998852729797363,
+      "mean_normalized_progress": 0.07434297286435726,
+      "negative_progress_rate": 0.5,
+      "num_rows": 256,
+      "num_valid": 2,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.5,
+      "horizon": 32,
+      "mean_delta_phi": 2.8688979148864746,
+      "mean_normalized_progress": 0.17257565171816353,
+      "negative_progress_rate": 0.5,
+      "num_rows": 256,
+      "num_valid": 2,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 1.0,
+      "horizon": 64,
+      "mean_delta_phi": 5.485078573226929,
+      "mean_normalized_progress": 0.3363693826099589,
+      "negative_progress_rate": 0.5,
+      "num_rows": 256,
+      "num_valid": 2,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": 0.12109375,
+      "horizon": 16,
+      "mean_delta_phi": 0.2806727681308985,
+      "mean_normalized_progress": 0.0072760878936395795,
+      "negative_progress_rate": 0.38671875,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": 0.12109375,
+      "horizon": 32,
+      "mean_delta_phi": -0.309867350384593,
+      "mean_normalized_progress": -0.04871040525977628,
+      "negative_progress_rate": 0.39453125,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": 0.12890625,
+      "horizon": 64,
+      "mean_delta_phi": -2.0224032904952765,
+      "mean_normalized_progress": -0.20040779904801934,
+      "negative_progress_rate": 0.4296875,
+      "num_rows": 256,
+      "num_valid": 256,
+      "target_mode": "original_target"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 16,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 32,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": null,
+      "horizon": 64,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 256,
+      "num_valid": 0,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.7041343669250646,
+      "mean_delta_phi": 0.47139240327731585,
+      "mean_normalized_progress": 0.05971262576759086,
+      "negative_progress_rate": 0.28552971576227393,
+      "num_rows": 4608,
+      "num_valid": 774
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": 0.12369791666666667,
+      "mean_delta_phi": -0.6838659575829903,
+      "mean_normalized_progress": -0.08061403880471868,
+      "negative_progress_rate": 0.4036458333333333,
+      "num_rows": 4608,
+      "num_valid": 768
+    },
+    {
+      "hit_rate": null,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 1536,
+      "num_valid": 0,
+      "target_mode": "farther_path_target"
+    },
+    {
+      "hit_rate": null,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 1536,
+      "num_valid": 0,
+      "target_mode": "final_goal"
+    },
+    {
+      "hit_rate": null,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 1536,
+      "num_valid": 0,
+      "target_mode": "nearest_path_target"
+    },
+    {
+      "hit_rate": 0.4140625,
+      "mean_delta_phi": -0.11696553307895859,
+      "mean_normalized_progress": -0.010976943666857803,
+      "negative_progress_rate": 0.34375,
+      "num_rows": 1536,
+      "num_valid": 1536,
+      "target_mode": "original_target"
+    },
+    {
+      "hit_rate": null,
+      "mean_delta_phi": null,
+      "mean_normalized_progress": null,
+      "negative_progress_rate": null,
+      "num_rows": 1536,
+      "num_valid": 0,
+      "target_mode": "qtrain_matched"
+    },
+    {
+      "hit_rate": 0.6666666666666666,
+      "mean_delta_phi": 3.21795392036438,
+      "mean_normalized_progress": 0.19442933573082657,
+      "negative_progress_rate": 0.5,
+      "num_rows": 1536,
+      "num_valid": 6,
+      "target_mode": "recovery_candidate"
+    },
+    {
+      "hit_rate": 0.41245136186770426,
+      "horizon": 16,
+      "mean_delta_phi": 0.31135531529378335,
+      "mean_normalized_progress": 0.02982909469511171,
+      "negative_progress_rate": 0.33657587548638135,
+      "num_rows": 3072,
+      "num_valid": 514
+    },
+    {
+      "hit_rate": 0.41245136186770426,
+      "horizon": 32,
+      "mean_delta_phi": 0.05027603268159503,
+      "mean_normalized_progress": 0.0015466039822260415,
+      "negative_progress_rate": 0.3463035019455253,
+      "num_rows": 3072,
+      "num_valid": 514
+    },
+    {
+      "hit_rate": 0.42023346303501946,
+      "horizon": 64,
+      "mean_delta_phi": -0.6735989263549389,
+      "mean_normalized_progress": -0.061908791007899276,
+      "negative_progress_rate": 0.35019455252918286,
+      "num_rows": 3072,
+      "num_valid": 514
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 1.0,
+      "mean_delta_phi": 0.33038689130507176,
+      "mean_normalized_progress": 0.0564228153087573,
+      "negative_progress_rate": 0.27253668763102723,
+      "num_rows": 2844,
+      "num_valid": 477,
+      "path_position": 0
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.6875,
+      "mean_delta_phi": 1.3570996013780434,
+      "mean_normalized_progress": 0.15794010654085455,
+      "negative_progress_rate": 0.125,
+      "num_rows": 576,
+      "num_valid": 96,
+      "path_position": 1
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.2222222222222222,
+      "mean_delta_phi": 4.37151304880778,
+      "mean_normalized_progress": 0.2741099954676398,
+      "negative_progress_rate": 0.3333333333333333,
+      "num_rows": 36,
+      "num_valid": 9,
+      "path_position": 2
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.0,
+      "mean_delta_phi": -0.14247001920427596,
+      "mean_normalized_progress": -0.006630216360758115,
+      "negative_progress_rate": 0.4642857142857143,
+      "num_rows": 504,
+      "num_valid": 84,
+      "path_position": 3
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.0,
+      "mean_delta_phi": 0.8350621934921022,
+      "mean_normalized_progress": 0.03762053981222354,
+      "negative_progress_rate": 0.20634920634920634,
+      "num_rows": 378,
+      "num_valid": 63,
+      "path_position": 4
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.0,
+      "mean_delta_phi": 9.072132599659455e-05,
+      "mean_normalized_progress": -0.00028948368556951207,
+      "negative_progress_rate": 0.5128205128205128,
+      "num_rows": 234,
+      "num_valid": 39,
+      "path_position": 5
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "hit_rate": 0.0,
+      "mean_delta_phi": -0.5011634826660156,
+      "mean_normalized_progress": -0.021202785903649723,
+      "negative_progress_rate": 0.6666666666666666,
+      "num_rows": 36,
+      "num_valid": 6,
+      "path_position": 6
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "hit_rate": 0.12369791666666667,
+      "mean_delta_phi": -0.6838659575829903,
+      "mean_normalized_progress": -0.08061403880471868,
+      "negative_progress_rate": 0.4036458333333333,
+      "num_rows": 4608,
+      "num_valid": 768,
+      "path_position": 0
+    },
+    {
+      "env_name": "antmaze-giant-navigate-v0",
+      "final_phase": false,
+      "hit_rate": 0.7041343669250646,
+      "mean_delta_phi": 0.47139240327731585,
+      "mean_normalized_progress": 0.05971262576759086,
+      "negative_progress_rate": 0.28552971576227393,
+      "num_rows": 4608,
+      "num_valid": 774
+    },
+    {
+      "env_name": "humanoidmaze-large-navigate-v0",
+      "final_phase": false,
+      "hit_rate": 0.12369791666666667,
+      "mean_delta_phi": -0.6838659575829903,
+      "mean_normalized_progress": -0.08061403880471868,
+      "negative_progress_rate": 0.4036458333333333,
+      "num_rows": 4608,
+      "num_valid": 768
+    },
+    {
+      "d_phi_bin": "16-32",
+      "hit_rate": 0.002398081534772182,
+      "mean_delta_phi": -0.03443771243381272,
+      "mean_normalized_progress": -0.0005468872789810656,
+      "negative_progress_rate": 0.381294964028777,
+      "num_rows": 5004,
+      "num_valid": 834
+    },
+    {
+      "d_phi_bin": "4-8",
+      "hit_rate": 1.0,
+      "mean_delta_phi": -0.343305778933001,
+      "mean_normalized_progress": -0.03832269101948009,
+      "negative_progress_rate": 0.3261261261261261,
+      "num_rows": 3312,
+      "num_valid": 555
+    },
+    {
+      "d_phi_bin": "8-16",
+      "hit_rate": 0.3137254901960784,
+      "mean_delta_phi": 0.46332509377423453,
+      "mean_normalized_progress": 0.029190891168394833,
+      "negative_progress_rate": 0.19607843137254902,
+      "num_rows": 594,
+      "num_valid": 102
+    },
+    {
+      "d_phi_bin": "<4",
+      "hit_rate": 1.0,
+      "mean_delta_phi": 0.22833852206959443,
+      "mean_normalized_progress": 0.05987680685091683,
+      "negative_progress_rate": 0.23529411764705882,
+      "num_rows": 306,
+      "num_valid": 51
+    },
+    {
+      "hit_rate": 0.4150453955901427,
+      "mean_delta_phi": -0.10398919279318684,
+      "mean_normalized_progress": -0.010177697443520506,
+      "negative_progress_rate": 0.3443579766536965,
+      "num_rows": 9216,
+      "num_valid": 1542,
+      "q_train_support_bin": "unknown"
+    }
+  ]
+}
