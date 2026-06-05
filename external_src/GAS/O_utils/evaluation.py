@@ -6,10 +6,12 @@ from tqdm import trange
 from collections import defaultdict
 
 from D_utils.kitchen_utils import kitchen_set_obs_and_goal, kitchen_render
+from cage.state_machine import CAGEController
 
 
-def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes, eval_video_episodes, 
-                        seed, eval_on_cpu, eval_subgoal_threshold, eval_final_goal_threshold, config, recompute_paths_per_episode=False):         
+def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes, eval_video_episodes,
+                        seed, eval_on_cpu, eval_subgoal_threshold, eval_final_goal_threshold, config, recompute_paths_per_episode=False,
+                        cage_config=None, cage_trace_writer=None):
     """
     Evaluate GAS in the environment.
     In OGBench environments, the final goal includes slight random noise in each episode.
@@ -24,6 +26,8 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
     eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0]) if eval_on_cpu else agent
     get_phi_fn = eval_agent.get_phi         
     actor_fn = supply_rng(eval_agent.sample_actions, rng=jax.random.PRNGKey(seed))  
+    use_cage = bool(cage_config is not None and getattr(cage_config, "use_cage", False))
+    distance_fn = lambda a, b: float(np.linalg.norm(np.asarray(a) - np.asarray(b)))
     
     stats = defaultdict(list)
     renders = []
@@ -38,38 +42,79 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
         phi_obs = np.array(get_phi_fn(observation))
         phi_goal = np.array(get_phi_fn(goal))
         final_goal_on = False
+        cur_obs_goal = None
         # Optionally, recompute the shortest path every episode (strategy (1))
         if recompute_paths_per_episode:
             key_graph.precompute_shortest_paths_to_all_tasks({task_id: goal}, {task_id: phi_goal},)
         shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs, force_closest=True)
+        cage_controller = None
+        if use_cage:
+            cage_controller = CAGEController(cage_config, distance_fn, logger=cage_trace_writer)
+            cage_controller.reset_episode(phi_obs, phi_goal, initial_path=shortest_path)
         while not done:
             phi_obs = np.array(get_phi_fn(observation))
-            if final_goal_on:
-                cur_obs_goal = phi_goal
-            else:
+            if use_cage:
                 cached_shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs)
                 if cached_shortest_path is not None:
-                    shortest_path = cached_shortest_path  
-                distances = np.linalg.norm(np.array(shortest_path) - phi_obs, axis=1) 
-                valid_indices = np.where(distances <= eval_subgoal_threshold)[0]  
-                cur_node_idx = valid_indices[-1] if len(valid_indices) > 0 else 0         
-                if len(shortest_path) <= eval_final_goal_threshold:
-                    final_goal_on = True
+                    shortest_path = cached_shortest_path
+                planner_final_goal_on = shortest_path is not None and len(shortest_path) <= eval_final_goal_threshold
+                cage_info = {"planner_final_goal_on": planner_final_goal_on}
+                cur_obs_goal, cur_node_idx, cage_state, should_replan, trace_info = cage_controller.select_subgoal(
+                    current_state=phi_obs,
+                    final_goal=phi_goal,
+                    current_path=shortest_path,
+                    current_subgoal=cur_obs_goal,
+                    step=step,
+                    info=cage_info,
+                )
+                if should_replan:
+                    replanned_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs, force_closest=True)
+                    if replanned_path is not None:
+                        shortest_path = replanned_path
+                        cage_info["after_global_replan"] = True
+                        cage_info["planner_final_goal_on"] = len(shortest_path) <= eval_final_goal_threshold
+                        cur_obs_goal, cur_node_idx, cage_state, should_replan, trace_info = cage_controller.select_subgoal(
+                            current_state=phi_obs,
+                            final_goal=phi_goal,
+                            current_path=shortest_path,
+                            current_subgoal=cur_obs_goal,
+                            step=step,
+                            info=cage_info,
+                        )
+                cage_controller.record_step_trace(env_name, task_id, seed, i, trace_info)
+            else:
+                if final_goal_on:
                     cur_obs_goal = phi_goal
                 else:
-                    cur_obs_goal = shortest_path[cur_node_idx]
-                  
+                    cached_shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs)
+                    if cached_shortest_path is not None:
+                        shortest_path = cached_shortest_path
+                    distances = np.linalg.norm(np.array(shortest_path) - phi_obs, axis=1)
+                    valid_indices = np.where(distances <= eval_subgoal_threshold)[0]
+                    cur_node_idx = valid_indices[-1] if len(valid_indices) > 0 else 0
+                    if len(shortest_path) <= eval_final_goal_threshold:
+                        final_goal_on = True
+                        cur_obs_goal = phi_goal
+                    else:
+                        cur_obs_goal = shortest_path[cur_node_idx]
+
             skills = (cur_obs_goal - phi_obs) / (np.linalg.norm(cur_obs_goal - phi_obs) + epsilon)  
             action = actor_fn(observations=observation, goals=skills, temperature=0.0)
             action = np.clip(np.array(action), -1, 1)
             next_observation, reward, done, info = env_step(env, env_name, action)  
-          
+            if use_cage:
+                next_phi_obs = np.array(get_phi_fn(next_observation))
+                cage_controller.update_after_step(phi_obs, next_phi_obs, cur_obs_goal, action=action, env_info=info)
+
             step += 1
             if should_render and (step % 3 == 0 or done):
                 frame = get_frame(env, env_name)
                 render.append(frame)
             observation = next_observation
-        add_to(stats, flatten(info))
+        flat_info = flatten(info)
+        add_to(stats, flat_info)
+        if use_cage:
+            cage_controller.finish_episode(env_name, task_id, seed, i, flat_info)
         if should_render:
             renders.append(np.array(render))
     for k, v in stats.items():

@@ -24,6 +24,7 @@ import numpy as np
 from tqdm import tqdm
 from absl import app, flags
 from collections import defaultdict
+from dataclasses import replace
 from ml_collections import config_flags
 
 from D_utils.d4rl_env_utils import d4rl_make_env_and_dataset
@@ -37,6 +38,8 @@ from K_utils.keygraph_utils import KeyGraph
 
 from M_utils.agents import agents_dict
 from M_utils.flax_utils import restore_agent
+from cage.config import CAGEConfig
+from cage.tracing import CAGETraceWriter
 
 # Flags for task Planning and execution. (GAS Stage 4).
 FLAGS = flags.FLAGS
@@ -55,6 +58,21 @@ flags.DEFINE_integer('eval_final_goal_threshold', 2, 'Threshold to switch to fin
 
 flags.DEFINE_string('keygraph_path', None, 'Path to the constructed TD-aware graph') 
 flags.DEFINE_string('policy_path', None, 'Pretrained low-level policy path.') 
+
+flags.DEFINE_bool('use_cage', False, 'Enable Control-Aligned Graph Execution wrapper.')
+flags.DEFINE_string('cage_trace_path', '', 'JSONL trace path for CAGE. Defaults to save_eval_dir/cage_trace.jsonl.')
+flags.DEFINE_integer('cage_min_commit_steps', 8, 'Minimum steps to commit to a CAGE subgoal.')
+flags.DEFINE_integer('cage_stall_window', 8, 'Rolling window used for CAGE stall detection.')
+flags.DEFINE_float('cage_progress_eps', 0.01, 'Minimum progress over the stall window.')
+flags.DEFINE_float('cage_drift_threshold', 16.0, 'Distance-to-path threshold for CAGE path drift.')
+flags.DEFINE_float('cage_max_subgoal_dist', 24.0, 'Maximum CAGE subgoal distance in TDR space.')
+flags.DEFINE_float('cage_min_subgoal_dist', 2.0, 'Minimum CAGE subgoal distance unless near the final goal.')
+flags.DEFINE_integer('cage_recovery_commit_steps', 12, 'Commitment length for CAGE local recovery targets.')
+flags.DEFINE_integer('cage_max_recovery_attempts', 2, 'Maximum local recovery attempts before requesting global replanning.')
+flags.DEFINE_float('cage_recovery_suffix_weight', 0.25, 'Penalty for CAGE recovery targets that move backward on the path.')
+flags.DEFINE_float('cage_final_phase_dist', 8.0, 'Distance threshold for CAGE final-goal phase.')
+flags.DEFINE_integer('cage_final_min_commit_steps', 12, 'Minimum commitment in CAGE final-goal phase.')
+flags.DEFINE_bool('cage_debug', False, 'Emit CAGE step-level JSONL trace records.')
 
 config_flags.DEFINE_config_file('agent_config', 'M_utils/agents/gas.py', lock_config=False) 
 
@@ -109,10 +127,18 @@ def main(_):
     renders = []
     eval_metrics = {}
     overall_metrics = defaultdict(list)
+    cage_config = None
+    cage_trace_writer = None
+    if FLAGS.use_cage:
+        cage_trace_path = FLAGS.cage_trace_path or os.path.join(FLAGS.save_eval_dir, 'cage_trace.jsonl')
+        cage_config = CAGEConfig.from_flags(FLAGS)
+        cage_config = replace(cage_config, trace_path=cage_trace_path)
+        cage_trace_writer = CAGETraceWriter(cage_trace_path, debug=FLAGS.cage_debug)
     for task_id in tqdm(task_id_list, desc="Evaluating Tasks"):
         task_name = task_infos[task_id - 1]['task_name']
         eval_info, cur_renders = evaluate_with_graph(agent, key_graph, env, FLAGS.env_name, task_id, FLAGS.eval_episodes, FLAGS.eval_video_episodes, 
-                                                     FLAGS.seed, FLAGS.eval_on_cpu, config['way_steps'], FLAGS.eval_final_goal_threshold, config,)
+                                                     FLAGS.seed, FLAGS.eval_on_cpu, config['way_steps'], FLAGS.eval_final_goal_threshold, config,
+                                                     cage_config=cage_config, cage_trace_writer=cage_trace_writer,)
         renders.extend(cur_renders)
         eval_metrics.update({f'eval/{task_name}_{k}': v for k, v in eval_info.items() if k in metric_names})
         for k, v in eval_info.items():
@@ -126,6 +152,8 @@ def main(_):
     wandb.log(eval_metrics, step=0) 
     eval_logger.log(eval_metrics, step=0)
     eval_logger.close()
+    if cage_trace_writer is not None:
+        cage_trace_writer.close()
         
 if __name__ == '__main__':
     app.run(main)
