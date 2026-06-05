@@ -28,6 +28,27 @@ class CAGEConfig:
     env_name: str = ""
     reachability_tau: float = 10.0
     target_reach_dist: float | None = None
+    disable_commitment: bool = False
+    disable_drift_monitor: bool = False
+    disable_recovery: bool = False
+    disable_adaptive_horizon: bool = False
+    disable_final_phase_controller: bool = False
+    use_reachability: bool = False
+    reachability_path: str = ""
+    risk_aware_path: bool = False
+    trace_only: bool = False
+    enable_churn_guard: bool = False
+    replan_cooldown_steps: int = 10
+    max_global_replans_per_episode: int = 50
+    max_replans_per_100_steps: int = 10
+    max_consecutive_replan_requests: int = 5
+    fallback_to_gas_on_churn: bool = True
+    fallback_to_gas_steps: int = 50
+    recovery_lockout_steps_after_failure: int = 25
+    min_steps_between_recovery_attempts: int = 20
+    min_progress_for_recovery_success: float = 1e-4
+    disable_recovery_after_churn: bool = False
+    log_churn_events: bool = False
 
     @property
     def effective_target_reach_dist(self) -> float:
@@ -65,4 +86,25 @@ class CAGEConfig:
             final_min_commit_steps=int(flags_obj.cage_final_min_commit_steps),
             debug=bool(flags_obj.cage_debug),
             env_name=str(flags_obj.env_name),
+            disable_commitment=bool(flags_obj.cage_disable_commitment),
+            disable_drift_monitor=bool(flags_obj.cage_disable_drift_monitor),
+            disable_recovery=bool(flags_obj.cage_disable_recovery),
+            disable_adaptive_horizon=bool(flags_obj.cage_disable_adaptive_horizon),
+            disable_final_phase_controller=bool(flags_obj.cage_disable_final_phase_controller),
+            use_reachability=bool(flags_obj.cage_use_reachability),
+            reachability_path=str(flags_obj.cage_reachability_path or ""),
+            risk_aware_path=bool(flags_obj.cage_risk_aware_path),
+            trace_only=bool(flags_obj.cage_trace_only),
+            enable_churn_guard=bool(flags_obj.cage_enable_churn_guard),
+            replan_cooldown_steps=int(flags_obj.cage_replan_cooldown_steps),
+            max_global_replans_per_episode=int(flags_obj.cage_max_global_replans_per_episode),
+            max_replans_per_100_steps=int(flags_obj.cage_max_replans_per_100_steps),
+            max_consecutive_replan_requests=int(flags_obj.cage_max_consecutive_replan_requests),
+            fallback_to_gas_on_churn=bool(flags_obj.cage_fallback_to_gas_on_churn),
+            fallback_to_gas_steps=int(flags_obj.cage_fallback_to_gas_steps),
+            recovery_lockout_steps_after_failure=int(flags_obj.cage_recovery_lockout_steps_after_failure),
+            min_steps_between_recovery_attempts=int(flags_obj.cage_min_steps_between_recovery_attempts),
+            min_progress_for_recovery_success=float(flags_obj.cage_min_progress_for_recovery_success),
+            disable_recovery_after_churn=bool(flags_obj.cage_disable_recovery_after_churn),
+            log_churn_events=bool(flags_obj.cage_log_churn_events),
         ).with_env_defaults()

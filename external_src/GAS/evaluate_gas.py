@@ -50,11 +50,13 @@ flags.DEFINE_string('env_name', 'antmaze-giant-stitch-v0', 'Environment name.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_integer('gpu', 0, 'GPU index')
 flags.DEFINE_string('save_eval_dir', 'exp_policy/', 'Save directory.')
+flags.DEFINE_string('eval_result_path', '', 'Optional CSV path for evaluation metrics. Defaults to policy checkpoint directory eval.csv.')
 
 flags.DEFINE_integer('eval_on_cpu', 1, 'Whether to evaluate on CPU.') 
 flags.DEFINE_integer('eval_episodes', 49, 'Number of episodes for each task.') 
 flags.DEFINE_integer('eval_video_episodes', 1, 'Number of video episodes for each task.') 
 flags.DEFINE_integer('eval_final_goal_threshold', 2, 'Threshold to switch to final goal') 
+flags.DEFINE_integer('eval_max_tasks', 0, 'Optional maximum number of task IDs to evaluate. Zero keeps all tasks.')
 
 flags.DEFINE_string('keygraph_path', None, 'Path to the constructed TD-aware graph') 
 flags.DEFINE_string('policy_path', None, 'Pretrained low-level policy path.') 
@@ -73,6 +75,27 @@ flags.DEFINE_float('cage_recovery_suffix_weight', 0.25, 'Penalty for CAGE recove
 flags.DEFINE_float('cage_final_phase_dist', 8.0, 'Distance threshold for CAGE final-goal phase.')
 flags.DEFINE_integer('cage_final_min_commit_steps', 12, 'Minimum commitment in CAGE final-goal phase.')
 flags.DEFINE_bool('cage_debug', False, 'Emit CAGE step-level JSONL trace records.')
+flags.DEFINE_bool('cage_disable_commitment', False, 'Disable CAGE subgoal commitment for ablations.')
+flags.DEFINE_bool('cage_disable_drift_monitor', False, 'Disable CAGE drift-triggered control for ablations.')
+flags.DEFINE_bool('cage_disable_recovery', False, 'Disable CAGE local recovery for ablations.')
+flags.DEFINE_bool('cage_disable_adaptive_horizon', False, 'Disable CAGE adaptive subgoal horizon for ablations.')
+flags.DEFINE_bool('cage_disable_final_phase_controller', False, 'Disable CAGE final-goal phase controller for ablations.')
+flags.DEFINE_bool('cage_use_reachability', False, 'Reserved flag for future learned CAGE reachability support.')
+flags.DEFINE_string('cage_reachability_path', '', 'Reserved path for a future learned CAGE reachability model.')
+flags.DEFINE_bool('cage_risk_aware_path', False, 'Reserved flag for future CAGE risk-aware path execution.')
+flags.DEFINE_bool('cage_trace_only', False, 'Emit CAGE traces while passing through the original GAS subgoal.')
+flags.DEFINE_bool('cage_enable_churn_guard', False, 'Enable CAGE replan-churn guardrails.')
+flags.DEFINE_integer('cage_replan_cooldown_steps', 10, 'Minimum steps between CAGE-triggered global replans in safe mode.')
+flags.DEFINE_integer('cage_max_global_replans_per_episode', 50, 'Maximum allowed CAGE-triggered global replans per episode in safe mode.')
+flags.DEFINE_integer('cage_max_replans_per_100_steps', 10, 'Maximum CAGE replan requests in a 100-step window in safe mode.')
+flags.DEFINE_integer('cage_max_consecutive_replan_requests', 5, 'Maximum consecutive CAGE replan requests before fallback.')
+flags.DEFINE_bool('cage_fallback_to_gas_on_churn', True, 'Fallback to original GAS target selection after churn guard triggers.')
+flags.DEFINE_integer('cage_fallback_to_gas_steps', 50, 'Number of steps to use GAS target selection after churn fallback.')
+flags.DEFINE_integer('cage_recovery_lockout_steps_after_failure', 25, 'Steps to suppress recovery after a failed recovery attempt.')
+flags.DEFINE_integer('cage_min_steps_between_recovery_attempts', 20, 'Minimum steps between CAGE recovery attempts in safe mode.')
+flags.DEFINE_float('cage_min_progress_for_recovery_success', 1e-4, 'Minimum recovery progress before considering recovery nonfailed.')
+flags.DEFINE_bool('cage_disable_recovery_after_churn', False, 'Disable further CAGE recovery attempts after churn guard triggers.')
+flags.DEFINE_bool('cage_log_churn_events', False, 'Include churn guard event fields in CAGE traces.')
 
 config_flags.DEFINE_config_file('agent_config', 'M_utils/agents/gas.py', lock_config=False) 
 
@@ -120,13 +143,16 @@ def main(_):
     else:   
         task_infos = env.unwrapped.task_infos if hasattr(env.unwrapped, 'task_infos') else env.task_infos
     task_id_list = list(range(1, len(task_infos) + 1))
+    if FLAGS.eval_max_tasks > 0:
+        task_id_list = task_id_list[:FLAGS.eval_max_tasks]
     
     # Evaluate GAS.   
-    eval_logger = CsvLogger(os.path.join(policy_restore_path, 'eval.csv'))
+    eval_logger = CsvLogger(FLAGS.eval_result_path or os.path.join(policy_restore_path, 'eval.csv'))
     metric_names = ["episode.success", "episode.return",  "episode.normalized_return", "episode.length", "episode.duration"]
     renders = []
     eval_metrics = {}
     overall_metrics = defaultdict(list)
+    eval_video_episodes = 0 if FLAGS.env_name in ['kitchen-partial-v0'] else FLAGS.eval_video_episodes
     cage_config = None
     cage_trace_writer = None
     if FLAGS.use_cage:
@@ -136,7 +162,7 @@ def main(_):
         cage_trace_writer = CAGETraceWriter(cage_trace_path, debug=FLAGS.cage_debug)
     for task_id in tqdm(task_id_list, desc="Evaluating Tasks"):
         task_name = task_infos[task_id - 1]['task_name']
-        eval_info, cur_renders = evaluate_with_graph(agent, key_graph, env, FLAGS.env_name, task_id, FLAGS.eval_episodes, FLAGS.eval_video_episodes, 
+        eval_info, cur_renders = evaluate_with_graph(agent, key_graph, env, FLAGS.env_name, task_id, FLAGS.eval_episodes, eval_video_episodes, 
                                                      FLAGS.seed, FLAGS.eval_on_cpu, config['way_steps'], FLAGS.eval_final_goal_threshold, config,
                                                      cage_config=cage_config, cage_trace_writer=cage_trace_writer,)
         renders.extend(cur_renders)
@@ -146,7 +172,7 @@ def main(_):
                 overall_metrics[k].append(v) 
     for k, v in overall_metrics.items():
         eval_metrics[f'eval/overall_{k}'] = np.mean(v)
-    if FLAGS.eval_video_episodes > 0:
+    if eval_video_episodes > 0:
         video = get_wandb_video(renders=renders, n_cols=len(task_id_list))
         eval_metrics['video'] = video
     wandb.log(eval_metrics, step=0) 

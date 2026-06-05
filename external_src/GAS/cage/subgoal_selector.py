@@ -71,7 +71,7 @@ class SubgoalSelector:
         path_distances = np.asarray([self.distance_fn(current_state, node) for node in path], dtype=float)
         support_idx = int(np.argmin(path_distances))
         max_dist = float(self.config.max_subgoal_dist)
-        if recent_stalls > 0:
+        if recent_stalls > 0 and not self.config.disable_adaptive_horizon:
             max_dist = max(float(self.config.min_subgoal_dist), max_dist * 0.5)
         min_dist = float(self.config.min_subgoal_dist)
 

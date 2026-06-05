@@ -54,16 +54,30 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
         while not done:
             phi_obs = np.array(get_phi_fn(observation))
             if use_cage:
+                gas_obs_goal, gas_node_idx, final_goal_on, shortest_path = select_gas_subgoal(
+                    key_graph=key_graph,
+                    task_id=task_id,
+                    phi_obs=phi_obs,
+                    phi_goal=phi_goal,
+                    shortest_path=shortest_path,
+                    final_goal_on=final_goal_on,
+                    eval_final_goal_threshold=eval_final_goal_threshold,
+                    eval_subgoal_threshold=eval_subgoal_threshold,
+                )
                 cached_shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs)
                 if cached_shortest_path is not None:
                     shortest_path = cached_shortest_path
                 planner_final_goal_on = shortest_path is not None and len(shortest_path) <= eval_final_goal_threshold
-                cage_info = {"planner_final_goal_on": planner_final_goal_on}
+                cage_info = {
+                    "planner_final_goal_on": planner_final_goal_on,
+                    "original_subgoal": gas_obs_goal,
+                    "original_subgoal_index": gas_node_idx,
+                }
                 cur_obs_goal, cur_node_idx, cage_state, should_replan, trace_info = cage_controller.select_subgoal(
                     current_state=phi_obs,
                     final_goal=phi_goal,
                     current_path=shortest_path,
-                    current_subgoal=cur_obs_goal,
+                    current_subgoal=gas_obs_goal,
                     step=step,
                     info=cage_info,
                 )
@@ -77,26 +91,22 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
                             current_state=phi_obs,
                             final_goal=phi_goal,
                             current_path=shortest_path,
-                            current_subgoal=cur_obs_goal,
+                            current_subgoal=gas_obs_goal,
                             step=step,
                             info=cage_info,
                         )
                 cage_controller.record_step_trace(env_name, task_id, seed, i, trace_info)
             else:
-                if final_goal_on:
-                    cur_obs_goal = phi_goal
-                else:
-                    cached_shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs)
-                    if cached_shortest_path is not None:
-                        shortest_path = cached_shortest_path
-                    distances = np.linalg.norm(np.array(shortest_path) - phi_obs, axis=1)
-                    valid_indices = np.where(distances <= eval_subgoal_threshold)[0]
-                    cur_node_idx = valid_indices[-1] if len(valid_indices) > 0 else 0
-                    if len(shortest_path) <= eval_final_goal_threshold:
-                        final_goal_on = True
-                        cur_obs_goal = phi_goal
-                    else:
-                        cur_obs_goal = shortest_path[cur_node_idx]
+                cur_obs_goal, cur_node_idx, final_goal_on, shortest_path = select_gas_subgoal(
+                    key_graph=key_graph,
+                    task_id=task_id,
+                    phi_obs=phi_obs,
+                    phi_goal=phi_goal,
+                    shortest_path=shortest_path,
+                    final_goal_on=final_goal_on,
+                    eval_final_goal_threshold=eval_final_goal_threshold,
+                    eval_subgoal_threshold=eval_subgoal_threshold,
+                )
 
             skills = (cur_obs_goal - phi_obs) / (np.linalg.norm(cur_obs_goal - phi_obs) + epsilon)  
             action = actor_fn(observations=observation, goals=skills, temperature=0.0)
@@ -121,6 +131,31 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
         stats[k] = np.mean(v)
 
     return stats, renders
+
+
+def select_gas_subgoal(
+    key_graph,
+    task_id,
+    phi_obs,
+    phi_goal,
+    shortest_path,
+    final_goal_on,
+    eval_final_goal_threshold,
+    eval_subgoal_threshold,
+):
+    """Original GAS subgoal selection logic, factored for trace-only CAGE."""
+    if final_goal_on:
+        return phi_goal, -1, final_goal_on, shortest_path
+    cached_shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs)
+    if cached_shortest_path is not None:
+        shortest_path = cached_shortest_path
+    distances = np.linalg.norm(np.array(shortest_path) - phi_obs, axis=1)
+    valid_indices = np.where(distances <= eval_subgoal_threshold)[0]
+    cur_node_idx = valid_indices[-1] if len(valid_indices) > 0 else 0
+    if len(shortest_path) <= eval_final_goal_threshold:
+        final_goal_on = True
+        return phi_goal, -1, final_goal_on, shortest_path
+    return shortest_path[cur_node_idx], cur_node_idx, final_goal_on, shortest_path
 
 
 def supply_rng(f, rng=jax.random.PRNGKey(0)):
