@@ -1,0 +1,11 @@
+committed_lockout_count_mean,committed_lockout_step_count_mean,committed_stale_count_mean,committed_usage_rate_mean,env_name,final_goal_on_rate_mean,final_phase_override_count_mean,final_phase_preserved_count_mean,global_replan_request_count_mean,intervention_count_mean,intervention_rate_mean,local_safe_loop_count,mean_intervention_gain_mean,mean_segment_progress_mean,num_jobs,segment_target_reach_rate_mean,shadow_mean_override_margin_mean,shadow_override_final_phase_rate_mean,shadow_override_on_success_rate_mean,shadow_override_rate_mean,source_cage_rate_mean,source_committed_rate_mean,source_gas_rate_mean,stall_count_mean,success_rate_mean,variant
+8.92,162.56,0.16,,antmaze-giant-navigate-v0,0.6,0.0,29.56,0.0,12.32,0.013011494584854913,0,0.6524976435158061,0.20176363075847215,1,0.04206632293905572,,0.0,0.0,0.0,0.0172,,0.9802,9.44,0.56,cage_contract_intervene
+0.0,0.0,0.0,0.4801494628678188,antmaze-giant-navigate-v0,0.48,0.0,0.0,0.0,0.0,0.0,0,,0.1377666995031033,1,0.39120749387946496,,0.0,0.0,0.0,0.04110228865016347,0.4801494628678188,0.4021485287248949,19.6,0.44,cage_contract_rank
+0.0,0.0,0.0,,antmaze-giant-navigate-v0,0.8,0.0,0.0,5.64,0.0,0.0,0,,0.2420513643349408,1,0.012470526745483037,,0.0,0.0,0.0,,,,10.92,0.68,cage_safe_full
+0.0,0.0,0.0,,antmaze-giant-navigate-v0,0.72,0.0,0.0,0.0,0.0,0.0,0,,0.2214637468922148,1,0.05351111954431205,,0.0,0.0,0.0,,,,0.0,0.68,cage_trace_only
+,,,,antmaze-giant-navigate-v0,,,,,,,0,,,1,,,,,,,,,,0.64,gas
+9.24,168.2,1.16,0.0104,antmaze-giant-stitch-v0,0.72,0.0,23.84,0.0,233.24,0.32179069599320675,0,0.536206073169152,0.24600564650670856,1,0.028152922021544253,,0.0,0.0,0.0,0.4,0.0104,0.588,9.64,0.72,cage_contract_intervene
+0.0,0.0,0.0,0.6600958977091103,antmaze-giant-stitch-v0,0.68,0.0,0.0,0.0,0.0,0.0,0,,0.17341761829919577,1,0.3094814981123228,,0.0,0.0,0.0,0.06020245071923282,0.6600958977091103,0.2503995737879595,22.56,0.64,cage_contract_rank
+0.0,0.0,0.0,,antmaze-giant-stitch-v0,0.8,0.0,0.0,5.68,0.0,0.0,0,,0.27204097609736855,1,0.008004365305773413,,0.0,0.0,0.0,,,,8.64,0.8,cage_safe_full
+0.0,0.0,0.0,,antmaze-giant-stitch-v0,0.84,0.0,0.0,0.0,0.0,0.0,0,,0.29199591777365486,1,0.04410600269051637,,0.0,0.0,0.0,,,,0.0,0.8,cage_trace_only
+,,,,antmaze-giant-stitch-v0,,,,,,,0,,,1,,,,,,,,,,0.8400000000000001,gas

@@ -41,6 +41,8 @@ def test_manifest_generation_creates_expected_jobs(tmp_path: Path):
         "cage_full",
         "cage_safe_full",
         "cage_contract_rank",
+        "cage_contract_shadow_rank",
+        "cage_contract_intervene",
         "--episodes_per_goal",
         "1",
         "--goals_per_env",
@@ -51,7 +53,7 @@ def test_manifest_generation_creates_expected_jobs(tmp_path: Path):
     subprocess.run(cmd, cwd=str(ROOT), check=True)
     rows = load_jsonl(manifest_path)
 
-    assert len(rows) == 16
+    assert len(rows) == 20
     for row in rows:
         assert row["job_id"]
         assert row["env_name"] == "antmaze-giant-navigate-v0"
@@ -89,6 +91,8 @@ def test_command_builder_cage_flags_only_for_cage_variants(tmp_path: Path):
             "cage_trace_phi_vectors": False,
         }
     )
+    shadow_cmd = build_eval_command({**base, "variant": "cage_contract_shadow_rank"})
+    intervene_cmd = build_eval_command({**base, "variant": "cage_contract_intervene"})
 
     assert "--use_cage" not in gas_cmd
     assert "--use_cage" in full_cmd
@@ -104,6 +108,11 @@ def test_command_builder_cage_flags_only_for_cage_variants(tmp_path: Path):
     assert "--cage_contract_rank" in rank_cmd
     assert "--cage_debug_light" in rank_cmd
     assert "--cage_trace_phi_vectors=false" in rank_cmd
+    assert "--use_cage" in shadow_cmd
+    assert "--cage_contract_shadow_rank" in shadow_cmd
+    assert "--cage_contract_rank" not in shadow_cmd
+    assert "--use_cage" in intervene_cmd
+    assert "--cage_contract_intervene" in intervene_cmd
 
 
 def test_unsupported_variant_fails_clearly():

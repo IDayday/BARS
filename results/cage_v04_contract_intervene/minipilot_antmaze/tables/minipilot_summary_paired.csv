@@ -1,0 +1,9 @@
+delta_drift_count,delta_final_goal_stall_count,delta_normalized_score,delta_recovery_success_rate,delta_segment_target_reach_rate,delta_stall_count,delta_success_rate,delta_target_switch_count,env_name,matched_pairs,variant
+,,-8.0,,,,-0.07999999999999996,,antmaze-giant-navigate-v0,1,cage_contract_intervene
+,,-20.0,,,,-0.2,,antmaze-giant-navigate-v0,1,cage_contract_rank
+,,4.0,,,,0.040000000000000036,,antmaze-giant-navigate-v0,1,cage_safe_full
+,,4.0,,,,0.040000000000000036,,antmaze-giant-navigate-v0,1,cage_trace_only
+,,-12.0,,,,-0.1200000000000001,,antmaze-giant-stitch-v0,1,cage_contract_intervene
+,,-20.0,,,,-0.20000000000000007,,antmaze-giant-stitch-v0,1,cage_contract_rank
+,,-4.0,,,,-0.040000000000000036,,antmaze-giant-stitch-v0,1,cage_safe_full
+,,-4.0,,,,-0.040000000000000036,,antmaze-giant-stitch-v0,1,cage_trace_only

@@ -124,12 +124,27 @@ flags.DEFINE_float('cage_contract_rank_extreme_negative_threshold', 0.90, 'Only 
 flags.DEFINE_float('cage_contract_rank_prefer_gas_margin', 0.05, 'Non-GAS candidates must beat GAS by this margin before replacement.')
 flags.DEFINE_bool('cage_contract_rank_disable_hard_lcb_gate', True, 'Disable fixed hard LCB gate for CAGE-v0.3 ranking.')
 flags.DEFINE_bool('cage_contract_rank_debug_candidates', False, 'Emit per-candidate CAGE-v0.3 ranking diagnostics in debug traces.')
+flags.DEFINE_bool('cage_contract_shadow_rank', False, 'Enable CAGE-v0.4 shadow ranking while executing the original GAS target.')
+flags.DEFINE_bool('cage_contract_intervene', False, 'Enable CAGE-v0.4 GAS-anchored contract intervention.')
+flags.DEFINE_float('cage_contract_intervention_margin', 0.10, 'Minimum intervention gain required before replacing the GAS target.')
+flags.DEFINE_float('cage_contract_intervention_gas_risk_threshold', 0.60, 'GAS negative-progress risk threshold for allowing intervention.')
+flags.DEFINE_float('cage_contract_intervention_min_final_progress_gain', 0.00, 'Minimum final-goal progress gain required for intervention.')
+flags.DEFINE_float('cage_contract_intervention_min_path_index_gain', 0.00, 'Minimum path-index gain required for intervention.')
+flags.DEFINE_float('cage_contract_intervention_cost', 0.05, 'Fixed cost subtracted from non-GAS intervention gain.')
+flags.DEFINE_bool('cage_contract_intervention_preserve_final_phase', True, 'Preserve GAS/final-goal target in final-goal phase unless extreme risk is detected.')
+flags.DEFINE_bool('cage_contract_intervention_allow_final_override_only_extreme', True, 'Only allow final-phase override under extreme negative-progress risk.')
+flags.DEFINE_integer('cage_contract_max_commit_steps', 24, 'Maximum steps a v0.4 committed target may remain eligible.')
+flags.DEFINE_float('cage_contract_committed_min_target_progress', 0.01, 'Minimum recent target-distance progress for committed target eligibility.')
+flags.DEFINE_float('cage_contract_committed_min_goal_progress', 0.00, 'Minimum recent final-goal progress for committed target eligibility.')
+flags.DEFINE_integer('cage_contract_committed_lockout_steps', 20, 'Steps to lock out committed target reuse after staleness.')
+flags.DEFINE_bool('cage_contract_disable_committed_on_stall', True, 'Lock out committed target reuse when stall is detected.')
+flags.DEFINE_bool('cage_contract_shadow_debug_candidates', False, 'Emit per-candidate CAGE-v0.4 shadow ranking diagnostics.')
 
 flags.DEFINE_string('contract_trace_path', '', 'Optional JSONL path for closed-loop segment contract traces.')
 flags.DEFINE_bool('contract_trace_debug', False, 'Enable verbose contract trace behavior.')
 flags.DEFINE_bool('store_contract_state_refs', False, 'Store exact StateRefs in contract traces when available.')
 flags.DEFINE_string('contract_state_ref_mode', 'metadata_only', 'StateRef mode: exact_only|best_effort|metadata_only.')
-flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full,cage_contract_commit,cage_contract_rank', 'Comma-separated variants to contract-capture.')
+flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full,cage_contract_commit,cage_contract_rank,cage_contract_shadow_rank,cage_contract_intervene', 'Comma-separated variants to contract-capture.')
 flags.DEFINE_bool('contract_capture_segment_start', True, 'Capture segment starts in contract trace.')
 flags.DEFINE_bool('contract_capture_segment_end', True, 'Capture segment ends in contract trace.')
 flags.DEFINE_bool('contract_capture_qpos_qvel', True, 'Capture qpos/qvel in StateRefs when available.')
@@ -245,6 +260,10 @@ def main(_):
 def infer_contract_variant(flags_obj):
     if not flags_obj.use_cage:
         return 'gas'
+    if flags_obj.cage_contract_shadow_rank:
+        return 'cage_contract_shadow_rank'
+    if flags_obj.cage_contract_intervene:
+        return 'cage_contract_intervene'
     if flags_obj.cage_contract_rank:
         return 'cage_contract_rank'
     if flags_obj.cage_contract_commit:

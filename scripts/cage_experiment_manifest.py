@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cage_max_debug_steps_per_episode", type=int, default=0)
     parser.add_argument("--cage_trace_phi_vectors", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--cage_contract_rank_debug_candidates", action="store_true")
+    parser.add_argument("--cage_contract_shadow_debug_candidates", action="store_true")
     parser.add_argument("--cage_contract_model_path", default="", help="Optional contract model JSON for cage_contract_commit.")
     return parser
 
@@ -83,6 +84,7 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "cage_max_debug_steps_per_episode": int(args.cage_max_debug_steps_per_episode),
         "cage_trace_phi_vectors": bool(args.cage_trace_phi_vectors),
         "cage_contract_rank_debug_candidates": bool(args.cage_contract_rank_debug_candidates),
+        "cage_contract_shadow_debug_candidates": bool(args.cage_contract_shadow_debug_candidates),
         "status": "initialized",
     }
     if args.cage_contract_model_path:

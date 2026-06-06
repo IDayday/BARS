@@ -29,6 +29,8 @@ SUPPORTED_VARIANTS = {
     "cage_safe_full",
     "cage_contract_commit",
     "cage_contract_rank",
+    "cage_contract_shadow_rank",
+    "cage_contract_intervene",
 }
 
 UNSUPPORTED_VARIANTS = {
@@ -210,6 +212,46 @@ def variant_args(variant: str, reachability_path: str | None = None) -> list[str
                 "--cage_log_churn_events",
             ]
         )
+    elif variant == "cage_contract_shadow_rank":
+        args.extend(
+            [
+                "--cage_contract_shadow_rank",
+                "--cage_enable_churn_guard",
+                "--cage_replan_cooldown_steps",
+                "10",
+                "--cage_max_global_replans_per_episode",
+                "50",
+                "--cage_max_replans_per_100_steps",
+                "10",
+                "--cage_max_consecutive_replan_requests",
+                "5",
+                "--cage_fallback_to_gas_on_churn",
+                "--cage_fallback_to_gas_steps",
+                "50",
+                "--cage_disable_recovery_after_churn",
+                "--cage_log_churn_events",
+            ]
+        )
+    elif variant == "cage_contract_intervene":
+        args.extend(
+            [
+                "--cage_contract_intervene",
+                "--cage_enable_churn_guard",
+                "--cage_replan_cooldown_steps",
+                "10",
+                "--cage_max_global_replans_per_episode",
+                "50",
+                "--cage_max_replans_per_100_steps",
+                "10",
+                "--cage_max_consecutive_replan_requests",
+                "5",
+                "--cage_fallback_to_gas_on_churn",
+                "--cage_fallback_to_gas_steps",
+                "50",
+                "--cage_disable_recovery_after_churn",
+                "--cage_log_churn_events",
+            ]
+        )
     return args
 
 
@@ -268,6 +310,8 @@ def build_eval_command(row: dict[str, Any]) -> list[str]:
         command.append("--cage_trace_phi_vectors=false")
     if variant != "gas" and row.get("cage_contract_rank_debug_candidates", False):
         command.append("--cage_contract_rank_debug_candidates")
+    if variant != "gas" and row.get("cage_contract_shadow_debug_candidates", False):
+        command.append("--cage_contract_shadow_debug_candidates")
     if variant != "gas" and row.get("cage_contract_model_path"):
         command.extend(["--cage_use_contract_model", "--cage_contract_model_path", str(row["cage_contract_model_path"])])
     if row.get("contract_trace_path"):

@@ -72,6 +72,21 @@ class CAGEConfig:
     contract_rank_prefer_gas_margin: float = 0.05
     contract_rank_disable_hard_lcb_gate: bool = True
     contract_rank_debug_candidates: bool = False
+    contract_shadow_rank: bool = False
+    contract_intervene: bool = False
+    contract_intervention_margin: float = 0.10
+    contract_intervention_gas_risk_threshold: float = 0.60
+    contract_intervention_min_final_progress_gain: float = 0.00
+    contract_intervention_min_path_index_gain: float = 0.00
+    contract_intervention_cost: float = 0.05
+    contract_intervention_preserve_final_phase: bool = True
+    contract_intervention_allow_final_override_only_extreme: bool = True
+    contract_max_commit_steps: int = 24
+    contract_committed_min_target_progress: float = 0.01
+    contract_committed_min_goal_progress: float = 0.00
+    contract_committed_lockout_steps: int = 20
+    contract_disable_committed_on_stall: bool = True
+    contract_shadow_debug_candidates: bool = False
     debug_light: bool = False
     disable_exact_state_ref_trace: bool = False
     max_debug_steps_per_episode: int = 0
@@ -86,7 +101,7 @@ class CAGEConfig:
     def with_env_defaults(self) -> "CAGEConfig":
         """Return a conservative environment-adjusted config."""
         cfg = self
-        if cfg.contract_commit or cfg.contract_rank:
+        if cfg.contract_commit or cfg.contract_rank or cfg.contract_shadow_rank or cfg.contract_intervene:
             cfg = replace(
                 cfg,
                 min_commit_steps=max(int(cfg.min_commit_steps), int(cfg.contract_min_commit_steps)),
@@ -170,6 +185,21 @@ class CAGEConfig:
             contract_rank_prefer_gas_margin=float(flags_obj.cage_contract_rank_prefer_gas_margin),
             contract_rank_disable_hard_lcb_gate=bool(flags_obj.cage_contract_rank_disable_hard_lcb_gate),
             contract_rank_debug_candidates=bool(flags_obj.cage_contract_rank_debug_candidates),
+            contract_shadow_rank=bool(flags_obj.cage_contract_shadow_rank),
+            contract_intervene=bool(flags_obj.cage_contract_intervene),
+            contract_intervention_margin=float(flags_obj.cage_contract_intervention_margin),
+            contract_intervention_gas_risk_threshold=float(flags_obj.cage_contract_intervention_gas_risk_threshold),
+            contract_intervention_min_final_progress_gain=float(flags_obj.cage_contract_intervention_min_final_progress_gain),
+            contract_intervention_min_path_index_gain=float(flags_obj.cage_contract_intervention_min_path_index_gain),
+            contract_intervention_cost=float(flags_obj.cage_contract_intervention_cost),
+            contract_intervention_preserve_final_phase=bool(flags_obj.cage_contract_intervention_preserve_final_phase),
+            contract_intervention_allow_final_override_only_extreme=bool(flags_obj.cage_contract_intervention_allow_final_override_only_extreme),
+            contract_max_commit_steps=int(flags_obj.cage_contract_max_commit_steps),
+            contract_committed_min_target_progress=float(flags_obj.cage_contract_committed_min_target_progress),
+            contract_committed_min_goal_progress=float(flags_obj.cage_contract_committed_min_goal_progress),
+            contract_committed_lockout_steps=int(flags_obj.cage_contract_committed_lockout_steps),
+            contract_disable_committed_on_stall=bool(flags_obj.cage_contract_disable_committed_on_stall),
+            contract_shadow_debug_candidates=bool(flags_obj.cage_contract_shadow_debug_candidates),
             debug_light=bool(flags_obj.cage_debug_light),
             disable_exact_state_ref_trace=bool(flags_obj.cage_disable_exact_state_ref_trace),
             max_debug_steps_per_episode=int(flags_obj.cage_max_debug_steps_per_episode),

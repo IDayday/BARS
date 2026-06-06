@@ -9,6 +9,7 @@ import numpy as np
 
 from cage.config import CAGEConfig
 from cage.closed_loop_contracts import ContractGateResult, evaluate_contract_gate
+from cage.contract_intervention import decide_contract_intervention, decision_trace
 from cage.contract_model import ContractScorer
 from cage.contract_ranker import ContractCandidate, candidate_trace, rank_contract_candidates
 from cage.monitor import DistanceFn, ProgressMonitor, as_path_array, distance_to_path
@@ -51,6 +52,8 @@ class CAGEController:
             )
             if config.contract_commit
             or config.contract_rank
+            or config.contract_shadow_rank
+            or config.contract_intervene
             else None
         )
         self.reset_episode(None, None, None)
@@ -91,6 +94,26 @@ class CAGEController:
         self.contract_rank_choose_cage_count = 0
         self.contract_rank_choose_committed_count = 0
         self.contract_rank_extreme_reject_count = 0
+        self.shadow_total_count = 0
+        self.shadow_override_count = 0
+        self.shadow_final_phase_count = 0
+        self.shadow_override_final_phase_count = 0
+        self.shadow_override_margins: list[float] = []
+        self.shadow_choose_committed_count = 0
+        self.shadow_choose_cage_count = 0
+        self.shadow_choose_path_later_count = 0
+        self.contract_intervention_total_count = 0
+        self.contract_intervention_count = 0
+        self.contract_intervention_gains: list[float] = []
+        self.final_phase_preserved_count = 0
+        self.final_phase_override_count = 0
+        self.final_phase_override_reasons: list[str] = []
+        self.committed_target_progresses: list[float] = []
+        self.committed_goal_progresses: list[float] = []
+        self.committed_stale_count = 0
+        self.committed_lockout_count = 0
+        self.committed_lockout_step_count = 0
+        self.committed_lockout_until_step = -1
         self.max_consecutive_replan_burst = 0
         self._consecutive_replan_request_count = 0
         self._last_replan_attempt_step = None
@@ -102,6 +125,7 @@ class CAGEController:
         self._recovery_disabled_after_churn = False
         self._last_original_subgoal = None
         self._last_original_subgoal_index = None
+        self._last_final_goal = final_goal
         self._last_step = 0
         self.segment_progresses: list[float] = []
         self.distance_to_path_values: list[float] = []
@@ -129,6 +153,7 @@ class CAGEController:
     ):
         info = info or {}
         self._last_step = int(step)
+        self._last_final_goal = final_goal
         self._last_original_subgoal = info.get("original_subgoal", current_subgoal)
         self._last_original_subgoal_index = info.get("original_subgoal_index")
         path = as_path_array(current_path)
@@ -213,6 +238,7 @@ class CAGEController:
             and not final_goal_phase
             and self.state not in {CAGEState.LOCAL_STALL, CAGEState.FINAL_GOAL_STALL, CAGEState.REPLAN_MISS}
             and self.commitment_steps < min_commit
+            and not (self.config.contract_shadow_rank or self.config.contract_intervene)
         ):
             if self.state != CAGEState.RECOVERY:
                 self.state = CAGEState.COMMITTING
@@ -234,6 +260,30 @@ class CAGEController:
             else:
                 self.state = CAGEState.FINAL_GOAL
             selection = self.selector.select(current_state, final_goal, path, final_goal_phase=True)
+            if self.config.contract_shadow_rank:
+                return self._select_contract_shadow_rank_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=True,
+                    reason="shadow_rank_final_phase",
+                )
+            if self.config.contract_intervene:
+                return self._select_contract_intervention_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=True,
+                    reason="contract_intervene_final_phase",
+                )
             if self.config.contract_rank:
                 return self._select_contract_ranked_subgoal(
                     current_state=current_state,
@@ -283,6 +333,42 @@ class CAGEController:
 
         if hard_drift:
             self.state = CAGEState.PATH_DRIFT
+            if self.config.contract_shadow_rank:
+                selection = self.selector.select(
+                    current_state,
+                    final_goal,
+                    path,
+                    recent_stalls=self.stall_count + self.recovery_failure_count,
+                )
+                return self._select_contract_shadow_rank_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=False,
+                    reason="shadow_rank_drift_guard",
+                )
+            if self.config.contract_intervene:
+                selection = self.selector.select(
+                    current_state,
+                    final_goal,
+                    path,
+                    recent_stalls=self.stall_count + self.recovery_failure_count,
+                )
+                return self._select_contract_intervention_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=False,
+                    reason="contract_intervene_drift_guard",
+                )
             if self.config.contract_rank:
                 selection = self.selector.select(
                     current_state,
@@ -327,6 +413,42 @@ class CAGEController:
                 self._stall_active = True
             if not self.config.disable_recovery:
                 self.state = CAGEState.FINAL_GOAL_STALL if self._in_final_goal_phase else CAGEState.LOCAL_STALL
+                if self.config.contract_shadow_rank:
+                    selection = self.selector.select(
+                        current_state,
+                        final_goal,
+                        path,
+                        recent_stalls=self.stall_count + self.recovery_failure_count,
+                    )
+                    return self._select_contract_shadow_rank_subgoal(
+                        current_state=current_state,
+                        final_goal=final_goal,
+                        path=path,
+                        selection=selection,
+                        step=step,
+                        trace_info=trace_info,
+                        info=info,
+                        final_goal_phase=False,
+                        reason="shadow_rank_stall_guard",
+                    )
+                if self.config.contract_intervene:
+                    selection = self.selector.select(
+                        current_state,
+                        final_goal,
+                        path,
+                        recent_stalls=self.stall_count + self.recovery_failure_count,
+                    )
+                    return self._select_contract_intervention_subgoal(
+                        current_state=current_state,
+                        final_goal=final_goal,
+                        path=path,
+                        selection=selection,
+                        step=step,
+                        trace_info=trace_info,
+                        info=info,
+                        final_goal_phase=False,
+                        reason="contract_intervene_stall_guard",
+                    )
                 if self.config.contract_rank:
                     selection = self.selector.select(
                         current_state,
@@ -380,6 +502,30 @@ class CAGEController:
             )
 
         self.state = CAGEState.NORMAL
+        if self.config.contract_shadow_rank:
+            return self._select_contract_shadow_rank_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                path=path,
+                selection=selection,
+                step=step,
+                trace_info=trace_info,
+                info=info,
+                final_goal_phase=False,
+                reason="shadow_rank_path",
+            )
+        if self.config.contract_intervene:
+            return self._select_contract_intervention_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                path=path,
+                selection=selection,
+                step=step,
+                trace_info=trace_info,
+                info=info,
+                final_goal_phase=False,
+                reason="contract_intervene_path",
+            )
         if self.config.contract_rank:
             return self._select_contract_ranked_subgoal(
                 current_state=current_state,
@@ -438,6 +584,7 @@ class CAGEController:
         self.same_target_duration += 1
         snapshot = self.monitor.update(prev_state, current_state, selected_subgoal)
         self.segment_progresses.append(float(snapshot.step_progress))
+        self._update_committed_watchdog(prev_state, current_state, selected_subgoal, snapshot)
 
         if self.distance_fn(current_state, selected_subgoal) <= self.config.effective_target_reach_dist:
             if not self.target_reached_this_segment:
@@ -523,6 +670,8 @@ class CAGEController:
             "cage_trace_only": bool(self.config.trace_only),
             "cage_contract_commit": bool(self.config.contract_commit),
             "cage_contract_rank": bool(self.config.contract_rank),
+            "cage_contract_shadow_rank": bool(self.config.contract_shadow_rank),
+            "cage_contract_intervene": bool(self.config.contract_intervene),
             "contract_model_loaded": int(bool(self.contract_scorer.loaded) if self.contract_scorer is not None else False),
             "contract_gate_pass_count": int(self.contract_gate_pass_count),
             "contract_gate_reject_count": int(self.contract_gate_reject_count),
@@ -540,6 +689,24 @@ class CAGEController:
             "contract_rank_choose_cage_count": int(self.contract_rank_choose_cage_count),
             "contract_rank_choose_committed_count": int(self.contract_rank_choose_committed_count),
             "contract_rank_extreme_reject_count": int(self.contract_rank_extreme_reject_count),
+            "shadow_override_rate": self._safe_rate(self.shadow_override_count, self.shadow_total_count),
+            "shadow_override_on_success_rate": self._safe_rate(self.shadow_override_count, self.shadow_total_count) if bool(success) else None,
+            "shadow_override_final_phase_rate": self._safe_rate(self.shadow_override_final_phase_count, self.shadow_final_phase_count),
+            "shadow_mean_override_margin": float(mean(self.shadow_override_margins)) if self.shadow_override_margins else None,
+            "shadow_choose_committed_rate": self._safe_rate(self.shadow_choose_committed_count, self.shadow_total_count),
+            "shadow_choose_cage_rate": self._safe_rate(self.shadow_choose_cage_count, self.shadow_total_count),
+            "shadow_choose_path_later_rate": self._safe_rate(self.shadow_choose_path_later_count, self.shadow_total_count),
+            "intervention_count": int(self.contract_intervention_count),
+            "intervention_rate": self._safe_rate(self.contract_intervention_count, self.contract_intervention_total_count),
+            "mean_intervention_gain": float(mean(self.contract_intervention_gains)) if self.contract_intervention_gains else None,
+            "final_phase_preserved_count": int(self.final_phase_preserved_count),
+            "final_phase_override_count": int(self.final_phase_override_count),
+            "final_phase_override_reason": ";".join(self.final_phase_override_reasons[-8:]) if self.final_phase_override_reasons else None,
+            "committed_stale_count": int(self.committed_stale_count),
+            "committed_lockout_count": int(self.committed_lockout_count),
+            "committed_lockout_step_count": int(self.committed_lockout_step_count),
+            "committed_target_progress_mean": float(mean(self.committed_target_progresses)) if self.committed_target_progresses else None,
+            "committed_goal_progress_mean": float(mean(self.committed_goal_progresses)) if self.committed_goal_progresses else None,
             "final_goal_on_step": self.final_goal_on_step,
             "final_goal_switch_count": int(self.final_goal_switch_count),
             "final_goal_stall_count": int(self.final_goal_stall_count),
@@ -775,18 +942,7 @@ class CAGEController:
             info=info,
             final_goal_phase=final_goal_phase,
         )
-        result = rank_contract_candidates(
-            candidates,
-            self.contract_scorer,
-            contract_weight=float(self.config.contract_rank_contract_weight),
-            progress_weight=float(self.config.contract_rank_progress_weight),
-            negative_weight=float(self.config.contract_rank_negative_weight),
-            uncertainty_weight=float(self.config.contract_rank_uncertainty_weight),
-            switch_penalty=float(self.config.contract_rank_switch_penalty),
-            extreme_negative_threshold=float(self.config.contract_rank_extreme_negative_threshold),
-            prefer_gas_margin=float(self.config.contract_rank_prefer_gas_margin),
-            min_candidate_coverage=float(self.config.contract_rank_min_candidate_coverage),
-        )
+        result = self._rank_contract_candidate_set(candidates)
         selected = result.selected_candidate
         self._record_contract_rank_result(result)
 
@@ -827,6 +983,146 @@ class CAGEController:
         )
         return np.asarray(selected.target), selected.index, self.state.value, False, trace_info
 
+    def _select_contract_shadow_rank_subgoal(
+        self,
+        *,
+        current_state,
+        final_goal,
+        path,
+        selection,
+        step: int,
+        trace_info: dict[str, Any],
+        info: dict[str, Any] | None,
+        final_goal_phase: bool,
+        reason: str,
+    ):
+        if self.contract_scorer is None:
+            trace_info["shadow_rank_reason"] = "no_scorer"
+            return self._select_original_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                step=step,
+                trace_info=trace_info,
+                reason="shadow_rank_no_scorer_passthrough",
+            )
+        candidates = self._build_contract_rank_candidates(
+            current_state=current_state,
+            final_goal=final_goal,
+            path=path,
+            selection=selection,
+            info=info,
+            final_goal_phase=final_goal_phase,
+        )
+        result = self._rank_contract_candidate_set(candidates)
+        self._record_shadow_rank_result(result, final_goal_phase=final_goal_phase)
+        trace_info.update(self._shadow_rank_trace_fields(result, final_goal_phase=final_goal_phase, reason=reason))
+        return self._select_original_subgoal(
+            current_state=current_state,
+            final_goal=final_goal,
+            step=step,
+            trace_info=trace_info,
+            reason="shadow_rank_passthrough",
+        )
+
+    def _select_contract_intervention_subgoal(
+        self,
+        *,
+        current_state,
+        final_goal,
+        path,
+        selection,
+        step: int,
+        trace_info: dict[str, Any],
+        info: dict[str, Any] | None,
+        final_goal_phase: bool,
+        reason: str,
+    ):
+        if self.contract_scorer is None:
+            trace_info["intervention_reason"] = "no_scorer"
+            return self._select_original_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                step=step,
+                trace_info=trace_info,
+                reason="contract_intervene_no_scorer",
+            )
+        candidates = self._build_contract_rank_candidates(
+            current_state=current_state,
+            final_goal=final_goal,
+            path=path,
+            selection=selection,
+            info=info,
+            final_goal_phase=final_goal_phase,
+        )
+        rank_result = self._rank_contract_candidate_set(candidates)
+        committed_locked_out = self._committed_lockout_active(step)
+        decision = decide_contract_intervention(
+            rank_result.candidates,
+            intervention_margin=float(self.config.contract_intervention_margin),
+            gas_risk_threshold=float(self.config.contract_intervention_gas_risk_threshold),
+            min_final_progress_gain=float(self.config.contract_intervention_min_final_progress_gain),
+            min_path_index_gain=float(self.config.contract_intervention_min_path_index_gain),
+            intervention_cost=float(self.config.contract_intervention_cost),
+            extreme_negative_threshold=float(self.config.contract_rank_extreme_negative_threshold),
+            preserve_final_phase=bool(self.config.contract_intervention_preserve_final_phase),
+            allow_final_override_only_extreme=bool(self.config.contract_intervention_allow_final_override_only_extreme),
+            gas_progress_stalled=bool(self.monitor.is_stalled),
+            committed_locked_out=bool(committed_locked_out),
+        )
+        self._record_contract_intervention_result(decision, rank_result)
+        selected = decision.selected_candidate
+        if decision.intervention_allowed and final_goal_phase and not selected.is_original_gas:
+            self.final_phase_override_count += 1
+            self.final_phase_override_reasons.append(decision.intervention_reason)
+        if selected.source == "committed":
+            self.state = CAGEState.COMMITTING
+        elif selected.target_mode == "final_goal":
+            self.state = CAGEState.FINAL_GOAL
+        else:
+            self.state = CAGEState.NORMAL
+        self._set_target(selected.target, selected.index, step)
+        trace_info.update(self._contract_rank_trace_fields(rank_result, reason))
+        trace_info.update(decision_trace(decision))
+        if selected.prediction is not None:
+            trace_info.update(
+                {
+                    "contract_model_loaded": int(selected.prediction.model_loaded),
+                    "contract_score": selected.score,
+                    "contract_lcb": selected.prediction.lower_confidence_bound,
+                    "contract_uncertainty": selected.prediction.uncertainty,
+                    "predicted_hit": selected.prediction.predicted_hit,
+                    "predicted_negative_progress": selected.prediction.predicted_negative_progress,
+                    "contract_gate_pass": True,
+                    "contract_reject_reason": selected.reject_reason,
+                }
+            )
+        trace_info.update(
+            self._trace_target(
+                selected.target,
+                selected.index,
+                False,
+                decision.intervention_reason,
+                current_state=current_state,
+                distance=selected.distance,
+                target_mode=selected.target_mode,
+            )
+        )
+        return np.asarray(selected.target), selected.index, self.state.value, False, trace_info
+
+    def _rank_contract_candidate_set(self, candidates: list[ContractCandidate]):
+        return rank_contract_candidates(
+            candidates,
+            self.contract_scorer,
+            contract_weight=float(self.config.contract_rank_contract_weight),
+            progress_weight=float(self.config.contract_rank_progress_weight),
+            negative_weight=float(self.config.contract_rank_negative_weight),
+            uncertainty_weight=float(self.config.contract_rank_uncertainty_weight),
+            switch_penalty=float(self.config.contract_rank_switch_penalty),
+            extreme_negative_threshold=float(self.config.contract_rank_extreme_negative_threshold),
+            prefer_gas_margin=float(self.config.contract_rank_prefer_gas_margin),
+            min_candidate_coverage=float(self.config.contract_rank_min_candidate_coverage),
+        )
+
     def _build_contract_rank_candidates(
         self,
         *,
@@ -846,11 +1142,11 @@ class CAGEController:
                     current_state,
                     original,
                     original_index,
-                    target_mode="gas_path",
+                    target_mode="final_goal" if final_goal_phase else "gas_path",
                     source="gas",
                     is_original_gas=True,
                     path_position=original_index,
-                    final_phase=False,
+                    final_phase=final_goal_phase,
                     info=info,
                 )
             )
@@ -860,11 +1156,11 @@ class CAGEController:
                     current_state,
                     selection.subgoal,
                     selection.index,
-                    target_mode="gas_path",
+                    target_mode="final_goal" if final_goal_phase else "gas_path",
                     source="gas",
                     is_original_gas=True,
                     path_position=selection.index,
-                    final_phase=False,
+                    final_phase=final_goal_phase,
                     info=info,
                 )
             )
@@ -887,7 +1183,7 @@ class CAGEController:
         if (
             self.current_subgoal is not None
             and not self._target_reached(current_state)
-            and float(self.monitor.progress_window_value) > float(self.config.progress_eps)
+            and self._committed_candidate_allowed(current_state)
         ):
             candidates.append(
                 self._make_contract_candidate(
@@ -1042,6 +1338,34 @@ class CAGEController:
         else:
             self.contract_rank_choose_cage_count += 1
 
+    def _record_shadow_rank_result(self, result, *, final_goal_phase: bool) -> None:
+        self.shadow_total_count += 1
+        if final_goal_phase:
+            self.shadow_final_phase_count += 1
+        selected = result.selected_candidate
+        override = not bool(selected.is_original_gas or selected.source == "gas")
+        if override:
+            self.shadow_override_count += 1
+            if final_goal_phase:
+                self.shadow_override_final_phase_count += 1
+        if result.gas_score is not None and result.best_non_gas_score is not None:
+            self.shadow_override_margins.append(float(result.best_non_gas_score) - float(result.gas_score))
+        if selected.source == "committed":
+            self.shadow_choose_committed_count += 1
+        elif selected.source == "path_later":
+            self.shadow_choose_path_later_count += 1
+        elif not selected.is_original_gas and selected.source != "gas":
+            self.shadow_choose_cage_count += 1
+
+    def _record_contract_intervention_result(self, decision, rank_result) -> None:
+        self._record_contract_rank_result(rank_result)
+        self.contract_intervention_total_count += 1
+        self.contract_intervention_gains.append(float(decision.intervention_gain))
+        if decision.intervention_allowed:
+            self.contract_intervention_count += 1
+        if decision.final_phase_preserved:
+            self.final_phase_preserved_count += 1
+
     def _contract_rank_trace_fields(self, result, reason: str) -> dict[str, Any]:
         row = {
             "contract_rank_enabled": True,
@@ -1059,6 +1383,90 @@ class CAGEController:
         if self.config.contract_rank_debug_candidates:
             row["contract_rank_candidates"] = [candidate_trace(candidate) for candidate in result.candidates]
         return row
+
+    def _shadow_rank_trace_fields(self, result, *, final_goal_phase: bool, reason: str) -> dict[str, Any]:
+        selected = result.selected_candidate
+        override = not bool(selected.is_original_gas or selected.source == "gas")
+        margin = None
+        if result.gas_score is not None and result.best_non_gas_score is not None:
+            margin = float(result.best_non_gas_score) - float(result.gas_score)
+        row = {
+            "contract_shadow_rank_enabled": True,
+            "shadow_rank_context": reason,
+            "shadow_selected_source": selected.source,
+            "shadow_selected_score": float(result.selected_score),
+            "shadow_gas_score": result.gas_score,
+            "shadow_best_non_gas_score": result.best_non_gas_score,
+            "shadow_would_override_gas": bool(override),
+            "shadow_override_margin": margin,
+            "shadow_selected_target_mode": selected.target_mode,
+            "shadow_candidate_count": int(result.candidate_count),
+            "shadow_candidate_coverage": float(result.coverage),
+            "shadow_final_phase": bool(final_goal_phase),
+            "shadow_final_phase_override": bool(final_goal_phase and override),
+        }
+        if self.config.contract_shadow_debug_candidates:
+            row["shadow_rank_candidates"] = [candidate_trace(candidate) for candidate in result.candidates]
+        return row
+
+    def _committed_candidate_allowed(self, current_state) -> bool:
+        if self.current_subgoal is None:
+            return False
+        if not self.config.contract_intervene:
+            return float(self.monitor.progress_window_value) > float(self.config.progress_eps)
+        if self._committed_lockout_active(self._last_step):
+            self.committed_lockout_step_count += 1
+            return False
+        if self.commitment_steps >= int(self.config.contract_max_commit_steps):
+            self._start_committed_lockout("max_commit_steps")
+            return False
+        target_distance = float(self.distance_fn(current_state, self.current_subgoal))
+        if target_distance <= self.config.effective_target_reach_dist:
+            return False
+        target_progress = float(self.monitor.progress_window_value)
+        goal_progress = float(self.committed_goal_progresses[-1]) if self.committed_goal_progresses else 0.0
+        if target_progress < float(self.config.contract_committed_min_target_progress):
+            return False
+        if goal_progress < float(self.config.contract_committed_min_goal_progress):
+            return False
+        return True
+
+    def _update_committed_watchdog(self, prev_state, current_state, selected_subgoal, snapshot) -> None:
+        if not self.config.contract_intervene:
+            return
+        if self.state != CAGEState.COMMITTING:
+            return
+        if self.current_subgoal is None or selected_subgoal is None:
+            return
+        if float(self.distance_fn(self.current_subgoal, selected_subgoal)) > 1e-8:
+            return
+        target_progress = float(self.distance_fn(prev_state, selected_subgoal) - self.distance_fn(current_state, selected_subgoal))
+        self.committed_target_progresses.append(target_progress)
+        goal_progress = 0.0
+        if self._last_final_goal is not None:
+            goal_progress = float(self.distance_fn(prev_state, self._last_final_goal) - self.distance_fn(current_state, self._last_final_goal))
+            self.committed_goal_progresses.append(goal_progress)
+        stale = (
+            target_progress < float(self.config.contract_committed_min_target_progress)
+            or goal_progress < float(self.config.contract_committed_min_goal_progress)
+            or bool(snapshot.stalled and self.config.contract_disable_committed_on_stall)
+        )
+        if stale:
+            self.committed_stale_count += 1
+            if snapshot.stalled and self.config.contract_disable_committed_on_stall:
+                self._start_committed_lockout("stall")
+
+    def _start_committed_lockout(self, reason: str) -> None:
+        if not self.config.contract_intervene:
+            return
+        self.committed_lockout_count += 1
+        self.committed_lockout_until_step = max(
+            int(self.committed_lockout_until_step),
+            int(self._last_step) + int(self.config.contract_committed_lockout_steps),
+        )
+
+    def _committed_lockout_active(self, step: int) -> bool:
+        return bool(self.config.contract_intervene and int(step) < int(self.committed_lockout_until_step))
 
     def _contract_gate(
         self,
@@ -1145,6 +1553,8 @@ class CAGEController:
             "contract_gate_pass": None,
             "contract_reject_reason": None,
             "contract_rank_enabled": bool(self.config.contract_rank),
+            "contract_shadow_rank_enabled": bool(self.config.contract_shadow_rank),
+            "contract_intervene_enabled": bool(self.config.contract_intervene),
             "contract_candidate_count": None,
             "contract_candidate_coverage": None,
             "contract_selected_source": None,
@@ -1155,6 +1565,25 @@ class CAGEController:
             "contract_rank_context": None,
             "contract_extreme_reject_count": 0,
             "contract_rejected_count": 0,
+            "shadow_selected_source": None,
+            "shadow_selected_score": None,
+            "shadow_gas_score": None,
+            "shadow_best_non_gas_score": None,
+            "shadow_would_override_gas": None,
+            "shadow_override_margin": None,
+            "shadow_selected_target_mode": None,
+            "shadow_candidate_count": None,
+            "shadow_candidate_coverage": None,
+            "intervention_allowed": None,
+            "intervention_reason": None,
+            "intervention_selected_source": None,
+            "intervention_gain": None,
+            "intervention_gas_score": None,
+            "intervention_best_alternative_score": None,
+            "intervention_gas_risk": None,
+            "intervention_gas_progress_stalled": None,
+            "committed_locked_out": None,
+            "final_phase_preserved": None,
             "selected_target_mode": None,
             "fallback_reason": None,
         }
@@ -1344,6 +1773,7 @@ class CAGEController:
                 int(self.config.replan_cooldown_steps) - (step - int(self._last_allowed_replan_step)),
             )
         recovery_lockout_remaining = max(0, int(self._recovery_lockout_until_step) - step)
+        committed_lockout_remaining = max(0, int(self.committed_lockout_until_step) - step)
         while self._replan_request_steps and self._replan_request_steps[0] <= step - 100:
             self._replan_request_steps.popleft()
         return {
@@ -1357,6 +1787,9 @@ class CAGEController:
             "cage_trace_only": bool(self.config.trace_only),
             "cage_contract_commit": bool(self.config.contract_commit),
             "cage_contract_rank": bool(self.config.contract_rank),
+            "cage_contract_shadow_rank": bool(self.config.contract_shadow_rank),
+            "cage_contract_intervene": bool(self.config.contract_intervene),
+            "committed_lockout_remaining": int(committed_lockout_remaining),
         }
 
     def _global_replan_rate_per_100_steps(self) -> float:

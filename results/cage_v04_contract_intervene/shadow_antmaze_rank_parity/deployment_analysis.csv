@@ -1,0 +1,7 @@
+committed_lockout_count_mean,committed_lockout_step_count_mean,committed_stale_count_mean,committed_usage_rate_mean,env_name,final_goal_on_rate_mean,final_phase_override_count_mean,final_phase_preserved_count_mean,global_replan_request_count_mean,intervention_count_mean,intervention_rate_mean,local_safe_loop_count,mean_intervention_gain_mean,mean_segment_progress_mean,num_jobs,segment_target_reach_rate_mean,shadow_mean_override_margin_mean,shadow_override_final_phase_rate_mean,shadow_override_on_success_rate_mean,shadow_override_rate_mean,source_cage_rate_mean,source_committed_rate_mean,source_gas_rate_mean,stall_count_mean,success_rate_mean,variant
+0.0,0.0,0.0,,antmaze-giant-navigate-v0,0.72,0.0,0.0,0.0,0.0,0.0,0,,0.2214525491964399,1,0.05305984799626631,-0.2697699902819478,0.004345707550846049,0.1001846633807262,0.08195079802843572,,,,7.28,0.6,cage_contract_shadow_rank
+0.0,0.0,0.0,,antmaze-giant-navigate-v0,0.72,0.0,0.0,0.0,0.0,0.0,0,,0.22293842035118935,1,0.052784195824011365,,0.0,0.0,0.0,,,,0.0,0.64,cage_trace_only
+,,,,antmaze-giant-navigate-v0,,,,,,,0,,,1,,,,,,,,,,0.68,gas
+0.0,0.0,0.0,,antmaze-giant-stitch-v0,0.84,0.0,0.0,0.0,0.0,0.0,0,,0.2948948090742535,1,0.04487483605541822,-0.17357166698239535,0.05745733337147998,0.19801345633096634,0.19241076506477306,,,,7.92,0.8,cage_contract_shadow_rank
+0.0,0.0,0.0,,antmaze-giant-stitch-v0,0.84,0.0,0.0,0.0,0.0,0.0,0,,0.29347097611830764,1,0.04486825815656931,,0.0,0.0,0.0,,,,0.0,0.84,cage_trace_only
+,,,,antmaze-giant-stitch-v0,,,,,,,0,,,1,,,,,,,,,,0.8,gas

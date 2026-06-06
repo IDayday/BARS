@@ -86,6 +86,7 @@ def rank_contract_candidates(
             candidate.rejected = False
             candidate.reject_reason = None
 
+    gas_all = next((candidate for candidate in deduped if candidate.is_original_gas), None)
     gas = next((candidate for candidate in active if candidate.is_original_gas), None)
     committed = next((candidate for candidate in active if candidate.is_current_committed), None)
     best = max(active, key=lambda item: float(item.score if item.score is not None else -np.inf))
@@ -94,7 +95,7 @@ def rank_contract_candidates(
         key=lambda item: float(item.score if item.score is not None else -np.inf),
         default=None,
     )
-    gas_score = _score(gas)
+    gas_score = _score(gas_all)
     best_non_gas_score = _score(best_non_gas)
 
     if gas is not None and (best_non_gas is None or best_non_gas_score is None or best_non_gas_score < gas_score + float(prefer_gas_margin)):
