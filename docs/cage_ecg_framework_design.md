@@ -117,3 +117,22 @@ CAGE-ECG 改变的是规划对象：从表示图路径升级为执行合同图�
 3. policy alignment dataset 明确 action supervision rate，不能误用 hard unlabeled examples。
 4. 离线机制规律解释 Stage32-34 的失败演化。
 5. 只允许先做 limited AntMaze smoke；humanoid/teleport 和 SOTA benchmark 仍需后续 gate。
+
+## Stage36: Transition Graph and Action-Supervised Alignment
+
+Stage35 的 planner audit 退化为 direct edge，原因是合同图主要由独立 probe pair 构成，缺少可拼接的 transition edge 和足够密集的 boundary compatibility。即使每条 direct edge 有合同分数，planner 也没有多跳选择空间，无法证明 risk-constrained planner 会不同于 shortest_by_dphi。
+
+Stage36 因此补三类对象：
+
+1. transition-augmented contract graph：从同一 source segment、相邻 path_position、segment capture 的 start/end/final/path phi 和 KNN bridge 中补候选边。
+2. final/recovery contract augmentation：final-goal edge 缺失会限制任务终点推进分析；recovery edge 太少会使 recovery 结论 underpowered。
+3. action-supervised hard-positive mining：policy alignment 的硬门槛是 action supervision。没有 action 的 hard goals 不能作为 BC 正样本，只能用于 ranking、contrastive、conservative filtering 或未来数据采集。
+
+下一步 ECG policy training 的必要条件：
+
+- transition graph 能产生多跳合同路径；
+- final/recovery coverage 至少部分通过；
+- positive action-supervised examples 数量大于 0；
+- 离线 planner 显示不同于 shortest 的 path，并在 min_contract 或 negative risk 上有改善。
+
+若这些条件不满足，不能进入 online benchmark，也不能宣称 policy alignment training 可行。

@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "external_src" / "GAS"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from build_ecg_policy_alignment_dataset_v2 import build_examples
+from cage.contract_graph import ContractEdge, ContractFunnelNode, ContractGraph
+
+
+def test_ecg_policy_alignment_v2_marks_bc_only_with_action():
+    graph = ContractGraph(
+        nodes={
+            "n0": ContractFunnelNode("n0", [0.0], env_name="toy"),
+            "n1": ContractFunnelNode("n1", [1.0], env_name="toy"),
+        },
+        edges={
+            "e0": ContractEdge(
+                "e0",
+                "n0",
+                "n1",
+                contract_lcb=0.8,
+                predicted_hit=0.7,
+                predicted_negative_progress=0.1,
+                uncertainty=0.1,
+                edge_type="original_contract",
+            )
+        },
+    )
+    actions = [{"env_name": "toy", "phi_s": [0.0], "phi_g": [1.0], "action_available": True, "first_action": [0.2], "supervision_quality": "first_action_only"}]
+
+    examples = build_examples(graph, [], actions)
+
+    assert examples[0]["trainable_for_bc"] is True
+    assert examples[0]["objective_type"] == "bc_hard_positive"
+    assert examples[0]["trainable_for_ranking"] is True

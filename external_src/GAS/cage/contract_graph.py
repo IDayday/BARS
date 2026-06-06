@@ -124,7 +124,7 @@ class ContractGraph:
         low_contract = [edge for edge in edges if _float(edge.contract_lcb) is not None and _float(edge.contract_lcb) < 0.35]
         high_negative = [edge for edge in edges if _float(edge.predicted_negative_progress) is not None and _float(edge.predicted_negative_progress) > 0.45]
         uncertain = [edge for edge in edges if _float(edge.uncertainty) is not None and _float(edge.uncertainty) > 0.35]
-        final_edges = [edge for edge in edges if str(edge.edge_type or "").lower() == "final_goal"]
+        final_edges = [edge for edge in edges if "final" in str(edge.edge_type or "").lower()]
         recovery_edges = [edge for edge in edges if "recovery" in str(edge.edge_type or "").lower()]
         env_counts: dict[str, int] = {}
         for node in nodes:
