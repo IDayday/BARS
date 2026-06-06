@@ -1,0 +1,102 @@
+{
+  "candidate_results": [
+    {
+      "found_rate": 1.0,
+      "future_agreement": 1.0,
+      "mean_min_contract": 0.8990343053137622,
+      "mean_negative_risk": 0.12723240635023103,
+      "mean_path_length": 2.794921875,
+      "objective": 0.9938526802135311,
+      "weights": {
+        "boundary": 0.25,
+        "contract": 1.0,
+        "negative": 1.0,
+        "path_length": 0.05,
+        "task_progress": 0.5,
+        "uncertainty": 0.5
+      }
+    },
+    {
+      "found_rate": 1.0,
+      "future_agreement": 1.0,
+      "mean_min_contract": 0.8990340360560367,
+      "mean_negative_risk": 0.12721200997839333,
+      "mean_path_length": 2.794921875,
+      "objective": 0.9938728073276434,
+      "weights": {
+        "boundary": 0.25,
+        "contract": 1.5,
+        "negative": 1.0,
+        "path_length": 0.05,
+        "task_progress": 0.25,
+        "uncertainty": 0.5
+      }
+    },
+    {
+      "found_rate": 1.0,
+      "future_agreement": 1.0,
+      "mean_min_contract": 0.8990340360560367,
+      "mean_negative_risk": 0.12721200997839333,
+      "mean_path_length": 2.794921875,
+      "objective": 0.9938728073276434,
+      "weights": {
+        "boundary": 0.25,
+        "contract": 1.0,
+        "negative": 1.5,
+        "path_length": 0.05,
+        "task_progress": 0.25,
+        "uncertainty": 0.75
+      }
+    },
+    {
+      "found_rate": 1.0,
+      "future_agreement": 1.0,
+      "mean_min_contract": 0.899061308866294,
+      "mean_negative_risk": 0.12764282467469457,
+      "mean_path_length": 2.806640625,
+      "objective": 0.9933520779415994,
+      "weights": {
+        "boundary": 0.1,
+        "contract": 1.0,
+        "negative": 0.5,
+        "path_length": 0.02,
+        "task_progress": 1.0,
+        "uncertainty": 0.25
+      }
+    }
+  ],
+  "contract_dataset": "results/cage_ecg/action_anchored_dataset/action_contracts.jsonl",
+  "edge_count": 100000,
+  "gate": {
+    "future_trajectory_agreement_above_shortest": false,
+    "path_min_contract_above_shortest": true,
+    "path_negative_risk_below_shortest": false
+  },
+  "graph": "results/cage_ecg/action_anchored_graph_v2/contract_graph.json",
+  "learned_ecg_score_path": {
+    "found_rate": 1.0,
+    "future_agreement": 1.0,
+    "mean_min_contract": 0.8990340360560367,
+    "mean_negative_risk": 0.12721200997839333,
+    "mean_path_length": 2.794921875,
+    "objective": 0.9938728073276434
+  },
+  "node_count": 42502,
+  "num_pairs": 512,
+  "selected_weights": {
+    "boundary": 0.25,
+    "contract": 1.5,
+    "negative": 1.0,
+    "path_length": 0.05,
+    "task_progress": 0.25,
+    "uncertainty": 0.5
+  },
+  "shortest_by_dphi": {
+    "found_rate": 1.0,
+    "future_agreement": 1.0,
+    "mean_min_contract": 0.8707349301312206,
+    "mean_negative_risk": 0.07409120312149753,
+    "mean_path_length": 1.005859375
+  },
+  "status": "PLANNER_SCORE_READY"
+}

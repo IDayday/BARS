@@ -123,6 +123,8 @@ def load_model(path: str | Path) -> LinearContractModel:
 TARGET_MODE_IDS = {
     "gas_path": 0.0,
     "original_target": 0.0,
+    "offline_future_positive": 0.0,
+    "hard_negative": 7.0,
     "cage_selected": 1.0,
     "nearest_path_target": 2.0,
     "farther_path_target": 3.0,

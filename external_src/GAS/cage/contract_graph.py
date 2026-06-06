@@ -37,6 +37,10 @@ class ContractEdge:
     q_train_support: float | None = None
     edge_type: str | None = None
     bottleneck_score: float | None = None
+    action_anchored: bool | None = None
+    horizon: int | None = None
+    action_source: str | None = None
+    trust_level: str | None = None
 
 
 @dataclass

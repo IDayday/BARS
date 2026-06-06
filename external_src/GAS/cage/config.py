@@ -91,6 +91,13 @@ class CAGEConfig:
     disable_exact_state_ref_trace: bool = False
     max_debug_steps_per_episode: int = 0
     trace_phi_vectors: bool = True
+    ecg_planner_trace_only: bool = False
+    ecg_planner: bool = False
+    ecg_adapter: bool = False
+    ecg_graph_path: str = ""
+    ecg_contract_model_path: str = ""
+    ecg_policy_adapter_path: str = ""
+    ecg_planner_score_path: str = ""
 
     @property
     def effective_target_reach_dist(self) -> float:
@@ -204,4 +211,11 @@ class CAGEConfig:
             disable_exact_state_ref_trace=bool(flags_obj.cage_disable_exact_state_ref_trace),
             max_debug_steps_per_episode=int(flags_obj.cage_max_debug_steps_per_episode),
             trace_phi_vectors=bool(flags_obj.cage_trace_phi_vectors),
+            ecg_planner_trace_only=bool(flags_obj.cage_ecg_planner_trace_only),
+            ecg_planner=bool(flags_obj.cage_ecg_planner),
+            ecg_adapter=bool(flags_obj.cage_ecg_adapter),
+            ecg_graph_path=str(flags_obj.ecg_graph_path or ""),
+            ecg_contract_model_path=str(flags_obj.ecg_contract_model_path or ""),
+            ecg_policy_adapter_path=str(flags_obj.ecg_policy_adapter_path or ""),
+            ecg_planner_score_path=str(flags_obj.ecg_planner_score_path or ""),
         ).with_env_defaults()

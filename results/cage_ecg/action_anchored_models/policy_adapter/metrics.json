@@ -1,0 +1,29 @@
+{
+  "action_dim": 8,
+  "contract_model": "results/cage_ecg/action_anchored_models/contract/model.pt",
+  "dataset": "results/cage_ecg/action_anchored_dataset/action_contracts.jsonl",
+  "envs": [
+    "antmaze-giant-navigate-v0",
+    "antmaze-giant-stitch-v0"
+  ],
+  "gate": {
+    "beats_mean_action_baseline": true,
+    "beats_zero_action_baseline": true
+  },
+  "input_dim": 157,
+  "mean_action_test_mse": 0.47738364338874817,
+  "mean_action_val_mse": 0.4764767587184906,
+  "num_positive_examples": 200000,
+  "splits": {
+    "test": 20000,
+    "train": 160000,
+    "val": 20000
+  },
+  "status": "POLICY_ADAPTER_READY",
+  "test_mse": 0.2436077892780304,
+  "train_mse": 0.2426346391439438,
+  "underpowered": false,
+  "val_mse": 0.24263757467269897,
+  "zero_action_test_mse": 0.5057380795478821,
+  "zero_action_val_mse": 0.5048850774765015
+}

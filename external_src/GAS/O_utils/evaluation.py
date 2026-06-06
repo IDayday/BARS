@@ -9,6 +9,8 @@ from D_utils.kitchen_utils import kitchen_set_obs_and_goal, kitchen_render
 from cage.state_machine import CAGEController
 from cage.contract_tracing import SegmentContractRecorder
 from cage.state_ref import capture_state_ref, serialize_state_ref
+from cage.ecg_planner_runtime import ECGPlannerRuntime
+from cage.ecg_policy_adapter import ECGPolicyAdapter
 
 
 def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes, eval_video_episodes,
@@ -29,6 +31,23 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
     get_phi_fn = eval_agent.get_phi         
     actor_fn = supply_rng(eval_agent.sample_actions, rng=jax.random.PRNGKey(seed))  
     use_cage = bool(cage_config is not None and getattr(cage_config, "use_cage", False))
+    use_ecg = bool(
+        use_cage
+        and (
+            getattr(cage_config, "ecg_planner_trace_only", False)
+            or getattr(cage_config, "ecg_planner", False)
+            or getattr(cage_config, "ecg_adapter", False)
+        )
+    )
+    ecg_runtime = None
+    ecg_policy_adapter = None
+    if use_ecg:
+        ecg_runtime = ECGPlannerRuntime.from_paths(
+            getattr(cage_config, "ecg_graph_path", ""),
+            getattr(cage_config, "ecg_planner_score_path", ""),
+        )
+        if getattr(cage_config, "ecg_adapter", False):
+            ecg_policy_adapter = ECGPolicyAdapter.from_path(getattr(cage_config, "ecg_policy_adapter_path", ""))
     distance_fn = lambda a, b: float(np.linalg.norm(np.asarray(a) - np.asarray(b)))
     contract_config = dict(contract_config or {})
     contract_variant = contract_config.get("variant", "cage" if use_cage else "gas")
@@ -54,7 +73,8 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
             key_graph.precompute_shortest_paths_to_all_tasks({task_id: goal}, {task_id: phi_goal},)
         shortest_path = key_graph.get_shortest_path(task_id=task_id, source=phi_obs, force_closest=True)
         cage_controller = None
-        if use_cage:
+        ecg_episode = defaultdict(list)
+        if use_cage and not use_ecg:
             cage_controller = CAGEController(cage_config, distance_fn, logger=cage_trace_writer)
             cage_controller.reset_episode(phi_obs, phi_goal, initial_path=shortest_path)
         contract_recorder = SegmentContractRecorder(
@@ -70,7 +90,51 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
             phi_obs = np.array(get_phi_fn(observation))
             trace_info = None
             should_replan = False
-            if use_cage:
+            if use_ecg:
+                gas_obs_goal, gas_node_idx, final_goal_on, shortest_path = select_gas_subgoal(
+                    key_graph=key_graph,
+                    task_id=task_id,
+                    phi_obs=phi_obs,
+                    phi_goal=phi_goal,
+                    shortest_path=shortest_path,
+                    final_goal_on=final_goal_on,
+                    eval_final_goal_threshold=eval_final_goal_threshold,
+                    eval_subgoal_threshold=eval_subgoal_threshold,
+                )
+                selection = ecg_runtime.select_target(
+                    current_phi=phi_obs,
+                    final_goal_phi=phi_goal,
+                    gas_target_phi=gas_obs_goal,
+                    gas_target_idx=gas_node_idx,
+                    trace_only=bool(getattr(cage_config, "ecg_planner_trace_only", False)),
+                )
+                cur_obs_goal = selection.target_phi
+                cur_node_idx = selection.target_index
+                trace_info = {
+                    "step": int(step),
+                    "cage_state": "ECG_TRACE_ONLY" if getattr(cage_config, "ecg_planner_trace_only", False) else "ECG_EXECUTION",
+                    "final_goal_phase": bool(final_goal_on),
+                    "original_gas_target_mode": "final_goal" if final_goal_on else "gas_path",
+                    "selected_target_mode": "ecg_planner_trace_only" if getattr(cage_config, "ecg_planner_trace_only", False) else "ecg_planner",
+                    **selection.trace,
+                }
+                should_replan = False
+                for key in ["ecg_plan_length", "ecg_contract_lcb", "ecg_predicted_negative", "ecg_plan_recompute_count"]:
+                    if trace_info.get(key) is not None:
+                        ecg_episode[key].append(trace_info.get(key))
+                if trace_info.get("ecg_fallback_reason"):
+                    ecg_episode["ecg_fallback_count"].append(1)
+                else:
+                    ecg_episode["ecg_fallback_count"].append(0)
+                if cage_trace_writer is not None:
+                    cage_trace_writer.write_step({
+                        "env_name": env_name,
+                        "task_id": task_id,
+                        "seed": seed,
+                        "episode_idx": i,
+                        **trace_info,
+                    })
+            elif use_cage:
                 gas_obs_goal, gas_node_idx, final_goal_on, shortest_path = select_gas_subgoal(
                     key_graph=key_graph,
                     task_id=task_id,
@@ -164,11 +228,16 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
             )
             contract_recorder.record_cage_trace(trace_info, should_replan=should_replan)
             skills = (cur_obs_goal - phi_obs) / (np.linalg.norm(cur_obs_goal - phi_obs) + epsilon)  
-            action = actor_fn(observations=observation, goals=skills, temperature=0.0)
+            if use_ecg and getattr(cage_config, "ecg_adapter", False):
+                action = ecg_policy_adapter.predict(observation, phi_obs, cur_obs_goal)
+                if trace_info is not None:
+                    trace_info["ecg_policy_adapter_used"] = True
+            else:
+                action = actor_fn(observations=observation, goals=skills, temperature=0.0)
             action = np.clip(np.array(action), -1, 1)
             contract_recorder.record_action(action, skill_norm=float(np.linalg.norm(skills)))
             next_observation, reward, done, info = env_step(env, env_name, action)  
-            if use_cage:
+            if use_cage and not use_ecg:
                 next_phi_obs = np.array(get_phi_fn(next_observation))
                 cage_controller.update_after_step(phi_obs, next_phi_obs, cur_obs_goal, action=action, env_info=info)
             else:
@@ -186,8 +255,23 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
         contract_recorder.close(env=env, obs=observation, phi=phi_obs, step=step, release_reason="episode_end", reached_target=None)
         flat_info = flatten(info)
         add_to(stats, flat_info)
-        if use_cage:
+        if use_cage and not use_ecg:
             cage_controller.finish_episode(env_name, task_id, seed, i, flat_info)
+        if use_ecg and cage_trace_writer is not None:
+            row = {
+                "record_type": "episode",
+                "env_name": env_name,
+                "task_id": task_id,
+                "seed": seed,
+                "episode_idx": i,
+                "cage_ecg_planner_trace_only": bool(getattr(cage_config, "ecg_planner_trace_only", False)),
+                "cage_ecg_planner": bool(getattr(cage_config, "ecg_planner", False)),
+                "cage_ecg_adapter": bool(getattr(cage_config, "ecg_adapter", False)),
+                "ecg_policy_adapter_used": bool(getattr(cage_config, "ecg_adapter", False)),
+            }
+            row.update(flat_info)
+            row.update({key: float(np.mean(value)) if value else None for key, value in ecg_episode.items()})
+            cage_trace_writer.write_episode(row)
         if should_render:
             renders.append(np.array(render))
     for k, v in stats.items():
@@ -202,6 +286,10 @@ def infer_target_source(use_cage, trace_info, final_goal_on):
     if not use_cage:
         return "gas_path"
     trace_info = trace_info or {}
+    if trace_info.get("ecg_runtime_enabled"):
+        if trace_info.get("ecg_trace_only"):
+            return "gas_path"
+        return str(trace_info.get("ecg_selected_edge_type") or "ecg_planner")
     if trace_info.get("contract_rank_enabled") and trace_info.get("selected_target_mode"):
         return str(trace_info.get("selected_target_mode"))
     if trace_info.get("cage_trace_only") or trace_info.get("fallback_to_gas_active"):

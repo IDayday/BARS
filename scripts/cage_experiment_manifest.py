@@ -40,6 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cage_contract_rank_debug_candidates", action="store_true")
     parser.add_argument("--cage_contract_shadow_debug_candidates", action="store_true")
     parser.add_argument("--cage_contract_model_path", default="", help="Optional contract model JSON for cage_contract_commit.")
+    parser.add_argument("--ecg_graph_path", default="", help="Action-anchored ECG graph JSON for ECG variants.")
+    parser.add_argument("--ecg_contract_model_path", default="", help="Action-anchored ECG contract model path.")
+    parser.add_argument("--ecg_policy_adapter_path", default="", help="ECG policy adapter path.")
+    parser.add_argument("--ecg_planner_score_path", default="", help="ECG planner score weights path.")
     return parser
 
 
@@ -89,11 +93,24 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
     }
     if args.cage_contract_model_path:
         row["cage_contract_model_path"] = str(Path(args.cage_contract_model_path).resolve())
+    for attr in ["ecg_graph_path", "ecg_contract_model_path", "ecg_policy_adapter_path", "ecg_planner_score_path"]:
+        value = getattr(args, attr, "")
+        if value:
+            row[attr] = str(Path(value).resolve())
     if args.eval_horizon != "default":
         row["status"] = "unsupported_horizon"
         row["error"] = "evaluate_gas.py currently supports the environment default horizon only"
     elif args.strict_paths:
         missing = missing_checkpoint(paths)
+        if variant.startswith("cage_ecg_"):
+            for attr in ["ecg_graph_path", "ecg_planner_score_path"]:
+                value = row.get(attr)
+                if not value or not Path(value).exists():
+                    missing.append(attr)
+            if variant == "cage_ecg_adapter":
+                value = row.get("ecg_policy_adapter_path")
+                if not value or not Path(value).exists():
+                    missing.append("ecg_policy_adapter_path")
         if missing:
             row["status"] = "missing_checkpoint"
             row["missing_checkpoint_fields"] = missing

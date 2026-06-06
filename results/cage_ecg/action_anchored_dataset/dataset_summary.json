@@ -1,0 +1,66 @@
+{
+  "action_available_count": 600000,
+  "action_supervision_rate": 1.0,
+  "checkpoint_root": "/mnt/project/BARS/artifacts/gas_ogbench_offline_full_20260522_165138",
+  "dataset_roots": [
+    "/mnt/project/BARS/artifacts/gas_ogbench_offline_full_20260522_165138",
+    "/mnt/project/BARS/artifacts/gas",
+    "/mnt/project/BARS/datasets",
+    "/root/.ogbench",
+    "/root/.d4rl",
+    "/mnt/project/BARS/artifacts/stage27_gas/datasets",
+    "/root/.ogbench/data",
+    "/mnt/project/BARS/_data/ogbench"
+  ],
+  "envs": {
+    "antmaze-giant-navigate-v0": {
+      "action_available_count": 300000,
+      "action_dim": 8,
+      "action_supervision_rate": 1.0,
+      "dataset_paths": [
+        "/mnt/project/BARS/artifacts/stage27_gas/datasets/antmaze-giant-navigate-v0/gas_seed44/dataset.npz"
+      ],
+      "final_goal_count": 50,
+      "final_goal_with_action_count": 50,
+      "negative_count": 134212,
+      "obs_dim": 29,
+      "phi_dim": 32,
+      "phi_sources": [
+        "tdr_emb"
+      ],
+      "positive_count": 165788,
+      "positive_with_action_count": 165788,
+      "sample_count": 300000,
+      "source_rows": 50000,
+      "status": "ok",
+      "trajectory_count": 25
+    },
+    "antmaze-giant-stitch-v0": {
+      "action_available_count": 300000,
+      "action_dim": 8,
+      "action_supervision_rate": 1.0,
+      "dataset_paths": [
+        "/mnt/project/BARS/artifacts/stage27_gas/datasets/antmaze-giant-stitch-v0/gas_seed44/dataset.npz"
+      ],
+      "final_goal_count": 500,
+      "final_goal_with_action_count": 500,
+      "negative_count": 142900,
+      "obs_dim": 29,
+      "phi_dim": 32,
+      "phi_sources": [
+        "tdr_emb"
+      ],
+      "positive_count": 157100,
+      "positive_with_action_count": 157100,
+      "sample_count": 300000,
+      "source_rows": 50000,
+      "status": "ok",
+      "trajectory_count": 250
+    }
+  },
+  "final_goal_with_action_count": 550,
+  "missing_reason_counts": {},
+  "positive_with_action_count": 322888,
+  "status": "ACTION_ANCHORED_DATASET_READY",
+  "total_examples": 600000
+}

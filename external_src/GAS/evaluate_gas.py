@@ -139,6 +139,13 @@ flags.DEFINE_float('cage_contract_committed_min_goal_progress', 0.00, 'Minimum r
 flags.DEFINE_integer('cage_contract_committed_lockout_steps', 20, 'Steps to lock out committed target reuse after staleness.')
 flags.DEFINE_bool('cage_contract_disable_committed_on_stall', True, 'Lock out committed target reuse when stall is detected.')
 flags.DEFINE_bool('cage_contract_shadow_debug_candidates', False, 'Emit per-candidate CAGE-v0.4 shadow ranking diagnostics.')
+flags.DEFINE_bool('cage_ecg_planner_trace_only', False, 'Compute an ECG plan while executing the original GAS target.')
+flags.DEFINE_bool('cage_ecg_planner', False, 'Execute with the action-anchored ECG planner and the original GAS actor.')
+flags.DEFINE_bool('cage_ecg_adapter', False, 'Execute with the action-anchored ECG planner and ECG policy adapter.')
+flags.DEFINE_string('ecg_graph_path', '', 'Path to the action-anchored ECG contract graph.')
+flags.DEFINE_string('ecg_contract_model_path', '', 'Path to the action-anchored ECG contract model.')
+flags.DEFINE_string('ecg_policy_adapter_path', '', 'Path to the ECG policy adapter.')
+flags.DEFINE_string('ecg_planner_score_path', '', 'Path to the ECG planner score weights.')
 
 flags.DEFINE_string('contract_trace_path', '', 'Optional JSONL path for closed-loop segment contract traces.')
 flags.DEFINE_bool('contract_trace_debug', False, 'Enable verbose contract trace behavior.')
@@ -260,6 +267,12 @@ def main(_):
 def infer_contract_variant(flags_obj):
     if not flags_obj.use_cage:
         return 'gas'
+    if flags_obj.cage_ecg_adapter:
+        return 'cage_ecg_adapter'
+    if flags_obj.cage_ecg_planner:
+        return 'cage_ecg_planner'
+    if flags_obj.cage_ecg_planner_trace_only:
+        return 'cage_ecg_planner_trace_only'
     if flags_obj.cage_contract_shadow_rank:
         return 'cage_contract_shadow_rank'
     if flags_obj.cage_contract_intervene:

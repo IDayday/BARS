@@ -31,6 +31,9 @@ SUPPORTED_VARIANTS = {
     "cage_contract_rank",
     "cage_contract_shadow_rank",
     "cage_contract_intervene",
+    "cage_ecg_planner_trace_only",
+    "cage_ecg_planner",
+    "cage_ecg_adapter",
 }
 
 UNSUPPORTED_VARIANTS = {
@@ -252,6 +255,12 @@ def variant_args(variant: str, reachability_path: str | None = None) -> list[str
                 "--cage_log_churn_events",
             ]
         )
+    elif variant == "cage_ecg_planner_trace_only":
+        args.extend(["--cage_ecg_planner_trace_only"])
+    elif variant == "cage_ecg_planner":
+        args.extend(["--cage_ecg_planner"])
+    elif variant == "cage_ecg_adapter":
+        args.extend(["--cage_ecg_adapter"])
     return args
 
 
@@ -314,6 +323,22 @@ def build_eval_command(row: dict[str, Any]) -> list[str]:
         command.append("--cage_contract_shadow_debug_candidates")
     if variant != "gas" and row.get("cage_contract_model_path"):
         command.extend(["--cage_use_contract_model", "--cage_contract_model_path", str(row["cage_contract_model_path"])])
+    if variant.startswith("cage_ecg_"):
+        required = ["ecg_graph_path", "ecg_planner_score_path"]
+        if variant == "cage_ecg_adapter":
+            required.append("ecg_policy_adapter_path")
+        missing = [key for key in required if not row.get(key)]
+        if missing:
+            raise ValueError(f"job {row.get('job_id')} is missing ECG runtime paths: {missing}")
+        for row_key, flag_name in [
+            ("ecg_graph_path", "--ecg_graph_path"),
+            ("ecg_contract_model_path", "--ecg_contract_model_path"),
+            ("ecg_policy_adapter_path", "--ecg_policy_adapter_path"),
+            ("ecg_planner_score_path", "--ecg_planner_score_path"),
+        ]:
+            value = row.get(row_key)
+            if value:
+                command.extend([flag_name, str(value)])
     if row.get("contract_trace_path"):
         command.extend(["--contract_trace_path", str(row["contract_trace_path"])])
         if row.get("store_contract_state_refs", False):
