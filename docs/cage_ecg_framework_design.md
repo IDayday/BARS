@@ -136,3 +136,29 @@ Stage36 因此补三类对象：
 - 离线 planner 显示不同于 shortest 的 path，并在 min_contract 或 negative risk 上有改善。
 
 若这些条件不满足，不能进入 online benchmark，也不能宣称 policy alignment training 可行。
+
+## Stage37: Trusted ECG and Offline Action Supervision
+
+Stage36 的 offline planner signal 还不够，因为 transition graph 中 `knn_bridge_candidate` 占比很高。KNN bridge 只表示表示空间相近的候选连通边，不是观测 transition，也不是经过 closed-loop rollout 验证的可执行边。因此 Stage37 必须把 edge provenance 纳入 gate：
+
+1. observed edge：`original_contract`、`temporal_transition`、`path_adjacency`、`qtrain_supported`。
+2. final candidate：来自 segment final-goal phi 或合同数据的 final-goal 候选。
+3. trusted conservative KNN：只允许低 negative risk、低 uncertainty、合同分数达标的 KNN edge 进入保守图。
+4. full graph：只能作为诊断上界，不能单独支撑 online claim。
+
+Policy alignment 必须优先使用 OGBench offline action，而不是 online rollout action。原因是本项目的 policy alignment 目标是离线图诱导训练；如果使用 online rollout action，会改变证据来源并引入新的数据采集协议。Stage37 因此优先从 cached OGBench-style dataset 的 `tdr_emb/actions` 中恢复动作监督。
+
+ECG policy alignment 的训练分层：
+
+- ranking / contrastive：可使用无 action 的正负合同样本。
+- conservative filtering：可使用 low-contract / high-negative / KNN candidate 样本。
+- BC：只有 positive contract 且能恢复 offline action supervision 时才允许。
+- future contract-aligned actor update：需要 trusted planner signal、action supervision 和 held-out contract validity 同时成立。
+
+下一阶段只允许进入 limited AntMaze online smoke 的条件：
+
+1. observed_plus_final 或 trusted_conservative 图有 planner difference signal；
+2. planner signal 不完全依赖 full graph 的不可信 KNN；
+3. action supervision rate 大于 0，且 positive_with_action_count 大于 0；
+4. recovery 若继续 underpowered，不得启用 recovery 相关在线声明；
+5. 仍禁止 humanoid/teleport 和 SOTA benchmark。
