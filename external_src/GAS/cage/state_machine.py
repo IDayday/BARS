@@ -8,6 +8,8 @@ from typing import Any
 import numpy as np
 
 from cage.config import CAGEConfig
+from cage.closed_loop_contracts import ContractGateResult, evaluate_contract_gate
+from cage.contract_model import ContractScorer
 from cage.monitor import DistanceFn, ProgressMonitor, as_path_array, distance_to_path
 from cage.recovery import RecoverySelector
 from cage.subgoal_selector import ReachabilityFn, SubgoalSelector
@@ -41,6 +43,14 @@ class CAGEController:
         self.selector = SubgoalSelector(config, distance_fn, reachability_fn=reachability_fn)
         self.recovery = RecoverySelector(config, distance_fn)
         self.monitor = ProgressMonitor(distance_fn, config.stall_window, config.progress_eps)
+        self.contract_scorer = (
+            ContractScorer.from_path(
+                config.contract_model_path if config.use_contract_model else None,
+                uncertainty_penalty=config.contract_uncertainty_penalty,
+            )
+            if config.contract_commit
+            else None
+        )
         self.reset_episode(None, None, None)
 
     def reset_episode(self, start_state, final_goal, initial_path=None):
@@ -67,6 +77,11 @@ class CAGEController:
         self.replan_suppressed_by_cooldown_count = 0
         self.replan_suppressed_by_budget_count = 0
         self.recovery_suppressed_by_lockout_count = 0
+        self.contract_gate_pass_count = 0
+        self.contract_gate_reject_count = 0
+        self.contract_fallback_to_gas_when_uncertain_count = 0
+        self.contract_recovery_reject_count = 0
+        self.contract_final_goal_reject_count = 0
         self.max_consecutive_replan_burst = 0
         self._consecutive_replan_request_count = 0
         self._last_replan_attempt_step = None
@@ -131,9 +146,13 @@ class CAGEController:
             "progress_window_value": self.monitor.progress_window_value,
             "final_goal_phase": final_goal_phase,
             "recovery_target_idx": None,
+            "original_gas_target_mode": "final_goal" if planner_final_goal else "gas_path",
         }
+        trace_info.update(self._contract_default_trace_fields())
+        self._add_state_ref_summary(trace_info, info)
 
         if self.config.trace_only:
+            self._attach_state_ref(trace_info, info, "trace_only")
             return self._select_original_subgoal(
                 current_state=current_state,
                 final_goal=final_goal,
@@ -144,6 +163,7 @@ class CAGEController:
             )
 
         if self._fallback_active(step):
+            self._attach_state_ref(trace_info, info, "fallback_to_gas")
             return self._select_original_subgoal(
                 current_state=current_state,
                 final_goal=final_goal,
@@ -188,7 +208,15 @@ class CAGEController:
             if self.state != CAGEState.RECOVERY:
                 self.state = CAGEState.COMMITTING
             selected = np.asarray(self.current_subgoal)
-            trace_info.update(self._trace_target(selected, self.current_subgoal_index, False, current_state=current_state))
+            trace_info.update(
+                self._trace_target(
+                    selected,
+                    self.current_subgoal_index,
+                    False,
+                    current_state=current_state,
+                    target_mode="committed_target",
+                )
+            )
             return selected, self.current_subgoal_index, self.state.value, False, trace_info
 
         if final_goal_phase:
@@ -197,6 +225,28 @@ class CAGEController:
             else:
                 self.state = CAGEState.FINAL_GOAL
             selection = self.selector.select(current_state, final_goal, path, final_goal_phase=True)
+            gate = self._contract_gate(
+                current_state,
+                selection.subgoal,
+                target_mode="final_goal",
+                path_position=selection.index,
+                final_phase=True,
+                info=info,
+            )
+            if gate is not None and not gate.passed:
+                self.contract_final_goal_reject_count += 1
+                trace_info.update(gate.trace_fields())
+                self._attach_state_ref(trace_info, info, "contract_final_goal_reject")
+                return self._contract_safe_fallback(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    step=step,
+                    trace_info=trace_info,
+                    reason=f"final_goal_contract_rejected:{gate.reason}",
+                    info=info,
+                )
+            if gate is not None:
+                trace_info.update(gate.trace_fields())
             self._set_target(selection.subgoal, selection.index, step)
             trace_info.update(
                 self._trace_target(
@@ -205,6 +255,7 @@ class CAGEController:
                     False,
                     selection.reason,
                     distance=selection.distance,
+                    target_mode="final_goal",
                 )
             )
             return selection.subgoal, selection.index, self.state.value, False, trace_info
@@ -214,6 +265,16 @@ class CAGEController:
             selection = self._try_recovery(current_state, path, trace_info)
             if selection is not None:
                 return selection
+            if self.config.contract_commit:
+                self._attach_state_ref(trace_info, info, "contract_drift_fallback")
+                return self._contract_safe_fallback(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    step=step,
+                    trace_info=trace_info,
+                    reason="contract_commit_drift_guard",
+                    info=info,
+                )
             return self._request_global_replan(
                 final_goal=final_goal,
                 reason="hard_drift_replan",
@@ -230,6 +291,16 @@ class CAGEController:
                 selection = self._try_recovery(current_state, path, trace_info)
                 if selection is not None:
                     return selection
+                if self.config.contract_commit:
+                    self._attach_state_ref(trace_info, info, "contract_stall_fallback")
+                    return self._contract_safe_fallback(
+                        current_state=current_state,
+                        final_goal=final_goal,
+                        step=step,
+                        trace_info=trace_info,
+                        reason="contract_commit_stall_guard",
+                        info=info,
+                    )
                 return self._request_global_replan(
                     final_goal=final_goal,
                     reason="stall_replan",
@@ -252,6 +323,27 @@ class CAGEController:
             )
 
         self.state = CAGEState.NORMAL
+        gate = self._contract_gate(
+            current_state,
+            selection.subgoal,
+            target_mode="cage_selected",
+            path_position=selection.index,
+            final_phase=False,
+            info=info,
+        )
+        if gate is not None and not gate.passed:
+            trace_info.update(gate.trace_fields())
+            self._attach_state_ref(trace_info, info, "contract_gate_reject")
+            return self._contract_safe_fallback(
+                current_state=current_state,
+                final_goal=final_goal,
+                step=step,
+                trace_info=trace_info,
+                reason=f"target_contract_rejected:{gate.reason}",
+                info=info,
+            )
+        if gate is not None:
+            trace_info.update(gate.trace_fields())
         self._set_target(selection.subgoal, selection.index, step)
         trace_info.update(
             self._trace_target(
@@ -260,6 +352,7 @@ class CAGEController:
                 False,
                 selection.reason,
                 distance=selection.distance,
+                target_mode="cage_selected",
             )
         )
         return selection.subgoal, selection.index, self.state.value, False, trace_info
@@ -359,6 +452,17 @@ class CAGEController:
             "churn_guard_active_on_timeout": bool(self.config.enable_churn_guard and self._fallback_active(self._last_step)),
             "cage_safe_mode_enabled": bool(self.config.enable_churn_guard),
             "cage_trace_only": bool(self.config.trace_only),
+            "cage_contract_commit": bool(self.config.contract_commit),
+            "contract_model_loaded": int(bool(self.contract_scorer.loaded) if self.contract_scorer is not None else False),
+            "contract_gate_pass_count": int(self.contract_gate_pass_count),
+            "contract_gate_reject_count": int(self.contract_gate_reject_count),
+            "contract_gate_reject_rate": self._safe_rate(
+                int(self.contract_gate_reject_count),
+                int(self.contract_gate_pass_count) + int(self.contract_gate_reject_count),
+            ),
+            "contract_fallback_to_gas_when_uncertain_count": int(self.contract_fallback_to_gas_when_uncertain_count),
+            "contract_recovery_reject_count": int(self.contract_recovery_reject_count),
+            "contract_final_goal_reject_count": int(self.contract_final_goal_reject_count),
             "final_goal_on_step": self.final_goal_on_step,
             "final_goal_switch_count": int(self.final_goal_switch_count),
             "final_goal_stall_count": int(self.final_goal_stall_count),
@@ -421,6 +525,31 @@ class CAGEController:
             self.state = CAGEState.REPLAN_MISS
             self._start_recovery_lockout()
             return None
+        gate = self._contract_gate(
+            current_state,
+            recovery.target,
+            target_mode="recovery_candidate",
+            path_position=recovery.index,
+            final_phase=False,
+            recovery_candidate=True,
+            info=None,
+        )
+        if gate is not None and not gate.passed:
+            self.contract_recovery_reject_count += 1
+            self.recovery_failure_count += 1
+            self._start_recovery_lockout()
+            trace_info.update(gate.trace_fields())
+            trace_info["recovery_suppressed_reason"] = f"recovery_contract_rejected:{gate.reason}"
+            return self._contract_safe_fallback(
+                current_state=current_state,
+                final_goal=self._last_original_subgoal if self._last_original_subgoal is not None else path[-1],
+                step=step,
+                trace_info=trace_info,
+                reason=f"recovery_contract_rejected:{gate.reason}",
+                info=None,
+            )
+        if gate is not None:
+            trace_info.update(gate.trace_fields())
         self.recovery_attempt_count += 1
         self._last_recovery_attempt_step = step
         self.state = CAGEState.RECOVERY
@@ -433,6 +562,7 @@ class CAGEController:
                 False,
                 "local_recovery",
                 distance=recovery.distance,
+                target_mode="recovery_candidate",
             )
         )
         return recovery.target, recovery.index, self.state.value, False, trace_info
@@ -442,7 +572,7 @@ class CAGEController:
         if allowed:
             self.global_replan_request_count += 1
             selected = np.asarray(final_goal)
-            trace_info.update(self._trace_target(selected, -1, True, reason, current_state=current_state))
+            trace_info.update(self._trace_target(selected, -1, True, reason, current_state=current_state, target_mode="final_goal"))
             return selected, -1, self.state.value, True, trace_info
 
         trace_info["replan_suppressed_reason"] = suppressed_reason
@@ -488,11 +618,155 @@ class CAGEController:
                 False,
                 reason,
                 current_state=current_state,
+                target_mode="gas_path" if trace_only else "fallback_to_gas" if fallback else "original_target",
             )
         )
         trace_info["cage_trace_only"] = bool(trace_only)
         trace_info["original_subgoal_used"] = True
         return selected, index, self.state.value, False, trace_info
+
+    def _contract_safe_fallback(
+        self,
+        current_state,
+        final_goal,
+        step,
+        trace_info: dict[str, Any],
+        reason: str,
+        info: dict[str, Any] | None = None,
+    ):
+        """Keep the current target when possible; otherwise use the GAS target."""
+        self.contract_fallback_to_gas_when_uncertain_count += 1
+        trace_info["fallback_reason"] = reason
+        trace_info["contract_uncertain_fallback"] = True
+        if self.current_subgoal is not None and not self._target_reached(current_state):
+            selected = np.asarray(self.current_subgoal)
+            self.state = CAGEState.COMMITTING
+            trace_info.update(
+                self._trace_target(
+                    selected,
+                    self.current_subgoal_index,
+                    False,
+                    reason,
+                    current_state=current_state,
+                    target_mode="committed_target",
+                )
+            )
+            return selected, self.current_subgoal_index, self.state.value, False, trace_info
+        if info is not None:
+            self._attach_state_ref(trace_info, info, "fallback_to_gas")
+        return self._select_original_subgoal(
+            current_state=current_state,
+            final_goal=final_goal,
+            step=step,
+            trace_info=trace_info,
+            reason=reason,
+            fallback=bool(self.config.contract_fallback_to_gas_when_uncertain),
+            state=CAGEState.FALLBACK_TO_GAS if self.config.contract_fallback_to_gas_when_uncertain else CAGEState.NORMAL,
+        )
+
+    def _contract_gate(
+        self,
+        current_state,
+        target,
+        *,
+        target_mode: str,
+        path_position: int | None = None,
+        final_phase: bool = False,
+        recovery_candidate: bool = False,
+        info: dict[str, Any] | None = None,
+    ) -> ContractGateResult | None:
+        if not self.config.contract_commit or self.contract_scorer is None or target is None:
+            return None
+        features = self._contract_features(
+            current_state,
+            target,
+            target_mode=target_mode,
+            path_position=path_position,
+            final_phase=final_phase,
+            recovery_candidate=recovery_candidate,
+            info=info,
+        )
+        prediction = self.contract_scorer.predict(features)
+        gate = evaluate_contract_gate(
+            prediction,
+            lcb_threshold=float(self.config.contract_lcb_threshold),
+            negative_progress_threshold=float(self.config.contract_negative_progress_threshold),
+            target_mode=target_mode,
+            final_goal_threshold=float(self.config.contract_final_goal_threshold),
+            recovery_threshold=float(self.config.contract_recovery_threshold),
+        )
+        if gate.passed:
+            self.contract_gate_pass_count += 1
+        else:
+            self.contract_gate_reject_count += 1
+        return gate
+
+    def _contract_features(
+        self,
+        current_state,
+        target,
+        *,
+        target_mode: str,
+        path_position: int | None,
+        final_phase: bool,
+        recovery_candidate: bool,
+        info: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        current_state = np.asarray(current_state)
+        target = np.asarray(target)
+        previous_distance = None
+        if self.current_subgoal is not None:
+            previous_distance = float(self.distance_fn(current_state, self.current_subgoal))
+        current_distance = float(self.distance_fn(current_state, target))
+        info = info or {}
+        return {
+            "phi_s": current_state,
+            "phi_g": target,
+            "d_phi": current_distance,
+            "target_mode": target_mode,
+            "path_position": path_position if path_position is not None else -1,
+            "final_phase": bool(final_phase),
+            "recovery_candidate": bool(recovery_candidate),
+            "recent_stall_count": int(self.stall_count),
+            "recent_drift_count": int(self.drift_count),
+            "commitment_steps": int(self.commitment_steps),
+            "previous_target_distance": previous_distance if previous_distance is not None else -1.0,
+            "current_target_distance": current_distance,
+            "q_train_support": info.get("q_train_support", -1.0),
+            "env_name": self.config.env_name,
+            "fallback_tau": self.config.reachability_tau,
+        }
+
+    def _contract_default_trace_fields(self) -> dict[str, Any]:
+        loaded = bool(self.contract_scorer.loaded) if self.contract_scorer is not None else False
+        return {
+            "contract_model_loaded": int(loaded),
+            "contract_score": None,
+            "contract_lcb": None,
+            "contract_uncertainty": None,
+            "predicted_hit": None,
+            "predicted_negative_progress": None,
+            "contract_gate_pass": None,
+            "contract_reject_reason": None,
+            "selected_target_mode": None,
+            "fallback_reason": None,
+        }
+
+    def _add_state_ref_summary(self, trace_info: dict[str, Any], info: dict[str, Any]) -> None:
+        state_ref = info.get("state_ref") if info else None
+        if not isinstance(state_ref, dict):
+            trace_info["state_ref_exact"] = None
+            trace_info["state_ref_mode"] = None
+            return
+        trace_info["state_ref_exact"] = bool(state_ref.get("exact_reset", False))
+        trace_info["state_ref_mode"] = state_ref.get("reset_mode")
+
+    def _attach_state_ref(self, trace_info: dict[str, Any], info: dict[str, Any] | None, event: str) -> None:
+        if not self.config.debug or not info:
+            return
+        state_ref = info.get("state_ref")
+        if isinstance(state_ref, dict):
+            trace_info[f"{event}_state_ref"] = state_ref
 
     def _guard_replan_request(self, reason: str) -> tuple[bool, str | None]:
         if not self.config.enable_churn_guard:
@@ -627,16 +901,24 @@ class CAGEController:
         reason: str | None = None,
         current_state=None,
         distance: float | None = None,
+        target_mode: str | None = None,
     ) -> dict[str, Any]:
         if distance is None and current_state is not None and target is not None:
             distance = float(self.distance_fn(current_state, target))
+        target_arr = np.asarray(target).reshape(-1) if target is not None else None
+        original_arr = np.asarray(self._last_original_subgoal).reshape(-1) if self._last_original_subgoal is not None else None
         row = {
             "cage_state": self.state.value,
             "selected_subgoal_idx": None if index is None else int(index),
             "selected_subgoal_distance": distance,
             "should_replan": bool(should_replan),
             "selection_reason": reason,
+            "selected_target_mode": target_mode or "unknown",
+            "selected_subgoal_phi": target_arr.tolist() if target_arr is not None else None,
+            "original_gas_subgoal_phi": original_arr.tolist() if original_arr is not None else None,
         }
+        if current_state is not None and self._last_original_subgoal is not None:
+            row["original_gas_subgoal_distance"] = float(self.distance_fn(current_state, self._last_original_subgoal))
         row.update(self._guard_trace_fields())
         return row
 
@@ -660,6 +942,7 @@ class CAGEController:
             "replan_window_count": int(len(self._replan_request_steps)),
             "cage_safe_mode_enabled": bool(self.config.enable_churn_guard),
             "cage_trace_only": bool(self.config.trace_only),
+            "cage_contract_commit": bool(self.config.contract_commit),
         }
 
     def _global_replan_rate_per_100_steps(self) -> float:

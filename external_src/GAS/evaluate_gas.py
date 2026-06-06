@@ -97,12 +97,23 @@ flags.DEFINE_integer('cage_min_steps_between_recovery_attempts', 20, 'Minimum st
 flags.DEFINE_float('cage_min_progress_for_recovery_success', 1e-4, 'Minimum recovery progress before considering recovery nonfailed.')
 flags.DEFINE_bool('cage_disable_recovery_after_churn', False, 'Disable further CAGE recovery attempts after churn guard triggers.')
 flags.DEFINE_bool('cage_log_churn_events', False, 'Include churn guard event fields in CAGE traces.')
+flags.DEFINE_bool('cage_contract_commit', False, 'Enable CAGE-v0.2 contract-calibrated committed execution.')
+flags.DEFINE_bool('cage_use_contract_model', False, 'Use a learned/offline contract model for CAGE-v0.2 gating.')
+flags.DEFINE_string('cage_contract_model_path', '', 'Path to a JSON CAGE contract model.')
+flags.DEFINE_float('cage_contract_lcb_threshold', 0.35, 'Minimum lower-confidence contract score for path target acceptance.')
+flags.DEFINE_float('cage_contract_negative_progress_threshold', 0.45, 'Reject targets above this predicted negative-progress probability.')
+flags.DEFINE_float('cage_contract_uncertainty_penalty', 0.25, 'Penalty applied to uncertain contract predictions.')
+flags.DEFINE_integer('cage_contract_min_commit_steps', 12, 'Minimum commitment steps used by CAGE contract-commit mode.')
+flags.DEFINE_float('cage_contract_final_goal_threshold', 0.50, 'Minimum contract LCB for switching to final-goal mode.')
+flags.DEFINE_float('cage_contract_recovery_threshold', 0.55, 'Minimum contract LCB for accepting recovery candidates.')
+flags.DEFINE_bool('cage_contract_disable_recovery_when_uncertain', True, 'Disable aggressive recovery in contract-commit mode unless explicitly overridden.')
+flags.DEFINE_bool('cage_contract_fallback_to_gas_when_uncertain', True, 'Fallback to GAS target when contract gating is uncertain and no committed target is available.')
 
 flags.DEFINE_string('contract_trace_path', '', 'Optional JSONL path for closed-loop segment contract traces.')
 flags.DEFINE_bool('contract_trace_debug', False, 'Enable verbose contract trace behavior.')
 flags.DEFINE_bool('store_contract_state_refs', False, 'Store exact StateRefs in contract traces when available.')
 flags.DEFINE_string('contract_state_ref_mode', 'metadata_only', 'StateRef mode: exact_only|best_effort|metadata_only.')
-flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full', 'Comma-separated variants to contract-capture.')
+flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full,cage_contract_commit', 'Comma-separated variants to contract-capture.')
 flags.DEFINE_bool('contract_capture_segment_start', True, 'Capture segment starts in contract trace.')
 flags.DEFINE_bool('contract_capture_segment_end', True, 'Capture segment ends in contract trace.')
 flags.DEFINE_bool('contract_capture_qpos_qvel', True, 'Capture qpos/qvel in StateRefs when available.')
@@ -218,6 +229,8 @@ def main(_):
 def infer_contract_variant(flags_obj):
     if not flags_obj.use_cage:
         return 'gas'
+    if flags_obj.cage_contract_commit:
+        return 'cage_contract_commit'
     if flags_obj.cage_trace_only:
         return 'cage_trace_only'
     if flags_obj.cage_enable_churn_guard:

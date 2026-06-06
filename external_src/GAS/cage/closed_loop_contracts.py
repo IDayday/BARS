@@ -11,6 +11,71 @@ class ContractThresholds:
     action_norm_high: float = 0.95
 
 
+@dataclass(frozen=True)
+class ContractGateResult:
+    passed: bool
+    reason: str
+    contract_score: float
+    contract_lcb: float
+    contract_uncertainty: float
+    predicted_hit: float
+    predicted_contract_positive: float
+    predicted_negative_progress: float
+    contract_model_loaded: bool
+
+    def trace_fields(self) -> dict[str, Any]:
+        return {
+            "contract_model_loaded": int(self.contract_model_loaded),
+            "contract_score": self.contract_score,
+            "contract_lcb": self.contract_lcb,
+            "contract_uncertainty": self.contract_uncertainty,
+            "predicted_hit": self.predicted_hit,
+            "predicted_negative_progress": self.predicted_negative_progress,
+            "contract_gate_pass": bool(self.passed),
+            "contract_reject_reason": None if self.passed else self.reason,
+        }
+
+
+def evaluate_contract_gate(
+    prediction: Any,
+    *,
+    lcb_threshold: float,
+    negative_progress_threshold: float,
+    target_mode: str,
+    final_goal_threshold: float | None = None,
+    recovery_threshold: float | None = None,
+) -> ContractGateResult:
+    threshold = float(lcb_threshold)
+    if target_mode == "final_goal" and final_goal_threshold is not None:
+        threshold = float(final_goal_threshold)
+    if target_mode in {"recovery", "recovery_candidate"} and recovery_threshold is not None:
+        threshold = float(recovery_threshold)
+    lcb = float(prediction.lower_confidence_bound)
+    positive = float(prediction.predicted_contract_positive)
+    negative = float(prediction.predicted_negative_progress)
+    score = min(positive, lcb)
+    if negative > float(negative_progress_threshold):
+        passed = False
+        reason = "negative_progress_risk"
+    elif lcb < threshold:
+        passed = False
+        reason = "low_contract_lcb"
+    else:
+        passed = True
+        reason = "contract_pass"
+    return ContractGateResult(
+        passed=passed,
+        reason=reason,
+        contract_score=score,
+        contract_lcb=lcb,
+        contract_uncertainty=float(prediction.uncertainty),
+        predicted_hit=float(prediction.predicted_hit),
+        predicted_contract_positive=positive,
+        predicted_negative_progress=negative,
+        contract_model_loaded=bool(prediction.model_loaded),
+    )
+
+
 def _float_or_none(value: Any) -> float | None:
     if value is None:
         return None

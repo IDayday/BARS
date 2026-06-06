@@ -1,0 +1,63 @@
+{
+  "group_keys": [
+    "env_name",
+    "seed",
+    "task_id",
+    "variant_source"
+  ],
+  "input_path": "/mnt/project/BARS/results/cage_clp1/datasets/closed_loop_contracts.jsonl",
+  "splits": {
+    "test": {
+      "contract_positive_rate": 0.035590277777777776,
+      "env_counts": {
+        "humanoidmaze-large-navigate-v0": 1152
+      },
+      "final_goal_rate": 0.16666666666666666,
+      "hit_rate": 0.028645833333333332,
+      "negative_progress_rate": 0.078125,
+      "num_examples": 1152,
+      "policy_weak_rate": 0.46875,
+      "recovery_rate": 0.16666666666666666,
+      "variant_counts": {
+        "cage_trace_only": 1152
+      }
+    },
+    "train": {
+      "contract_positive_rate": 0.0881076388888889,
+      "env_counts": {
+        "antmaze-giant-navigate-v0": 4608,
+        "humanoidmaze-large-navigate-v0": 2304
+      },
+      "final_goal_rate": 0.16666666666666666,
+      "hit_rate": 0.08304398148148148,
+      "negative_progress_rate": 0.05078125,
+      "num_examples": 6912,
+      "policy_weak_rate": 0.3020833333333333,
+      "recovery_rate": 0.17100694444444445,
+      "variant_counts": {
+        "cage_fixed_commit": 2304,
+        "cage_safe_full": 2304,
+        "cage_trace_only": 1152,
+        "gas": 1152
+      }
+    },
+    "val": {
+      "contract_positive_rate": 0.035590277777777776,
+      "env_counts": {
+        "humanoidmaze-large-navigate-v0": 1152
+      },
+      "final_goal_rate": 0.16666666666666666,
+      "hit_rate": 0.028645833333333332,
+      "negative_progress_rate": 0.078125,
+      "num_examples": 1152,
+      "policy_weak_rate": 0.46875,
+      "recovery_rate": 0.16666666666666666,
+      "variant_counts": {
+        "gas": 1152
+      }
+    }
+  },
+  "status": "ok",
+  "total_examples": 9216,
+  "underpowered_reasons": []
+}

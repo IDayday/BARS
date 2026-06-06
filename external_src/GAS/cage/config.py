@@ -49,6 +49,17 @@ class CAGEConfig:
     min_progress_for_recovery_success: float = 1e-4
     disable_recovery_after_churn: bool = False
     log_churn_events: bool = False
+    contract_commit: bool = False
+    use_contract_model: bool = False
+    contract_model_path: str = ""
+    contract_lcb_threshold: float = 0.35
+    contract_negative_progress_threshold: float = 0.45
+    contract_uncertainty_penalty: float = 0.25
+    contract_min_commit_steps: int = 12
+    contract_final_goal_threshold: float = 0.50
+    contract_recovery_threshold: float = 0.55
+    contract_disable_recovery_when_uncertain: bool = True
+    contract_fallback_to_gas_when_uncertain: bool = True
 
     @property
     def effective_target_reach_dist(self) -> float:
@@ -58,14 +69,27 @@ class CAGEConfig:
 
     def with_env_defaults(self) -> "CAGEConfig":
         """Return a conservative environment-adjusted config."""
-        env_name = (self.env_name or "").lower()
+        cfg = self
+        if cfg.contract_commit:
+            cfg = replace(
+                cfg,
+                min_commit_steps=max(int(cfg.min_commit_steps), int(cfg.contract_min_commit_steps)),
+                enable_churn_guard=True,
+                fallback_to_gas_on_churn=True,
+                disable_recovery=True if cfg.contract_disable_recovery_when_uncertain else cfg.disable_recovery,
+                disable_recovery_after_churn=True,
+                max_consecutive_replan_requests=min(int(cfg.max_consecutive_replan_requests), 5),
+                max_global_replans_per_episode=min(int(cfg.max_global_replans_per_episode), 50),
+                max_replans_per_100_steps=min(int(cfg.max_replans_per_100_steps), 10),
+            )
+        env_name = (cfg.env_name or "").lower()
         if "humanoid" not in env_name:
-            return self
+            return cfg
         return replace(
-            self,
-            max_subgoal_dist=min(float(self.max_subgoal_dist), 16.0),
-            min_commit_steps=max(int(self.min_commit_steps), 10),
-            final_min_commit_steps=max(int(self.final_min_commit_steps), 14),
+            cfg,
+            max_subgoal_dist=min(float(cfg.max_subgoal_dist), 16.0),
+            min_commit_steps=max(int(cfg.min_commit_steps), 10),
+            final_min_commit_steps=max(int(cfg.final_min_commit_steps), 14),
         )
 
     @classmethod
@@ -107,4 +131,15 @@ class CAGEConfig:
             min_progress_for_recovery_success=float(flags_obj.cage_min_progress_for_recovery_success),
             disable_recovery_after_churn=bool(flags_obj.cage_disable_recovery_after_churn),
             log_churn_events=bool(flags_obj.cage_log_churn_events),
+            contract_commit=bool(flags_obj.cage_contract_commit),
+            use_contract_model=bool(flags_obj.cage_use_contract_model),
+            contract_model_path=str(flags_obj.cage_contract_model_path or ""),
+            contract_lcb_threshold=float(flags_obj.cage_contract_lcb_threshold),
+            contract_negative_progress_threshold=float(flags_obj.cage_contract_negative_progress_threshold),
+            contract_uncertainty_penalty=float(flags_obj.cage_contract_uncertainty_penalty),
+            contract_min_commit_steps=int(flags_obj.cage_contract_min_commit_steps),
+            contract_final_goal_threshold=float(flags_obj.cage_contract_final_goal_threshold),
+            contract_recovery_threshold=float(flags_obj.cage_contract_recovery_threshold),
+            contract_disable_recovery_when_uncertain=bool(flags_obj.cage_contract_disable_recovery_when_uncertain),
+            contract_fallback_to_gas_when_uncertain=bool(flags_obj.cage_contract_fallback_to_gas_when_uncertain),
         ).with_env_defaults()

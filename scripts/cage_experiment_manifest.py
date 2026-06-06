@@ -32,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest_path", required=True)
     parser.add_argument("--strict_paths", action="store_true")
     parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--cage_debug", action="store_true", help="Pass --cage_debug to CAGE variants.")
+    parser.add_argument("--cage_contract_model_path", default="", help="Optional contract model JSON for cage_contract_commit.")
     return parser
 
 
@@ -70,8 +72,11 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "goals_per_env": int(args.goals_per_env),
         "eval_horizon": str(args.eval_horizon),
         "gpu": int(args.gpu),
+        "cage_debug": bool(args.cage_debug),
         "status": "initialized",
     }
+    if args.cage_contract_model_path:
+        row["cage_contract_model_path"] = str(Path(args.cage_contract_model_path).resolve())
     if args.eval_horizon != "default":
         row["status"] = "unsupported_horizon"
         row["error"] = "evaluate_gas.py currently supports the environment default horizon only"

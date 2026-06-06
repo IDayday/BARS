@@ -8,6 +8,7 @@ from collections import defaultdict
 from D_utils.kitchen_utils import kitchen_set_obs_and_goal, kitchen_render
 from cage.state_machine import CAGEController
 from cage.contract_tracing import SegmentContractRecorder
+from cage.state_ref import capture_state_ref, serialize_state_ref
 
 
 def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes, eval_video_episodes,
@@ -88,7 +89,24 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
                     "planner_final_goal_on": planner_final_goal_on,
                     "original_subgoal": gas_obs_goal,
                     "original_subgoal_index": gas_node_idx,
+                    "env_name": env_name,
+                    "task_id": task_id,
+                    "seed": seed,
+                    "episode_idx": i,
                 }
+                state_ref = maybe_capture_cage_state_ref(
+                    env=env,
+                    obs=observation,
+                    phi=phi_obs,
+                    env_name=env_name,
+                    seed=seed,
+                    episode_idx=i,
+                    step=step,
+                    variant="cage",
+                    enabled=bool(getattr(cage_config, "debug", False) or getattr(cage_config, "contract_commit", False)),
+                )
+                if state_ref is not None:
+                    cage_info["state_ref"] = state_ref
                 cur_obs_goal, cur_node_idx, cage_state, should_replan, trace_info = cage_controller.select_subgoal(
                     current_state=phi_obs,
                     final_goal=phi_goal,
@@ -185,6 +203,28 @@ def infer_target_source(use_cage, trace_info, final_goal_on):
     if state == "RECOVERY":
         return "recovery"
     return "cage_selected"
+
+
+def maybe_capture_cage_state_ref(env, obs, phi, env_name, seed, episode_idx, step, variant, enabled):
+    if not enabled:
+        return None
+    try:
+        ref = capture_state_ref(
+            env,
+            obs=obs,
+            phi=phi,
+            metadata={
+                "env_name": env_name,
+                "seed": seed,
+                "episode_idx": episode_idx,
+                "step_idx": step,
+                "source_variant": variant,
+                "source": "cage_debug_step",
+            },
+        )
+        return serialize_state_ref(ref)
+    except Exception as exc:
+        return {"reset_mode": "unsupported", "exact_reset": False, "failure_reason": str(exc)}
 
 
 def select_gas_subgoal(

@@ -12,7 +12,7 @@ from typing import Any
 from build_cage_eval_command import build_eval_command, command_to_string, infer_checkpoint_paths, safe_id
 
 
-DEFAULT_VARIANTS = ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full"]
+DEFAULT_VARIANTS = ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit"]
 GAS_ROOT = Path(__file__).resolve().parents[1] / "external_src" / "GAS"
 
 
@@ -30,6 +30,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_jobs", type=int, default=0, help="0 means all generated jobs.")
     parser.add_argument("--dry_run", action="store_true")
     parser.add_argument("--status_path", default=None)
+    parser.add_argument("--cage_debug", action="store_true")
+    parser.add_argument("--cage_contract_model_path", default="")
     return parser.parse_args()
 
 
@@ -54,7 +56,7 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
     safe_variant = safe_id(variant)
     row_root = output_root / "jobs" / safe_env / f"seed{seed}" / safe_variant
     paths = infer_checkpoint_paths(checkpoint_root, env_name, seed)
-    return {
+    row = {
         "job_id": f"{safe_env}__seed{seed}__{safe_variant}",
         "env_name": env_name,
         "seed": int(seed),
@@ -69,10 +71,11 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "contract_trace_path": str(output_root / f"{safe_env}_{safe_variant}_seed{seed}_segments.jsonl"),
         "store_contract_state_refs": True,
         "contract_state_ref_mode": "exact_only",
-        "contract_capture_variants": ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full"],
+        "contract_capture_variants": ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit"],
         "episodes_per_goal": int(args.episodes_per_goal),
         "goals_per_env": int(args.goals_per_env),
         "gpu": int(args.gpu),
+        "cage_debug": bool(args.cage_debug),
         "eval_on_cpu": 1,
         "eval_video_episodes": 0,
         "eval_final_goal_threshold": 2,
@@ -80,6 +83,9 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "run_eval_project": "CAGEContract",
         "run_group": f"clp1_{safe_env}_{safe_variant}_seed{seed}",
     }
+    if args.cage_contract_model_path:
+        row["cage_contract_model_path"] = args.cage_contract_model_path
+    return row
 
 
 def main() -> int:

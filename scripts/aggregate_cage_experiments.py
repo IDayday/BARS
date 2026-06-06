@@ -44,6 +44,14 @@ PRIMARY_JOB_METRICS = [
     "churn_guard_active_on_timeout",
     "cage_safe_mode_enabled",
     "cage_trace_only",
+    "cage_contract_commit",
+    "contract_model_loaded",
+    "contract_gate_pass_count",
+    "contract_gate_reject_count",
+    "contract_gate_reject_rate",
+    "contract_fallback_to_gas_when_uncertain_count",
+    "contract_recovery_reject_count",
+    "contract_final_goal_reject_count",
 ]
 
 PAIR_METRICS = [
@@ -197,6 +205,14 @@ def summarize_job(row: dict[str, Any], status: dict[str, Any] | None) -> dict[st
         "churn_guard_active_on_timeout",
         "cage_safe_mode_enabled",
         "cage_trace_only",
+        "cage_contract_commit",
+        "contract_model_loaded",
+        "contract_gate_pass_count",
+        "contract_gate_reject_count",
+        "contract_gate_reject_rate",
+        "contract_fallback_to_gas_when_uncertain_count",
+        "contract_recovery_reject_count",
+        "contract_final_goal_reject_count",
     ]:
         summary[key] = mean_values(episodes, key)
     attempts = [numeric(ep.get("recovery_attempt_count")) or 0.0 for ep in episodes]

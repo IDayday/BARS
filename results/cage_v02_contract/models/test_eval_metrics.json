@@ -1,0 +1,195 @@
+{
+  "contract_positive_auprc": 0.8569171971808455,
+  "contract_positive_auroc": 0.9536423841059603,
+  "contract_positive_brier": 0.07854244858026505,
+  "contract_positive_calibration": [
+    {
+      "bin": "0.00-0.20",
+      "count": 117,
+      "empirical_rate": 0.008547008968889713,
+      "mean_pred": 0.03403868526220322
+    },
+    {
+      "bin": "0.20-0.40",
+      "count": 12,
+      "empirical_rate": 0.0,
+      "mean_pred": 0.30066967010498047
+    },
+    {
+      "bin": "0.40-0.60",
+      "count": 18,
+      "empirical_rate": 0.3888888955116272,
+      "mean_pred": 0.4849315285682678
+    },
+    {
+      "bin": "0.60-0.80",
+      "count": 24,
+      "empirical_rate": 0.625,
+      "mean_pred": 0.6583521366119385
+    },
+    {
+      "bin": "0.80-1.00",
+      "count": 21,
+      "empirical_rate": 0.8571428656578064,
+      "mean_pred": 0.9859656095504761
+    }
+  ],
+  "contract_positive_d_phi_baseline_auroc": 0.8727184622839605,
+  "contract_positive_selective_prediction": [
+    {
+      "coverage": 0.2,
+      "empirical_success": 0.7894737124443054,
+      "num_examples": 38
+    },
+    {
+      "coverage": 0.4,
+      "empirical_success": 0.5194805264472961,
+      "num_examples": 77
+    },
+    {
+      "coverage": 0.6,
+      "empirical_success": 0.35652172565460205,
+      "num_examples": 115
+    },
+    {
+      "coverage": 0.8,
+      "empirical_success": 0.26623377203941345,
+      "num_examples": 154
+    },
+    {
+      "coverage": 1.0,
+      "empirical_success": 0.2135416716337204,
+      "num_examples": 192
+    }
+  ],
+  "dataset_path": "results/cage_v02_contract/splits/test.jsonl",
+  "hit_auprc": 1.0,
+  "hit_auroc": 1.0,
+  "hit_brier": 0.01980443485081196,
+  "hit_calibration": [
+    {
+      "bin": "0.00-0.20",
+      "count": 144,
+      "empirical_rate": 0.0,
+      "mean_pred": 0.016049085184931755
+    },
+    {
+      "bin": "0.20-0.40",
+      "count": 6,
+      "empirical_rate": 0.0,
+      "mean_pred": 0.25705620646476746
+    },
+    {
+      "bin": "0.40-0.60",
+      "count": 12,
+      "empirical_rate": 0.25,
+      "mean_pred": 0.4912976324558258
+    },
+    {
+      "bin": "0.60-0.80",
+      "count": 12,
+      "empirical_rate": 1.0,
+      "mean_pred": 0.7648787498474121
+    },
+    {
+      "bin": "0.80-1.00",
+      "count": 18,
+      "empirical_rate": 1.0,
+      "mean_pred": 0.9486892223358154
+    }
+  ],
+  "hit_d_phi_baseline_auroc": 0.9965694682675815,
+  "hit_selective_prediction": [
+    {
+      "coverage": 0.2,
+      "empirical_success": 0.8684210777282715,
+      "num_examples": 38
+    },
+    {
+      "coverage": 0.4,
+      "empirical_success": 0.4285714328289032,
+      "num_examples": 77
+    },
+    {
+      "coverage": 0.6,
+      "empirical_success": 0.2869565188884735,
+      "num_examples": 115
+    },
+    {
+      "coverage": 0.8,
+      "empirical_success": 0.2142857164144516,
+      "num_examples": 154
+    },
+    {
+      "coverage": 1.0,
+      "empirical_success": 0.171875,
+      "num_examples": 192
+    }
+  ],
+  "model_path": "results/cage_v02_contract/models/contract_model.json",
+  "negative_progress_auprc": 0.6883664018296949,
+  "negative_progress_auroc": 0.719281045751634,
+  "negative_progress_brier": 0.22166107594966888,
+  "negative_progress_calibration": [
+    {
+      "bin": "0.00-0.20",
+      "count": 27,
+      "empirical_rate": 0.14814814925193787,
+      "mean_pred": 0.0950523391366005
+    },
+    {
+      "bin": "0.20-0.40",
+      "count": 24,
+      "empirical_rate": 0.4166666567325592,
+      "mean_pred": 0.29431965947151184
+    },
+    {
+      "bin": "0.40-0.60",
+      "count": 54,
+      "empirical_rate": 0.35185185074806213,
+      "mean_pred": 0.503567099571228
+    },
+    {
+      "bin": "0.60-0.80",
+      "count": 66,
+      "empirical_rate": 0.5909090638160706,
+      "mean_pred": 0.7157142758369446
+    },
+    {
+      "bin": "0.80-1.00",
+      "count": 21,
+      "empirical_rate": 0.8571428656578064,
+      "mean_pred": 0.8610273003578186
+    }
+  ],
+  "negative_progress_d_phi_baseline_auroc": 0.338562091503268,
+  "negative_progress_selective_prediction": [
+    {
+      "coverage": 0.2,
+      "empirical_success": 0.7631579041481018,
+      "num_examples": 38
+    },
+    {
+      "coverage": 0.4,
+      "empirical_success": 0.6233766078948975,
+      "num_examples": 77
+    },
+    {
+      "coverage": 0.6,
+      "empirical_success": 0.634782612323761,
+      "num_examples": 115
+    },
+    {
+      "coverage": 0.8,
+      "empirical_success": 0.5389610528945923,
+      "num_examples": 154
+    },
+    {
+      "coverage": 1.0,
+      "empirical_success": 0.46875,
+      "num_examples": 192
+    }
+  ],
+  "num_examples": 192,
+  "status": "ok"
+}
