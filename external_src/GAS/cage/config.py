@@ -60,6 +60,22 @@ class CAGEConfig:
     contract_recovery_threshold: float = 0.55
     contract_disable_recovery_when_uncertain: bool = True
     contract_fallback_to_gas_when_uncertain: bool = True
+    contract_rank: bool = False
+    contract_rank_min_candidate_coverage: float = 0.30
+    contract_rank_max_reject_rate: float = 0.80
+    contract_rank_contract_weight: float = 1.0
+    contract_rank_progress_weight: float = 0.5
+    contract_rank_negative_weight: float = 0.5
+    contract_rank_uncertainty_weight: float = 0.25
+    contract_rank_switch_penalty: float = 0.10
+    contract_rank_extreme_negative_threshold: float = 0.90
+    contract_rank_prefer_gas_margin: float = 0.05
+    contract_rank_disable_hard_lcb_gate: bool = True
+    contract_rank_debug_candidates: bool = False
+    debug_light: bool = False
+    disable_exact_state_ref_trace: bool = False
+    max_debug_steps_per_episode: int = 0
+    trace_phi_vectors: bool = True
 
     @property
     def effective_target_reach_dist(self) -> float:
@@ -70,7 +86,7 @@ class CAGEConfig:
     def with_env_defaults(self) -> "CAGEConfig":
         """Return a conservative environment-adjusted config."""
         cfg = self
-        if cfg.contract_commit:
+        if cfg.contract_commit or cfg.contract_rank:
             cfg = replace(
                 cfg,
                 min_commit_steps=max(int(cfg.min_commit_steps), int(cfg.contract_min_commit_steps)),
@@ -108,7 +124,7 @@ class CAGEConfig:
             recovery_suffix_weight=float(flags_obj.cage_recovery_suffix_weight),
             final_phase_dist=float(flags_obj.cage_final_phase_dist),
             final_min_commit_steps=int(flags_obj.cage_final_min_commit_steps),
-            debug=bool(flags_obj.cage_debug),
+            debug=bool(flags_obj.cage_debug or flags_obj.cage_debug_light),
             env_name=str(flags_obj.env_name),
             disable_commitment=bool(flags_obj.cage_disable_commitment),
             disable_drift_monitor=bool(flags_obj.cage_disable_drift_monitor),
@@ -142,4 +158,20 @@ class CAGEConfig:
             contract_recovery_threshold=float(flags_obj.cage_contract_recovery_threshold),
             contract_disable_recovery_when_uncertain=bool(flags_obj.cage_contract_disable_recovery_when_uncertain),
             contract_fallback_to_gas_when_uncertain=bool(flags_obj.cage_contract_fallback_to_gas_when_uncertain),
+            contract_rank=bool(flags_obj.cage_contract_rank),
+            contract_rank_min_candidate_coverage=float(flags_obj.cage_contract_rank_min_candidate_coverage),
+            contract_rank_max_reject_rate=float(flags_obj.cage_contract_rank_max_reject_rate),
+            contract_rank_contract_weight=float(flags_obj.cage_contract_rank_contract_weight),
+            contract_rank_progress_weight=float(flags_obj.cage_contract_rank_progress_weight),
+            contract_rank_negative_weight=float(flags_obj.cage_contract_rank_negative_weight),
+            contract_rank_uncertainty_weight=float(flags_obj.cage_contract_rank_uncertainty_weight),
+            contract_rank_switch_penalty=float(flags_obj.cage_contract_rank_switch_penalty),
+            contract_rank_extreme_negative_threshold=float(flags_obj.cage_contract_rank_extreme_negative_threshold),
+            contract_rank_prefer_gas_margin=float(flags_obj.cage_contract_rank_prefer_gas_margin),
+            contract_rank_disable_hard_lcb_gate=bool(flags_obj.cage_contract_rank_disable_hard_lcb_gate),
+            contract_rank_debug_candidates=bool(flags_obj.cage_contract_rank_debug_candidates),
+            debug_light=bool(flags_obj.cage_debug_light),
+            disable_exact_state_ref_trace=bool(flags_obj.cage_disable_exact_state_ref_trace),
+            max_debug_steps_per_episode=int(flags_obj.cage_max_debug_steps_per_episode),
+            trace_phi_vectors=bool(flags_obj.cage_trace_phi_vectors),
         ).with_env_defaults()

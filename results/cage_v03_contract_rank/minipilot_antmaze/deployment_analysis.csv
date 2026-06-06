@@ -1,0 +1,11 @@
+contract_best_non_gas_score_mean,contract_candidate_count_mean,contract_candidate_coverage_mean,contract_gas_score_mean,contract_selected_score_mean,env_name,extreme_negative_reject_count_mean,fallback_to_gas_step_count_mean,final_goal_on_rate_mean,global_replan_request_count_mean,local_safe_loop_count,mean_segment_progress_mean,num_jobs,rejected_count_mean,segment_target_reach_rate_mean,source_cage_rate_mean,source_committed_rate_mean,source_gas_rate_mean,stall_count_mean,success_rate_mean,variant
+,,,,,antmaze-giant-navigate-v0,0.0,9.08,0.48,0.0,0,0.17348731507156734,1,0.0,0.19745081043912083,,,,19.04,0.4,cage_contract_commit
+0.5741013074208414,2.632414759458197,1.0,0.5418879315848665,0.6436842566329384,antmaze-giant-navigate-v0,0.0,0.0,0.48,0.0,0,0.13794282659005885,1,0.0,0.39095974613171725,0.04110228865016347,0.4801494628678188,0.4021485287248949,19.6,0.44,cage_contract_rank
+,,,,,antmaze-giant-navigate-v0,0.0,0.0,0.8,5.56,0,0.2429532735258718,1,0.0,0.01277771489783248,,,,10.8,0.72,cage_safe_full
+,,,,,antmaze-giant-navigate-v0,0.0,0.0,0.72,0.0,0,0.22099163650738826,1,0.0,0.05351876757988562,,,,0.0,0.6,cage_trace_only
+,,,,,antmaze-giant-navigate-v0,,,,,0,,1,,,,,,,0.6,gas
+,,,,,antmaze-giant-stitch-v0,0.0,14.84,0.0,0.0,1,0.05635599951505661,1,0.0,0.8483361582611958,,,,51.44,0.0,cage_contract_commit
+-0.11436555510364467,2.938732019179542,0.9965370271710176,-0.22145650835751468,-0.052160901429109445,antmaze-giant-stitch-v0,6.48,0.0,0.68,0.0,0,0.17411332794258327,1,0.0036,0.3094352780270622,0.06020245071923282,0.6600958977091103,0.2503995737879595,22.56,0.64,cage_contract_rank
+,,,,,antmaze-giant-stitch-v0,0.0,0.0,0.8,5.68,0,0.2709976209470092,1,0.0,0.008552310511252865,,,,8.64,0.8,cage_safe_full
+,,,,,antmaze-giant-stitch-v0,0.0,0.0,0.84,0.0,0,0.29451303498714143,1,0.0,0.04386503883509469,,,,0.0,0.8,cage_trace_only
+,,,,,antmaze-giant-stitch-v0,,,,,0,,1,,,,,,,0.8,gas

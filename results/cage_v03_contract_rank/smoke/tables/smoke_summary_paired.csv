@@ -1,0 +1,5 @@
+delta_drift_count,delta_final_goal_stall_count,delta_normalized_score,delta_recovery_success_rate,delta_segment_target_reach_rate,delta_stall_count,delta_success_rate,delta_target_switch_count,env_name,matched_pairs,variant
+,,0.0,,,,0.0,,antmaze-giant-navigate-v0,1,cage_contract_commit
+,,0.0,,,,0.0,,antmaze-giant-navigate-v0,1,cage_contract_rank
+,,0.0,,,,0.0,,antmaze-giant-navigate-v0,1,cage_safe_full
+,,0.0,,,,0.0,,antmaze-giant-navigate-v0,1,cage_trace_only

@@ -10,6 +10,7 @@ import numpy as np
 from cage.config import CAGEConfig
 from cage.closed_loop_contracts import ContractGateResult, evaluate_contract_gate
 from cage.contract_model import ContractScorer
+from cage.contract_ranker import ContractCandidate, candidate_trace, rank_contract_candidates
 from cage.monitor import DistanceFn, ProgressMonitor, as_path_array, distance_to_path
 from cage.recovery import RecoverySelector
 from cage.subgoal_selector import ReachabilityFn, SubgoalSelector
@@ -49,6 +50,7 @@ class CAGEController:
                 uncertainty_penalty=config.contract_uncertainty_penalty,
             )
             if config.contract_commit
+            or config.contract_rank
             else None
         )
         self.reset_episode(None, None, None)
@@ -82,6 +84,13 @@ class CAGEController:
         self.contract_fallback_to_gas_when_uncertain_count = 0
         self.contract_recovery_reject_count = 0
         self.contract_final_goal_reject_count = 0
+        self.contract_rank_coverages: list[float] = []
+        self.contract_rank_selected_scores: list[float] = []
+        self.contract_rank_gas_scores: list[float] = []
+        self.contract_rank_choose_gas_count = 0
+        self.contract_rank_choose_cage_count = 0
+        self.contract_rank_choose_committed_count = 0
+        self.contract_rank_extreme_reject_count = 0
         self.max_consecutive_replan_burst = 0
         self._consecutive_replan_request_count = 0
         self._last_replan_attempt_step = None
@@ -225,6 +234,18 @@ class CAGEController:
             else:
                 self.state = CAGEState.FINAL_GOAL
             selection = self.selector.select(current_state, final_goal, path, final_goal_phase=True)
+            if self.config.contract_rank:
+                return self._select_contract_ranked_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=True,
+                    reason="contract_rank_final_phase",
+                )
             gate = self._contract_gate(
                 current_state,
                 selection.subgoal,
@@ -262,6 +283,24 @@ class CAGEController:
 
         if hard_drift:
             self.state = CAGEState.PATH_DRIFT
+            if self.config.contract_rank:
+                selection = self.selector.select(
+                    current_state,
+                    final_goal,
+                    path,
+                    recent_stalls=self.stall_count + self.recovery_failure_count,
+                )
+                return self._select_contract_ranked_subgoal(
+                    current_state=current_state,
+                    final_goal=final_goal,
+                    path=path,
+                    selection=selection,
+                    step=step,
+                    trace_info=trace_info,
+                    info=info,
+                    final_goal_phase=False,
+                    reason="contract_rank_drift_guard",
+                )
             selection = self._try_recovery(current_state, path, trace_info)
             if selection is not None:
                 return selection
@@ -288,6 +327,24 @@ class CAGEController:
                 self._stall_active = True
             if not self.config.disable_recovery:
                 self.state = CAGEState.FINAL_GOAL_STALL if self._in_final_goal_phase else CAGEState.LOCAL_STALL
+                if self.config.contract_rank:
+                    selection = self.selector.select(
+                        current_state,
+                        final_goal,
+                        path,
+                        recent_stalls=self.stall_count + self.recovery_failure_count,
+                    )
+                    return self._select_contract_ranked_subgoal(
+                        current_state=current_state,
+                        final_goal=final_goal,
+                        path=path,
+                        selection=selection,
+                        step=step,
+                        trace_info=trace_info,
+                        info=info,
+                        final_goal_phase=False,
+                        reason="contract_rank_stall_guard",
+                    )
                 selection = self._try_recovery(current_state, path, trace_info)
                 if selection is not None:
                     return selection
@@ -323,6 +380,18 @@ class CAGEController:
             )
 
         self.state = CAGEState.NORMAL
+        if self.config.contract_rank:
+            return self._select_contract_ranked_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                path=path,
+                selection=selection,
+                step=step,
+                trace_info=trace_info,
+                info=info,
+                final_goal_phase=False,
+                reason="contract_rank_path",
+            )
         gate = self._contract_gate(
             current_state,
             selection.subgoal,
@@ -453,6 +522,7 @@ class CAGEController:
             "cage_safe_mode_enabled": bool(self.config.enable_churn_guard),
             "cage_trace_only": bool(self.config.trace_only),
             "cage_contract_commit": bool(self.config.contract_commit),
+            "cage_contract_rank": bool(self.config.contract_rank),
             "contract_model_loaded": int(bool(self.contract_scorer.loaded) if self.contract_scorer is not None else False),
             "contract_gate_pass_count": int(self.contract_gate_pass_count),
             "contract_gate_reject_count": int(self.contract_gate_reject_count),
@@ -463,6 +533,13 @@ class CAGEController:
             "contract_fallback_to_gas_when_uncertain_count": int(self.contract_fallback_to_gas_when_uncertain_count),
             "contract_recovery_reject_count": int(self.contract_recovery_reject_count),
             "contract_final_goal_reject_count": int(self.contract_final_goal_reject_count),
+            "mean_contract_candidate_coverage": float(mean(self.contract_rank_coverages)) if self.contract_rank_coverages else None,
+            "mean_contract_selected_score": float(mean(self.contract_rank_selected_scores)) if self.contract_rank_selected_scores else None,
+            "mean_contract_gas_score": float(mean(self.contract_rank_gas_scores)) if self.contract_rank_gas_scores else None,
+            "contract_rank_choose_gas_count": int(self.contract_rank_choose_gas_count),
+            "contract_rank_choose_cage_count": int(self.contract_rank_choose_cage_count),
+            "contract_rank_choose_committed_count": int(self.contract_rank_choose_committed_count),
+            "contract_rank_extreme_reject_count": int(self.contract_rank_extreme_reject_count),
             "final_goal_on_step": self.final_goal_on_step,
             "final_goal_switch_count": int(self.final_goal_switch_count),
             "final_goal_stall_count": int(self.final_goal_stall_count),
@@ -478,6 +555,9 @@ class CAGEController:
 
     def record_step_trace(self, env_name: str, task_id: int | None, seed: int, episode_idx: int, trace_info: dict[str, Any]) -> None:
         if not self.config.debug:
+            return
+        max_steps = int(getattr(self.config, "max_debug_steps_per_episode", 0))
+        if max_steps > 0 and len(self._step_records) >= max_steps:
             return
         row = {
             "record_type": "step",
@@ -664,6 +744,322 @@ class CAGEController:
             state=CAGEState.FALLBACK_TO_GAS if self.config.contract_fallback_to_gas_when_uncertain else CAGEState.NORMAL,
         )
 
+    def _select_contract_ranked_subgoal(
+        self,
+        *,
+        current_state,
+        final_goal,
+        path,
+        selection,
+        step: int,
+        trace_info: dict[str, Any],
+        info: dict[str, Any] | None,
+        final_goal_phase: bool,
+        reason: str,
+    ):
+        if self.contract_scorer is None:
+            self._attach_state_ref(trace_info, info, "contract_rank_no_scorer")
+            return self._select_original_subgoal(
+                current_state=current_state,
+                final_goal=final_goal,
+                step=step,
+                trace_info=trace_info,
+                reason="contract_rank_no_scorer",
+                fallback=True,
+            )
+        candidates = self._build_contract_rank_candidates(
+            current_state=current_state,
+            final_goal=final_goal,
+            path=path,
+            selection=selection,
+            info=info,
+            final_goal_phase=final_goal_phase,
+        )
+        result = rank_contract_candidates(
+            candidates,
+            self.contract_scorer,
+            contract_weight=float(self.config.contract_rank_contract_weight),
+            progress_weight=float(self.config.contract_rank_progress_weight),
+            negative_weight=float(self.config.contract_rank_negative_weight),
+            uncertainty_weight=float(self.config.contract_rank_uncertainty_weight),
+            switch_penalty=float(self.config.contract_rank_switch_penalty),
+            extreme_negative_threshold=float(self.config.contract_rank_extreme_negative_threshold),
+            prefer_gas_margin=float(self.config.contract_rank_prefer_gas_margin),
+            min_candidate_coverage=float(self.config.contract_rank_min_candidate_coverage),
+        )
+        selected = result.selected_candidate
+        self._record_contract_rank_result(result)
+
+        if selected.source == "committed":
+            self.state = CAGEState.COMMITTING
+        elif selected.target_mode == "final_goal":
+            self.state = CAGEState.FINAL_GOAL
+        elif selected.is_recovery:
+            self.state = CAGEState.RECOVERY
+        else:
+            self.state = CAGEState.NORMAL
+
+        self._set_target(selected.target, selected.index, step)
+        trace_info.update(self._contract_rank_trace_fields(result, reason))
+        if selected.prediction is not None:
+            trace_info.update(
+                {
+                    "contract_model_loaded": int(selected.prediction.model_loaded),
+                    "contract_score": selected.score,
+                    "contract_lcb": selected.prediction.lower_confidence_bound,
+                    "contract_uncertainty": selected.prediction.uncertainty,
+                    "predicted_hit": selected.prediction.predicted_hit,
+                    "predicted_negative_progress": selected.prediction.predicted_negative_progress,
+                    "contract_gate_pass": True,
+                    "contract_reject_reason": selected.reject_reason,
+                }
+            )
+        trace_info.update(
+            self._trace_target(
+                selected.target,
+                selected.index,
+                False,
+                result.ranking_reason,
+                current_state=current_state,
+                distance=selected.distance,
+                target_mode=selected.target_mode,
+            )
+        )
+        return np.asarray(selected.target), selected.index, self.state.value, False, trace_info
+
+    def _build_contract_rank_candidates(
+        self,
+        *,
+        current_state,
+        final_goal,
+        path,
+        selection,
+        info: dict[str, Any] | None,
+        final_goal_phase: bool,
+    ) -> list[ContractCandidate]:
+        candidates: list[ContractCandidate] = []
+        original = self._last_original_subgoal
+        original_index = self._last_original_subgoal_index
+        if original is not None:
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    original,
+                    original_index,
+                    target_mode="gas_path",
+                    source="gas",
+                    is_original_gas=True,
+                    path_position=original_index,
+                    final_phase=False,
+                    info=info,
+                )
+            )
+        elif selection is not None:
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    selection.subgoal,
+                    selection.index,
+                    target_mode="gas_path",
+                    source="gas",
+                    is_original_gas=True,
+                    path_position=selection.index,
+                    final_phase=False,
+                    info=info,
+                )
+            )
+
+        if selection is not None:
+            mode = "final_goal" if final_goal_phase else "cage_selected"
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    selection.subgoal,
+                    selection.index,
+                    target_mode=mode,
+                    source="cage",
+                    path_position=selection.index,
+                    final_phase=final_goal_phase,
+                    info=info,
+                )
+            )
+
+        if (
+            self.current_subgoal is not None
+            and not self._target_reached(current_state)
+            and float(self.monitor.progress_window_value) > float(self.config.progress_eps)
+        ):
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    self.current_subgoal,
+                    self.current_subgoal_index,
+                    target_mode="committed_target",
+                    source="committed",
+                    is_current_committed=True,
+                    path_position=self.current_subgoal_index,
+                    final_phase=final_goal_phase,
+                    info=info,
+                )
+            )
+
+        later = self._nearest_later_path_candidate(current_state, path, info)
+        if later is not None:
+            idx, target = later
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    target,
+                    idx,
+                    target_mode="nearest_path_target",
+                    source="path_later",
+                    path_position=idx,
+                    final_phase=False,
+                    info=info,
+                )
+            )
+
+        if final_goal_phase:
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    final_goal,
+                    -1,
+                    target_mode="final_goal",
+                    source="final_goal",
+                    path_position=-1,
+                    final_phase=True,
+                    info=info,
+                )
+            )
+
+        if not candidates:
+            candidates.append(
+                self._make_contract_candidate(
+                    current_state,
+                    final_goal,
+                    -1,
+                    target_mode="gas_path",
+                    source="gas",
+                    is_original_gas=True,
+                    path_position=-1,
+                    final_phase=final_goal_phase,
+                    info=info,
+                )
+            )
+        return candidates
+
+    def _make_contract_candidate(
+        self,
+        current_state,
+        target,
+        index,
+        *,
+        target_mode: str,
+        source: str,
+        path_position: int | None,
+        final_phase: bool,
+        info: dict[str, Any] | None,
+        is_original_gas: bool = False,
+        is_current_committed: bool = False,
+        is_recovery: bool = False,
+    ) -> ContractCandidate:
+        distance = float(self.distance_fn(current_state, target))
+        features = self._contract_features(
+            current_state,
+            target,
+            target_mode=target_mode,
+            path_position=path_position,
+            final_phase=final_phase,
+            recovery_candidate=is_recovery,
+            info=info,
+        )
+        return ContractCandidate(
+            target=np.asarray(target),
+            index=None if index is None else int(index),
+            target_mode=target_mode,
+            source=source,
+            path_position=path_position,
+            final_phase=bool(final_phase),
+            is_original_gas=bool(is_original_gas),
+            is_current_committed=bool(is_current_committed),
+            is_recovery=bool(is_recovery),
+            distance=distance,
+            path_progress_score=self._candidate_path_progress_score(path_position, final_phase=final_phase),
+            switch_cost=self._candidate_switch_cost(target),
+            features=features,
+        )
+
+    def _nearest_later_path_candidate(self, current_state, path, info: dict[str, Any] | None):
+        path = as_path_array(path)
+        if path is None or len(path) == 0:
+            return None
+        info = info or {}
+        raw_idx = info.get("original_subgoal_index", self.current_subgoal_index)
+        try:
+            start_idx = int(raw_idx) + 1 if raw_idx is not None else 0
+        except (TypeError, ValueError):
+            start_idx = 0
+        start_idx = max(0, min(start_idx, len(path) - 1))
+        suffix = path[start_idx:]
+        if len(suffix) == 0:
+            return None
+        distances = np.asarray([self.distance_fn(current_state, node) for node in suffix], dtype=float)
+        offset = int(np.argmin(distances))
+        idx = start_idx + offset
+        return idx, np.asarray(path[idx])
+
+    def _candidate_path_progress_score(self, path_position: int | None, *, final_phase: bool) -> float:
+        if final_phase:
+            return 1.0
+        if path_position is None:
+            return 0.0
+        try:
+            idx = float(path_position)
+        except (TypeError, ValueError):
+            return 0.0
+        if idx < 0:
+            return 1.0
+        denom = max(1.0, float(self.final_active_path_length - 1))
+        return float(max(0.0, min(1.0, idx / denom)))
+
+    def _candidate_switch_cost(self, target) -> float:
+        if self.current_subgoal is None:
+            return 0.0
+        return 0.0 if float(self.distance_fn(self.current_subgoal, target)) <= 1e-8 else 1.0
+
+    def _record_contract_rank_result(self, result) -> None:
+        self.contract_rank_coverages.append(float(result.coverage))
+        self.contract_rank_selected_scores.append(float(result.selected_score))
+        if result.gas_score is not None:
+            self.contract_rank_gas_scores.append(float(result.gas_score))
+        self.contract_rank_extreme_reject_count += int(result.extreme_reject_count)
+        selected = result.selected_candidate
+        if selected.is_original_gas or selected.source == "gas":
+            self.contract_rank_choose_gas_count += 1
+        elif selected.is_current_committed or selected.source == "committed":
+            self.contract_rank_choose_committed_count += 1
+        else:
+            self.contract_rank_choose_cage_count += 1
+
+    def _contract_rank_trace_fields(self, result, reason: str) -> dict[str, Any]:
+        row = {
+            "contract_rank_enabled": True,
+            "contract_candidate_count": int(result.candidate_count),
+            "contract_candidate_coverage": float(result.coverage),
+            "contract_selected_source": result.selected_candidate.source,
+            "contract_selected_score": float(result.selected_score),
+            "contract_gas_score": result.gas_score,
+            "contract_best_non_gas_score": result.best_non_gas_score,
+            "contract_rank_reason": result.ranking_reason,
+            "contract_rank_context": reason,
+            "contract_extreme_reject_count": int(result.extreme_reject_count),
+            "contract_rejected_count": int(result.rejected_count),
+        }
+        if self.config.contract_rank_debug_candidates:
+            row["contract_rank_candidates"] = [candidate_trace(candidate) for candidate in result.candidates]
+        return row
+
     def _contract_gate(
         self,
         current_state,
@@ -748,6 +1144,17 @@ class CAGEController:
             "predicted_negative_progress": None,
             "contract_gate_pass": None,
             "contract_reject_reason": None,
+            "contract_rank_enabled": bool(self.config.contract_rank),
+            "contract_candidate_count": None,
+            "contract_candidate_coverage": None,
+            "contract_selected_source": None,
+            "contract_selected_score": None,
+            "contract_gas_score": None,
+            "contract_best_non_gas_score": None,
+            "contract_rank_reason": None,
+            "contract_rank_context": None,
+            "contract_extreme_reject_count": 0,
+            "contract_rejected_count": 0,
             "selected_target_mode": None,
             "fallback_reason": None,
         }
@@ -762,7 +1169,12 @@ class CAGEController:
         trace_info["state_ref_mode"] = state_ref.get("reset_mode")
 
     def _attach_state_ref(self, trace_info: dict[str, Any], info: dict[str, Any] | None, event: str) -> None:
-        if not self.config.debug or not info:
+        if (
+            not self.config.debug
+            or self.config.debug_light
+            or self.config.disable_exact_state_ref_trace
+            or not info
+        ):
             return
         state_ref = info.get("state_ref")
         if isinstance(state_ref, dict):
@@ -914,9 +1326,10 @@ class CAGEController:
             "should_replan": bool(should_replan),
             "selection_reason": reason,
             "selected_target_mode": target_mode or "unknown",
-            "selected_subgoal_phi": target_arr.tolist() if target_arr is not None else None,
-            "original_gas_subgoal_phi": original_arr.tolist() if original_arr is not None else None,
         }
+        if self.config.trace_phi_vectors:
+            row["selected_subgoal_phi"] = target_arr.tolist() if target_arr is not None else None
+            row["original_gas_subgoal_phi"] = original_arr.tolist() if original_arr is not None else None
         if current_state is not None and self._last_original_subgoal is not None:
             row["original_gas_subgoal_distance"] = float(self.distance_fn(current_state, self._last_original_subgoal))
         row.update(self._guard_trace_fields())
@@ -943,6 +1356,7 @@ class CAGEController:
             "cage_safe_mode_enabled": bool(self.config.enable_churn_guard),
             "cage_trace_only": bool(self.config.trace_only),
             "cage_contract_commit": bool(self.config.contract_commit),
+            "cage_contract_rank": bool(self.config.contract_rank),
         }
 
     def _global_replan_rate_per_100_steps(self) -> float:

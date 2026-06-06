@@ -1,0 +1,6 @@
+contract_best_non_gas_score_mean,contract_candidate_count_mean,contract_candidate_coverage_mean,contract_gas_score_mean,contract_selected_score_mean,env_name,extreme_negative_reject_count_mean,fallback_to_gas_step_count_mean,final_goal_on_rate_mean,global_replan_request_count_mean,local_safe_loop_count,mean_segment_progress_mean,num_jobs,rejected_count_mean,segment_target_reach_rate_mean,source_cage_rate_mean,source_committed_rate_mean,source_gas_rate_mean,stall_count_mean,success_rate_mean,variant
+,,,,,antmaze-giant-navigate-v0,0.0,15.0,0.0,0.0,0,0.12872813975811004,1,0.0,0.45714285714285713,,,,42.0,0.0,cage_contract_commit
+0.6680169275913093,2.4204545454545454,1.0,0.6359724017029459,0.7303865069133255,antmaze-giant-navigate-v0,0.0,0.0,0.0,0.0,0,0.17155908930301667,1,0.0,0.4716981132075472,0.2159090909090909,0.3977272727272727,0.29545454545454547,27.0,0.0,cage_contract_rank
+,,,,,antmaze-giant-navigate-v0,0.0,0.0,1.0,5.0,0,0.23083930563926697,1,0.0,0.010869565217391304,,,,12.0,0.0,cage_safe_full
+,,,,,antmaze-giant-navigate-v0,0.0,0.0,1.0,0.0,0,0.21774762558937072,1,0.0,0.07801418439716312,,,,0.0,0.0,cage_trace_only
+,,,,,antmaze-giant-navigate-v0,,,,,0,,1,,,,,,,0.0,gas

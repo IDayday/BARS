@@ -5,7 +5,9 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run initialized jobs from a CAGE experiment manifest.")
     parser.add_argument("--manifest_path", required=True)
     parser.add_argument("--max_jobs", type=int, default=1)
+    parser.add_argument("--parallel_jobs", type=int, default=1)
+    parser.add_argument("--rerun_succeeded", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
     parser.add_argument("--repo_root", default=str(Path(__file__).resolve().parents[1]))
     return parser
@@ -45,7 +49,18 @@ def status_path_for(manifest_path: Path, rows: list[dict[str, Any]]) -> Path:
 def write_status(path: Path, record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record, sort_keys=True) + "\n")
+            fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+
+def load_existing_status(path: Path) -> dict[str, dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
+    if not path.exists():
+        return latest
+    for row in load_jsonl(path):
+        job_id = row.get("job_id")
+        if job_id:
+            latest[str(job_id)] = row
+    return latest
 
 
 def skipped_record(row: dict[str, Any], status: str, reason: str | None = None) -> dict[str, Any]:
@@ -72,6 +87,9 @@ def run_job(row: dict[str, Any], repo_root: Path) -> dict[str, Any]:
     command = row.get("command")
     if not isinstance(command, list) or not command:
         return skipped_record(row, "skipped", row.get("error") or "missing command")
+    command = list(command)
+    if command and command[0] == "python":
+        command[0] = sys.executable
 
     output_root = Path(row["output_root"])
     log_root = output_root / "logs"
@@ -137,18 +155,30 @@ def main() -> int:
         return 0
 
     status_path = status_path_for(manifest_path, rows)
+    existing_status = load_existing_status(status_path)
     repo_root = Path(args.repo_root)
-    ran = 0
+    pending: list[dict[str, Any]] = []
     for row in rows:
+        job_id = str(row.get("job_id"))
+        prior = existing_status.get(job_id)
         if row.get("status") != "initialized":
             write_status(status_path, skipped_record(row, "skipped", row.get("status")))
             continue
-        if ran >= args.max_jobs:
+        if prior and prior.get("status") == "succeeded" and not args.rerun_succeeded:
             continue
-        record = run_job(row, repo_root)
-        write_status(status_path, record)
-        ran += 1
-    print(json.dumps({"status_path": str(status_path), "executed_jobs": ran}, sort_keys=True))
+        pending.append(row)
+    limit = min(len(pending), int(args.max_jobs))
+    selected = pending[:limit]
+    if int(args.parallel_jobs) <= 1:
+        for row in selected:
+            write_status(status_path, run_job(row, repo_root))
+    else:
+        workers = max(1, int(args.parallel_jobs))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(run_job, row, repo_root) for row in selected]
+            for future in as_completed(futures):
+                write_status(status_path, future.result())
+    print(json.dumps({"status_path": str(status_path), "executed_jobs": len(selected), "parallel_jobs": int(args.parallel_jobs)}, sort_keys=True))
     return 0
 
 

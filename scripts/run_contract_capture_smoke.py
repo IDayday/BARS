@@ -12,7 +12,7 @@ from typing import Any
 from build_cage_eval_command import build_eval_command, command_to_string, infer_checkpoint_paths, safe_id
 
 
-DEFAULT_VARIANTS = ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit"]
+DEFAULT_VARIANTS = ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit", "cage_contract_rank"]
 GAS_ROOT = Path(__file__).resolve().parents[1] / "external_src" / "GAS"
 
 
@@ -31,6 +31,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry_run", action="store_true")
     parser.add_argument("--status_path", default=None)
     parser.add_argument("--cage_debug", action="store_true")
+    parser.add_argument("--cage_debug_light", action="store_true")
+    parser.add_argument("--store_contract_state_refs", action="store_true")
+    parser.add_argument("--contract_state_ref_mode", default="metadata_only", choices=["exact_only", "best_effort", "metadata_only"])
+    parser.add_argument("--cage_trace_phi_vectors", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--cage_contract_model_path", default="")
     return parser.parse_args()
 
@@ -69,13 +73,16 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "cage_trace_path": str(row_root / "cage_trace.jsonl"),
         "result_path": str(row_root / "eval.csv"),
         "contract_trace_path": str(output_root / f"{safe_env}_{safe_variant}_seed{seed}_segments.jsonl"),
-        "store_contract_state_refs": True,
-        "contract_state_ref_mode": "exact_only",
-        "contract_capture_variants": ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit"],
+        "store_contract_state_refs": bool(args.store_contract_state_refs),
+        "contract_state_ref_mode": str(args.contract_state_ref_mode),
+        "contract_capture_variants": ["gas", "cage_trace_only", "cage_fixed_commit", "cage_safe_full", "cage_contract_commit", "cage_contract_rank"],
         "episodes_per_goal": int(args.episodes_per_goal),
         "goals_per_env": int(args.goals_per_env),
         "gpu": int(args.gpu),
         "cage_debug": bool(args.cage_debug),
+        "cage_debug_light": bool(args.cage_debug_light),
+        "cage_disable_exact_state_ref_trace": bool(args.cage_debug_light or not args.store_contract_state_refs),
+        "cage_trace_phi_vectors": bool(args.cage_trace_phi_vectors),
         "eval_on_cpu": 1,
         "eval_video_episodes": 0,
         "eval_final_goal_threshold": 2,

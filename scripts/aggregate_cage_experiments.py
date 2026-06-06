@@ -45,6 +45,7 @@ PRIMARY_JOB_METRICS = [
     "cage_safe_mode_enabled",
     "cage_trace_only",
     "cage_contract_commit",
+    "cage_contract_rank",
     "contract_model_loaded",
     "contract_gate_pass_count",
     "contract_gate_reject_count",
@@ -52,6 +53,13 @@ PRIMARY_JOB_METRICS = [
     "contract_fallback_to_gas_when_uncertain_count",
     "contract_recovery_reject_count",
     "contract_final_goal_reject_count",
+    "mean_contract_candidate_coverage",
+    "mean_contract_selected_score",
+    "mean_contract_gas_score",
+    "contract_rank_choose_gas_count",
+    "contract_rank_choose_cage_count",
+    "contract_rank_choose_committed_count",
+    "contract_rank_extreme_reject_count",
 ]
 
 PAIR_METRICS = [
@@ -206,6 +214,7 @@ def summarize_job(row: dict[str, Any], status: dict[str, Any] | None) -> dict[st
         "cage_safe_mode_enabled",
         "cage_trace_only",
         "cage_contract_commit",
+        "cage_contract_rank",
         "contract_model_loaded",
         "contract_gate_pass_count",
         "contract_gate_reject_count",
@@ -213,6 +222,13 @@ def summarize_job(row: dict[str, Any], status: dict[str, Any] | None) -> dict[st
         "contract_fallback_to_gas_when_uncertain_count",
         "contract_recovery_reject_count",
         "contract_final_goal_reject_count",
+        "mean_contract_candidate_coverage",
+        "mean_contract_selected_score",
+        "mean_contract_gas_score",
+        "contract_rank_choose_gas_count",
+        "contract_rank_choose_cage_count",
+        "contract_rank_choose_committed_count",
+        "contract_rank_extreme_reject_count",
     ]:
         summary[key] = mean_values(episodes, key)
     attempts = [numeric(ep.get("recovery_attempt_count")) or 0.0 for ep in episodes]

@@ -94,6 +94,11 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
                     "seed": seed,
                     "episode_idx": i,
                 }
+                capture_state_ref_for_trace = bool(
+                    getattr(cage_config, "debug", False)
+                    and not getattr(cage_config, "debug_light", False)
+                    and not getattr(cage_config, "disable_exact_state_ref_trace", False)
+                )
                 state_ref = maybe_capture_cage_state_ref(
                     env=env,
                     obs=observation,
@@ -103,7 +108,7 @@ def evaluate_with_graph(agent, key_graph, env, env_name, task_id, eval_episodes,
                     episode_idx=i,
                     step=step,
                     variant="cage",
-                    enabled=bool(getattr(cage_config, "debug", False) or getattr(cage_config, "contract_commit", False)),
+                    enabled=capture_state_ref_for_trace,
                 )
                 if state_ref is not None:
                     cage_info["state_ref"] = state_ref
@@ -197,6 +202,8 @@ def infer_target_source(use_cage, trace_info, final_goal_on):
     if not use_cage:
         return "gas_path"
     trace_info = trace_info or {}
+    if trace_info.get("contract_rank_enabled") and trace_info.get("selected_target_mode"):
+        return str(trace_info.get("selected_target_mode"))
     if trace_info.get("cage_trace_only") or trace_info.get("fallback_to_gas_active"):
         return "fallback_to_gas" if trace_info.get("fallback_to_gas_active") else "gas_path"
     state = str(trace_info.get("cage_state", "")).upper()

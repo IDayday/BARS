@@ -76,6 +76,10 @@ flags.DEFINE_float('cage_recovery_suffix_weight', 0.25, 'Penalty for CAGE recove
 flags.DEFINE_float('cage_final_phase_dist', 8.0, 'Distance threshold for CAGE final-goal phase.')
 flags.DEFINE_integer('cage_final_min_commit_steps', 12, 'Minimum commitment in CAGE final-goal phase.')
 flags.DEFINE_bool('cage_debug', False, 'Emit CAGE step-level JSONL trace records.')
+flags.DEFINE_bool('cage_debug_light', False, 'Emit compact CAGE step traces without exact StateRef payloads.')
+flags.DEFINE_bool('cage_disable_exact_state_ref_trace', False, 'Disable exact StateRef payloads in CAGE debug traces.')
+flags.DEFINE_integer('cage_max_debug_steps_per_episode', 0, 'Maximum CAGE debug step rows per episode. Zero means unlimited.')
+flags.DEFINE_bool('cage_trace_phi_vectors', True, 'Include full phi vectors in CAGE debug traces.')
 flags.DEFINE_bool('cage_disable_commitment', False, 'Disable CAGE subgoal commitment for ablations.')
 flags.DEFINE_bool('cage_disable_drift_monitor', False, 'Disable CAGE drift-triggered control for ablations.')
 flags.DEFINE_bool('cage_disable_recovery', False, 'Disable CAGE local recovery for ablations.')
@@ -108,12 +112,24 @@ flags.DEFINE_float('cage_contract_final_goal_threshold', 0.50, 'Minimum contract
 flags.DEFINE_float('cage_contract_recovery_threshold', 0.55, 'Minimum contract LCB for accepting recovery candidates.')
 flags.DEFINE_bool('cage_contract_disable_recovery_when_uncertain', True, 'Disable aggressive recovery in contract-commit mode unless explicitly overridden.')
 flags.DEFINE_bool('cage_contract_fallback_to_gas_when_uncertain', True, 'Fallback to GAS target when contract gating is uncertain and no committed target is available.')
+flags.DEFINE_bool('cage_contract_rank', False, 'Enable CAGE-v0.3 contract-ranked committed execution.')
+flags.DEFINE_float('cage_contract_rank_min_candidate_coverage', 0.30, 'Minimum non-rejected candidate coverage for CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_max_reject_rate', 0.80, 'Diagnostic maximum reject rate for CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_contract_weight', 1.0, 'Contract LCB weight in CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_progress_weight', 0.5, 'Path progress weight in CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_negative_weight', 0.5, 'Negative-progress penalty in CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_uncertainty_weight', 0.25, 'Uncertainty penalty in CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_switch_penalty', 0.10, 'Target switch penalty in CAGE-v0.3 ranking.')
+flags.DEFINE_float('cage_contract_rank_extreme_negative_threshold', 0.90, 'Only hard-reject candidates above this negative-progress probability.')
+flags.DEFINE_float('cage_contract_rank_prefer_gas_margin', 0.05, 'Non-GAS candidates must beat GAS by this margin before replacement.')
+flags.DEFINE_bool('cage_contract_rank_disable_hard_lcb_gate', True, 'Disable fixed hard LCB gate for CAGE-v0.3 ranking.')
+flags.DEFINE_bool('cage_contract_rank_debug_candidates', False, 'Emit per-candidate CAGE-v0.3 ranking diagnostics in debug traces.')
 
 flags.DEFINE_string('contract_trace_path', '', 'Optional JSONL path for closed-loop segment contract traces.')
 flags.DEFINE_bool('contract_trace_debug', False, 'Enable verbose contract trace behavior.')
 flags.DEFINE_bool('store_contract_state_refs', False, 'Store exact StateRefs in contract traces when available.')
 flags.DEFINE_string('contract_state_ref_mode', 'metadata_only', 'StateRef mode: exact_only|best_effort|metadata_only.')
-flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full,cage_contract_commit', 'Comma-separated variants to contract-capture.')
+flags.DEFINE_string('contract_capture_variants', 'gas,cage_trace_only,cage_fixed_commit,cage_safe_full,cage_contract_commit,cage_contract_rank', 'Comma-separated variants to contract-capture.')
 flags.DEFINE_bool('contract_capture_segment_start', True, 'Capture segment starts in contract trace.')
 flags.DEFINE_bool('contract_capture_segment_end', True, 'Capture segment ends in contract trace.')
 flags.DEFINE_bool('contract_capture_qpos_qvel', True, 'Capture qpos/qvel in StateRefs when available.')
@@ -184,7 +200,7 @@ def main(_):
         cage_trace_path = FLAGS.cage_trace_path or os.path.join(FLAGS.save_eval_dir, 'cage_trace.jsonl')
         cage_config = CAGEConfig.from_flags(FLAGS)
         cage_config = replace(cage_config, trace_path=cage_trace_path)
-        cage_trace_writer = CAGETraceWriter(cage_trace_path, debug=FLAGS.cage_debug)
+        cage_trace_writer = CAGETraceWriter(cage_trace_path, debug=bool(FLAGS.cage_debug or FLAGS.cage_debug_light))
     if FLAGS.contract_trace_path:
         contract_trace_writer = ContractTraceWriter(FLAGS.contract_trace_path, debug=FLAGS.contract_trace_debug)
         contract_config = {
@@ -229,6 +245,8 @@ def main(_):
 def infer_contract_variant(flags_obj):
     if not flags_obj.use_cage:
         return 'gas'
+    if flags_obj.cage_contract_rank:
+        return 'cage_contract_rank'
     if flags_obj.cage_contract_commit:
         return 'cage_contract_commit'
     if flags_obj.cage_trace_only:

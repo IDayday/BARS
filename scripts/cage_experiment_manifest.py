@@ -33,6 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--strict_paths", action="store_true")
     parser.add_argument("--gpu", type=int, default=0)
     parser.add_argument("--cage_debug", action="store_true", help="Pass --cage_debug to CAGE variants.")
+    parser.add_argument("--cage_debug_light", action="store_true", help="Pass --cage_debug_light to CAGE variants.")
+    parser.add_argument("--cage_disable_exact_state_ref_trace", action="store_true", help="Disable exact StateRef payloads in CAGE debug traces.")
+    parser.add_argument("--cage_max_debug_steps_per_episode", type=int, default=0)
+    parser.add_argument("--cage_trace_phi_vectors", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--cage_contract_rank_debug_candidates", action="store_true")
     parser.add_argument("--cage_contract_model_path", default="", help="Optional contract model JSON for cage_contract_commit.")
     return parser
 
@@ -73,6 +78,11 @@ def make_row(args: argparse.Namespace, env_name: str, seed: int, variant: str) -
         "eval_horizon": str(args.eval_horizon),
         "gpu": int(args.gpu),
         "cage_debug": bool(args.cage_debug),
+        "cage_debug_light": bool(args.cage_debug_light),
+        "cage_disable_exact_state_ref_trace": bool(args.cage_disable_exact_state_ref_trace or args.cage_debug_light),
+        "cage_max_debug_steps_per_episode": int(args.cage_max_debug_steps_per_episode),
+        "cage_trace_phi_vectors": bool(args.cage_trace_phi_vectors),
+        "cage_contract_rank_debug_candidates": bool(args.cage_contract_rank_debug_candidates),
         "status": "initialized",
     }
     if args.cage_contract_model_path:
