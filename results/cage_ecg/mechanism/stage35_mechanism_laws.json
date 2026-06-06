@@ -1,0 +1,110 @@
+{
+  "laws": [
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=18.",
+      "law": "segment_target_reach_rate vs success",
+      "n": 18,
+      "status": "OBSERVED",
+      "value": -0.8735395872752276
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=18.",
+      "law": "mean_segment_progress vs success",
+      "n": 18,
+      "status": "OBSERVED",
+      "value": 0.9341072988818374
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=18.",
+      "law": "final_goal_on_rate vs success",
+      "n": 18,
+      "status": "OBSERVED",
+      "value": 0.9804127987094011
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=18.",
+      "law": "stall_count vs success",
+      "n": 18,
+      "status": "OBSERVED",
+      "value": -0.8286471283769348
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=10.",
+      "law": "intervention_rate vs success",
+      "n": 10,
+      "status": "OBSERVED",
+      "value": 0.12767715143862182
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=6.",
+      "law": "source_gas_rate vs success",
+      "n": 6,
+      "status": "INCONCLUSIVE",
+      "value": -0.004307547312144148
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=6.",
+      "law": "source_cage_rate vs success",
+      "n": 6,
+      "status": "INCONCLUSIVE",
+      "value": 0.660132498483653
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=5.",
+      "law": "source_committed_rate vs success",
+      "n": 5,
+      "status": "INCONCLUSIVE",
+      "value": -0.3266093026028539
+    },
+    {
+      "evidence": "Pearson correlation over compact deployment rows; n=3.",
+      "law": "committed_usage_rate vs success",
+      "n": 3,
+      "status": "INCONCLUSIVE",
+      "value": -0.5081973281403743
+    },
+    {
+      "evidence": "Proxy: segment reach >=0.30, stall >=15, success <=0.50, final_goal_on_rate <=0.70.",
+      "law": "local_safe_loop proxy",
+      "n": 22,
+      "status": "OBSERVED",
+      "value": 3
+    },
+    {
+      "evidence": "Stage33 rank had high segment reach relative to trace-only but lower success; Stage34 intervention reduced committed use yet still failed success safety.",
+      "law": "local executability is insufficient",
+      "n": 22,
+      "status": "OBSERVED",
+      "value": null
+    },
+    {
+      "evidence": "Stage34 contract_intervene improved over contract_rank but remained below GAS on both AntMaze envs.",
+      "law": "intervention is insufficient",
+      "n": 12,
+      "status": "OBSERVED",
+      "value": null
+    },
+    {
+      "evidence": "GP0/CLP1 show q_train support alone is insufficient; closed-loop contractibility and final-goal/farther path target quality are bottlenecks.",
+      "law": "need contract graph and policy alignment",
+      "n": 12,
+      "status": "OBSERVED",
+      "value": null
+    },
+    {
+      "evidence": "Held-out contract model was useful for smoke but test feature count is small; no SOTA claim.",
+      "law": "contract model evidence strength",
+      "n": null,
+      "status": "INCONCLUSIVE",
+      "value": 192
+    },
+    {
+      "evidence": "Contract split summary is included to preserve dataset audit context.",
+      "law": "split coverage",
+      "n": null,
+      "status": "ok",
+      "value": 9216
+    }
+  ],
+  "num_rows": 22
+}

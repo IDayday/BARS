@@ -1,0 +1,16 @@
+law,status,value,n,evidence
+segment_target_reach_rate vs success,OBSERVED,-0.8735395872752276,18,Pearson correlation over compact deployment rows; n=18.
+mean_segment_progress vs success,OBSERVED,0.9341072988818374,18,Pearson correlation over compact deployment rows; n=18.
+final_goal_on_rate vs success,OBSERVED,0.9804127987094011,18,Pearson correlation over compact deployment rows; n=18.
+stall_count vs success,OBSERVED,-0.8286471283769348,18,Pearson correlation over compact deployment rows; n=18.
+intervention_rate vs success,OBSERVED,0.12767715143862182,10,Pearson correlation over compact deployment rows; n=10.
+source_gas_rate vs success,INCONCLUSIVE,-0.004307547312144148,6,Pearson correlation over compact deployment rows; n=6.
+source_cage_rate vs success,INCONCLUSIVE,0.660132498483653,6,Pearson correlation over compact deployment rows; n=6.
+source_committed_rate vs success,INCONCLUSIVE,-0.3266093026028539,5,Pearson correlation over compact deployment rows; n=5.
+committed_usage_rate vs success,INCONCLUSIVE,-0.5081973281403743,3,Pearson correlation over compact deployment rows; n=3.
+local_safe_loop proxy,OBSERVED,3,22,"Proxy: segment reach >=0.30, stall >=15, success <=0.50, final_goal_on_rate <=0.70."
+local executability is insufficient,OBSERVED,,22,Stage33 rank had high segment reach relative to trace-only but lower success; Stage34 intervention reduced committed use yet still failed success safety.
+intervention is insufficient,OBSERVED,,12,Stage34 contract_intervene improved over contract_rank but remained below GAS on both AntMaze envs.
+need contract graph and policy alignment,OBSERVED,,12,GP0/CLP1 show q_train support alone is insufficient; closed-loop contractibility and final-goal/farther path target quality are bottlenecks.
+contract model evidence strength,INCONCLUSIVE,192,,Held-out contract model was useful for smoke but test feature count is small; no SOTA claim.
+split coverage,ok,9216,,Contract split summary is included to preserve dataset audit context.
