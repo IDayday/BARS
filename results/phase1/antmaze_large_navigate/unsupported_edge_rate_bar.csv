@@ -1,0 +1,4 @@
+candidate_type,unsupported_edge_rate
+raw_state_kNN,0.16793893129770993
+PCA_state_kNN,0.35076335877862597
+random_edges,0.9122137404580153

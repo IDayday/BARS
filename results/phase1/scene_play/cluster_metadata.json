@@ -1,0 +1,7 @@
+{
+  "feature_dim": 40,
+  "method": "kmeans",
+  "n_clusters": 512,
+  "requested_n_clusters": 512,
+  "state_dims": null
+}

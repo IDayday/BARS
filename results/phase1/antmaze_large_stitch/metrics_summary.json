@@ -1,0 +1,154 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "directed_oneway_reachable_ratio_by_H": {
+    "1": 0.0274,
+    "10": 0.0036,
+    "25": 0.002,
+    "5": 0.0036,
+    "50": 0.0042
+  },
+  "directed_reachable_pair_ratio_by_H": {
+    "1": 0.3733,
+    "10": 0.4226,
+    "25": 0.411,
+    "5": 0.4228,
+    "50": 0.4325
+  },
+  "geometry_dims": [
+    0,
+    1
+  ],
+  "high_bottleneck_retention_by_H": {
+    "1": {
+      "bottleneck_top_p": 1.0,
+      "core_plus_bottleneck": 1.0,
+      "density_top_p": 0.775,
+      "random_same_budget": 0.19375
+    },
+    "10": {
+      "bottleneck_top_p": 1.0,
+      "core_plus_bottleneck": 1.0,
+      "density_top_p": 0.8,
+      "random_same_budget": 0.18375
+    },
+    "25": {
+      "bottleneck_top_p": 1.0,
+      "core_plus_bottleneck": 1.0,
+      "density_top_p": 0.85,
+      "random_same_budget": 0.20374999999999996
+    },
+    "5": {
+      "bottleneck_top_p": 1.0,
+      "core_plus_bottleneck": 1.0,
+      "density_top_p": 0.75,
+      "random_same_budget": 0.19375
+    },
+    "50": {
+      "bottleneck_top_p": 1.0,
+      "core_plus_bottleneck": 1.0,
+      "density_top_p": 0.875,
+      "random_same_budget": 0.185
+    }
+  },
+  "high_bottleneck_retention_by_filter": {
+    "bottleneck_top_p": 1.0,
+    "core_plus_bottleneck": 1.0,
+    "density_top_p": 0.875,
+    "random_same_budget": 0.185
+  },
+  "horizon_stride": 1,
+  "horizons": [
+    1,
+    5,
+    10,
+    25,
+    50
+  ],
+  "mean_episode_length": 200.0,
+  "n_clusters": 400,
+  "num_episodes": 1000,
+  "num_pairs_by_h": {
+    "1": 199000,
+    "10": 190000,
+    "11": 189000,
+    "12": 188000,
+    "13": 187000,
+    "14": 186000,
+    "15": 185000,
+    "16": 184000,
+    "17": 183000,
+    "18": 182000,
+    "19": 181000,
+    "2": 198000,
+    "20": 180000,
+    "21": 179000,
+    "22": 178000,
+    "23": 177000,
+    "24": 176000,
+    "25": 175000,
+    "26": 174000,
+    "27": 173000,
+    "28": 172000,
+    "29": 171000,
+    "3": 197000,
+    "30": 170000,
+    "31": 169000,
+    "32": 168000,
+    "33": 167000,
+    "34": 166000,
+    "35": 165000,
+    "36": 164000,
+    "37": 163000,
+    "38": 162000,
+    "39": 161000,
+    "4": 196000,
+    "40": 160000,
+    "41": 159000,
+    "42": 158000,
+    "43": 157000,
+    "44": 156000,
+    "45": 155000,
+    "46": 154000,
+    "47": 153000,
+    "48": 152000,
+    "49": 151000,
+    "5": 195000,
+    "50": 150000,
+    "6": 194000,
+    "7": 193000,
+    "8": 192000,
+    "9": 191000
+  },
+  "num_transitions_used": 200000,
+  "one_way_edge_ratio_by_H": {
+    "1": 0.10741687979539642,
+    "10": 0.1402192729371033,
+    "25": 0.14055299539170507,
+    "5": 0.0768,
+    "50": 0.1563393708293613
+  },
+  "pair_mode": "dense_upto",
+  "split": "train",
+  "support_asymmetry_by_H": {
+    "1": 0.024095477386934672,
+    "10": 0.120706940874036,
+    "25": 0.19674374331550804,
+    "5": 0.0714020304568528,
+    "50": 0.24306532951289397
+  },
+  "task_path_coverage_by_H": {
+    "1": 0.992,
+    "10": 1.0,
+    "25": 1.0,
+    "5": 1.0,
+    "50": 1.0
+  },
+  "unsupported_edge_rate_by_candidate_type": {
+    "PCA_state_kNN": 0.28384615384615386,
+    "grid_adjacent_edges": 0.05218446601941747,
+    "random_edges": 0.9015384615384615,
+    "raw_state_kNN": 0.13192307692307692,
+    "support_graph": 0.0,
+    "xy_state_kNN": 0.1580769230769231
+  }
+}

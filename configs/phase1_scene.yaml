@@ -1,0 +1,23 @@
+dataset_name: scene-play-v0
+dataset_dir: ~/.ogbench/data
+output_dir: results/phase1/scene_play_v2
+split: train
+max_transitions: 200000
+cluster_method: kmeans
+state_dims:
+task_type: manipulation
+geometry_dims:
+n_clusters: 512
+horizons: [1, 5, 10, 25, 50]
+pair_mode: dense_upto
+horizon_stride: 1
+min_support: 3
+knn_k: 10
+seed: 0
+pca_dim: 16
+crossing_lag: 5
+betweenness_sample_k: 256
+path_sample_pairs: 5000
+removal_sample_pairs: 2000
+filter_top_p: 0.2
+high_bottleneck_q: 0.1

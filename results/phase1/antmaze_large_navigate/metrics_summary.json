@@ -1,0 +1,55 @@
+{
+  "dataset_name": "antmaze-large-navigate-v0",
+  "directed_oneway_reachable_ratio_by_H": {
+    "1": 0.0032,
+    "10": 0.01,
+    "25": 0.0082,
+    "5": 0.0036,
+    "50": 0.012
+  },
+  "directed_reachable_pair_ratio_by_H": {
+    "1": 0.3704,
+    "10": 0.4238,
+    "25": 0.4141,
+    "5": 0.4184,
+    "50": 0.4312
+  },
+  "high_bottleneck_retention_by_filter": {
+    "bottleneck_top_p": 1.0,
+    "core_plus_bottleneck": 1.0,
+    "density_top_p": 0.975,
+    "random_same_budget": 0.2125
+  },
+  "horizons": [
+    1,
+    5,
+    10,
+    25,
+    50
+  ],
+  "mean_episode_length": 1000.0,
+  "n_clusters": 400,
+  "num_episodes": 200,
+  "num_transitions_used": 200000,
+  "one_way_edge_ratio_by_H": {
+    "1": 0.08754863813229571,
+    "10": 0.10175438596491228,
+    "25": 0.1265577402381612,
+    "5": 0.06520247083047358,
+    "50": 0.15541090317331163
+  },
+  "split": "train",
+  "support_asymmetry_by_H": {
+    "1": 0.02506006006006006,
+    "10": 0.1240382037533512,
+    "25": 0.16521091184642586,
+    "5": 0.07414242728184553,
+    "50": 0.19375738439600734
+  },
+  "unsupported_edge_rate_by_candidate_type": {
+    "PCA_state_kNN": 0.35076335877862597,
+    "random_edges": 0.9122137404580153,
+    "raw_state_kNN": 0.16793893129770993,
+    "support_graph": 0.0
+  }
+}
