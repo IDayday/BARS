@@ -7,9 +7,11 @@ if str(ROOT) not in sys.path:
 
 import networkx as nx
 import numpy as np
+from scipy import sparse
 
 from phase1.bottleneck import betweenness_score, removal_impact_score
 from phase1.support_graph import (
+    build_directed_support_graph,
     compute_support_counts,
     one_way_edge_ratio,
     support_asymmetry,
@@ -80,3 +82,53 @@ def test_bottleneck_node_has_high_betweenness_and_removal_impact():
 
     assert betweenness[3] > betweenness[0]
     assert removal[3] > removal[0]
+
+
+def test_exact_and_dense_upto_pair_modes_have_different_counts():
+    dataset = _dataset_from_labels([0, 1, 2, 3, 4], terminal_indices=[4])
+    episodes = split_into_episodes(dataset)
+
+    exact_pairs = build_h_step_pairs(episodes, [1, 3], pair_mode="exact", seed=0)
+    dense_pairs = build_h_step_pairs(episodes, [1, 3], pair_mode="dense_upto", seed=0)
+
+    assert exact_pairs["h"].shape[0] == 6
+    assert dense_pairs["h"].shape[0] == 9
+    assert set(exact_pairs["h"].tolist()) == {1, 3}
+    assert set(dense_pairs["h"].tolist()) == {1, 2, 3}
+
+
+def test_dense_upto_support_counts_include_all_h_up_to_H():
+    labels = np.asarray([0, 1, 2, 3], dtype=np.int64)
+    dataset = _dataset_from_labels(labels, terminal_indices=[3])
+    episodes = split_into_episodes(dataset)
+    pairs = build_h_step_pairs(episodes, [3], pair_mode="dense_upto", seed=0)
+    counts = compute_support_counts(pairs, labels, horizons=[1, 2, 3], n_clusters=4)
+
+    N1 = counts[1]
+    N3 = counts[3]
+    assert N1[0, 1] == 1
+    assert N1[0, 2] == 0
+    assert N3[0, 1] == 1
+    assert N3[0, 2] == 1
+    assert N3[0, 3] == 1
+    assert N3[1, 3] == 1
+
+
+def test_directed_support_graph_excludes_self_loops_by_default():
+    N = sparse.csr_matrix(
+        np.asarray(
+            [
+                [5, 3],
+                [0, 2],
+            ],
+            dtype=np.int64,
+        )
+    )
+
+    graph = build_directed_support_graph(N, min_support=1)
+    graph_with_self = build_directed_support_graph(N, min_support=1, include_self_loops=True)
+
+    assert graph.number_of_edges() == 1
+    assert not graph.has_edge(0, 0)
+    assert not graph.has_edge(1, 1)
+    assert graph_with_self.number_of_edges() == 3

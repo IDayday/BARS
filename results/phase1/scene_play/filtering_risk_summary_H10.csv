@@ -1,0 +1,5 @@
+filter,budget,high_bottleneck_count,retention_rate
+density_top_p,103,52,0.9038461538461539
+random_same_budget,103,52,0.20192307692307696
+bottleneck_top_p,103,52,1.0
+core_plus_bottleneck,103,52,1.0

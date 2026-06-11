@@ -76,19 +76,48 @@ def _empty_pair_records(obs_dim: int, obs_dtype: np.dtype) -> dict[str, np.ndarr
     }
 
 
+def _expand_pair_horizons(
+    horizons: list[int],
+    pair_mode: str,
+    horizon_stride: int,
+) -> list[int]:
+    requested = sorted({int(h) for h in horizons if int(h) > 0})
+    if not requested:
+        return []
+
+    pair_mode = pair_mode.lower()
+    horizon_stride = max(1, int(horizon_stride))
+    max_horizon = max(requested)
+    if pair_mode == "exact":
+        return requested
+    if pair_mode == "dense_upto":
+        return list(range(1, max_horizon + 1))
+    if pair_mode == "strided_upto":
+        values = list(range(1, max_horizon + 1, horizon_stride))
+        if values[-1] != max_horizon:
+            values.append(max_horizon)
+        return values
+    raise ValueError(
+        f"Unsupported pair_mode {pair_mode!r}; expected exact, dense_upto, or strided_upto"
+    )
+
+
 def build_h_step_pairs(
     episodes: list[dict[str, Any]],
     horizons: list[int],
     max_pairs_per_horizon: int | None = None,
     seed: int = 0,
+    pair_mode: str = "exact",
+    horizon_stride: int = 1,
+    store_observations: bool = True,
 ) -> dict[str, np.ndarray]:
-    """Build within-episode future state pairs for the requested horizons."""
+    """Build within-episode future state pairs for support diagnostics."""
 
     if not episodes:
         return _empty_pair_records(obs_dim=0, obs_dtype=np.float32)
 
-    horizons = sorted({int(h) for h in horizons if int(h) > 0})
-    if not horizons:
+    pair_horizons = _expand_pair_horizons(horizons, pair_mode, horizon_stride)
+    if not pair_horizons:
         first_obs = np.asarray(episodes[0]["observations"])
         return _empty_pair_records(int(np.prod(first_obs.shape[1:])), first_obs.dtype)
 
@@ -101,7 +130,7 @@ def build_h_step_pairs(
     obs_i_parts: list[np.ndarray] = []
     obs_j_parts: list[np.ndarray] = []
 
-    for horizon in horizons:
+    for horizon in pair_horizons:
         h_ep_ids: list[np.ndarray] = []
         h_ts: list[np.ndarray] = []
         h_gi: list[np.ndarray] = []
@@ -122,8 +151,9 @@ def build_h_step_pairs(
             h_ts.append(local_t)
             h_gi.append(global_i)
             h_gj.append(global_j)
-            h_obs_i.append(observations[local_t])
-            h_obs_j.append(observations[local_t + horizon])
+            if store_observations:
+                h_obs_i.append(observations[local_t])
+                h_obs_j.append(observations[local_t + horizon])
 
         if not h_ts:
             continue
@@ -132,8 +162,8 @@ def build_h_step_pairs(
         ts = np.concatenate(h_ts)
         global_i = np.concatenate(h_gi)
         global_j = np.concatenate(h_gj)
-        obs_i = np.concatenate(h_obs_i)
-        obs_j = np.concatenate(h_obs_j)
+        obs_i = np.concatenate(h_obs_i) if store_observations else None
+        obs_j = np.concatenate(h_obs_j) if store_observations else None
 
         if max_pairs_per_horizon is not None and ep_ids.shape[0] > max_pairs_per_horizon:
             keep = rng.choice(ep_ids.shape[0], size=max_pairs_per_horizon, replace=False)
@@ -142,20 +172,30 @@ def build_h_step_pairs(
             ts = ts[keep]
             global_i = global_i[keep]
             global_j = global_j[keep]
-            obs_i = obs_i[keep]
-            obs_j = obs_j[keep]
+            if store_observations and obs_i is not None and obs_j is not None:
+                obs_i = obs_i[keep]
+                obs_j = obs_j[keep]
 
         ep_id_parts.append(ep_ids)
         t_parts.append(ts)
         h_parts.append(np.full(ep_ids.shape, horizon, dtype=np.int64))
         gi_parts.append(global_i)
         gj_parts.append(global_j)
-        obs_i_parts.append(obs_i)
-        obs_j_parts.append(obs_j)
+        if store_observations and obs_i is not None and obs_j is not None:
+            obs_i_parts.append(obs_i)
+            obs_j_parts.append(obs_j)
 
     first_obs = np.asarray(episodes[0]["observations"])
+    obs_dim = int(np.prod(first_obs.shape[1:]))
     if not ep_id_parts:
-        return _empty_pair_records(int(np.prod(first_obs.shape[1:])), first_obs.dtype)
+        return _empty_pair_records(obs_dim, first_obs.dtype)
+
+    if store_observations:
+        obs_i = np.concatenate(obs_i_parts)
+        obs_j = np.concatenate(obs_j_parts)
+    else:
+        obs_i = np.empty((0, obs_dim), dtype=first_obs.dtype)
+        obs_j = np.empty((0, obs_dim), dtype=first_obs.dtype)
 
     return {
         "ep_id": np.concatenate(ep_id_parts),
@@ -163,7 +203,14 @@ def build_h_step_pairs(
         "h": np.concatenate(h_parts),
         "global_i": np.concatenate(gi_parts),
         "global_j": np.concatenate(gj_parts),
-        "obs_i": np.concatenate(obs_i_parts),
-        "obs_j": np.concatenate(obs_j_parts),
+        "obs_i": obs_i,
+        "obs_j": obs_j,
     }
 
+
+def count_pairs_by_h(pair_records: dict[str, np.ndarray]) -> dict[int, int]:
+    h_values = np.asarray(pair_records["h"], dtype=np.int64)
+    if h_values.size == 0:
+        return {}
+    unique, counts = np.unique(h_values, return_counts=True)
+    return {int(h): int(count) for h, count in zip(unique, counts)}

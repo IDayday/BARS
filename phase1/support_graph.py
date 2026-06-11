@@ -85,10 +85,16 @@ def support_asymmetry(N: sparse.spmatrix | np.ndarray) -> float:
     return numerator / denominator
 
 
-def one_way_edge_ratio(N: sparse.spmatrix | np.ndarray, min_support: int) -> float:
+def one_way_edge_ratio(
+    N: sparse.spmatrix | np.ndarray,
+    min_support: int,
+    include_self_loops: bool = False,
+) -> float:
     matrix = _to_csr(N)
     coo = matrix.tocoo()
     supported = coo.data >= min_support
+    if not include_self_loops:
+        supported &= coo.row != coo.col
     if not np.any(supported):
         return 0.0
     rows = coo.row[supported]
@@ -97,9 +103,26 @@ def one_way_edge_ratio(N: sparse.spmatrix | np.ndarray, min_support: int) -> flo
     return float(np.mean(reverse < min_support))
 
 
+def supported_edge_stats(
+    N: sparse.spmatrix | np.ndarray,
+    min_support: int,
+) -> dict[str, int]:
+    matrix = _to_csr(N)
+    coo = matrix.tocoo()
+    supported = coo.data >= min_support
+    self_edges = supported & (coo.row == coo.col)
+    inter_edges = supported & (coo.row != coo.col)
+    return {
+        "num_self_edges": int(np.count_nonzero(self_edges)),
+        "num_inter_edges": int(np.count_nonzero(inter_edges)),
+        "num_all_supported_edges": int(np.count_nonzero(supported)),
+    }
+
+
 def build_directed_support_graph(
     N: sparse.spmatrix | np.ndarray,
     min_support: int,
+    include_self_loops: bool = False,
 ) -> nx.DiGraph:
     matrix = _to_csr(N)
     coo = matrix.tocoo()
@@ -107,7 +130,10 @@ def build_directed_support_graph(
     graph.add_nodes_from(range(matrix.shape[0]))
     graph.graph["n_clusters"] = int(matrix.shape[0])
     graph.graph["min_support"] = int(min_support)
+    graph.graph["include_self_loops"] = bool(include_self_loops)
     supported = coo.data >= min_support
+    if not include_self_loops:
+        supported &= coo.row != coo.col
     rows = coo.row[supported]
     cols = coo.col[supported]
     counts = coo.data[supported]
@@ -184,4 +210,3 @@ def directed_shortest_path_asymmetry(
         "directed_reachable_pair_ratio": float(directed_reachable / (2 * sampled)),
         "num_sampled_pairs": int(n_samples),
     }
-

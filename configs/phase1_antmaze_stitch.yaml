@@ -1,12 +1,12 @@
-dataset_name: scene-play-v0
+dataset_name: antmaze-large-stitch-v0
 dataset_dir: ~/.ogbench/data
-output_dir: results/phase1/scene_play
+output_dir: results/phase1/antmaze_large_stitch
 split: train
 max_transitions: 200000
-cluster_method: kmeans
-state_dims:
+cluster_method: grid_xy
+state_dims: [0, 1]
 geometry_dims: [0, 1]
-n_clusters: 512
+n_clusters: 400
 horizons: [1, 5, 10, 25, 50]
 pair_mode: dense_upto
 horizon_stride: 1
@@ -20,3 +20,4 @@ path_sample_pairs: 5000
 removal_sample_pairs: 2000
 filter_top_p: 0.2
 high_bottleneck_q: 0.1
+

@@ -17,6 +17,16 @@ def _flatten_features(features: np.ndarray) -> np.ndarray:
     return features.reshape(features.shape[0], -1)
 
 
+def _select_dims(features: np.ndarray, dims: list[int] | None) -> np.ndarray:
+    flat = _flatten_features(features)
+    if dims is None:
+        return flat
+    dim_idx = np.asarray(dims, dtype=np.int64)
+    if np.any(dim_idx < 0) or np.any(dim_idx >= flat.shape[1]):
+        raise ValueError(f"geometry/state dims {dims} are invalid for feature dim {flat.shape[1]}")
+    return flat[:, dim_idx]
+
+
 def _cluster_centers_from_samples(
     observations_or_features: np.ndarray,
     labels: np.ndarray,
@@ -104,6 +114,47 @@ def build_knn_edges(
     )
 
 
+def build_grid_adjacent_edges(
+    cluster_model: dict[str, Any],
+    labels: np.ndarray | None = None,
+    occupied_only: bool = True,
+) -> set[tuple[int, int]]:
+    """Build directed 4-neighbor edges for grid_xy clusters."""
+
+    if cluster_model.get("method") != "grid_xy":
+        return set()
+    metadata = cluster_model["metadata"]
+    n_bins_x = int(metadata["n_bins_x"])
+    n_bins_y = int(metadata["n_bins_y"])
+    if occupied_only and labels is not None:
+        n_clusters = int(metadata["n_clusters"])
+        occupied = set(
+            int(x)
+            for x in np.flatnonzero(
+                np.bincount(np.asarray(labels, dtype=np.int64), minlength=n_clusters)[:n_clusters]
+                > 0
+            )
+        )
+    else:
+        occupied = set(range(n_bins_x * n_bins_y))
+
+    edges: set[tuple[int, int]] = set()
+    for x in range(n_bins_x):
+        for y in range(n_bins_y):
+            src = x * n_bins_y + y
+            if src not in occupied:
+                continue
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx = x + dx
+                ny = y + dy
+                if nx < 0 or nx >= n_bins_x or ny < 0 or ny >= n_bins_y:
+                    continue
+                dst = nx * n_bins_y + ny
+                if dst in occupied:
+                    edges.add((int(src), int(dst)))
+    return edges
+
+
 def _lookup_support(
     N: sparse.spmatrix | np.ndarray,
     rows: np.ndarray,
@@ -168,12 +219,21 @@ def _random_edges_like(
 
 
 def _support_edges(N: sparse.spmatrix | np.ndarray, min_support: int) -> set[tuple[int, int]]:
+    return support_edges(N, min_support=min_support, include_self_loops=False)
+
+
+def support_edges(
+    N: sparse.spmatrix | np.ndarray,
+    min_support: int,
+    include_self_loops: bool = False,
+) -> set[tuple[int, int]]:
     matrix = N.tocoo() if sparse.issparse(N) else sparse.coo_matrix(np.asarray(N))
     mask = matrix.data >= min_support
+    if not include_self_loops:
+        mask &= matrix.row != matrix.col
     return {
         (int(src), int(dst))
         for src, dst in zip(matrix.row[mask], matrix.col[mask])
-        if int(src) != int(dst)
     }
 
 
@@ -184,6 +244,9 @@ def compare_candidate_graphs(
     N: sparse.spmatrix | np.ndarray,
     min_support: int,
     k: int,
+    cluster_model: dict[str, Any] | None = None,
+    geometry_dims: list[int] | None = None,
+    include_self_loops: bool = False,
     seed: int = 0,
     pca_dim: int = 16,
 ) -> tuple[pd.DataFrame, dict[str, set[tuple[int, int]]]]:
@@ -193,6 +256,12 @@ def compare_candidate_graphs(
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
 
     raw_edges = build_knn_edges(features, labels, n_clusters, k, "cluster_center_knn", seed=seed)
+    if geometry_dims is None and features.shape[1] >= 2:
+        geometry_dims = [0, 1]
+    xy_edges: set[tuple[int, int]] = set()
+    if geometry_dims is not None:
+        xy_features = _select_dims(features, geometry_dims)
+        xy_edges = build_knn_edges(xy_features, labels, n_clusters, k, "cluster_center_knn", seed=seed)
 
     pca_components = min(int(pca_dim), features.shape[1], max(1, features.shape[0] - 1))
     scaled = StandardScaler().fit_transform(features)
@@ -203,14 +272,26 @@ def compare_candidate_graphs(
     pca_edges = build_knn_edges(pca_features, labels, n_clusters, k, "cluster_center_knn", seed=seed)
 
     random_edges = _random_edges_like(labels, n_clusters, len(raw_edges), seed=seed)
-    support_edges = _support_edges(N, min_support)
+    empirical_support_edges = support_edges(
+        N,
+        min_support=min_support,
+        include_self_loops=include_self_loops,
+    )
+    grid_edges = (
+        build_grid_adjacent_edges(cluster_model, labels=labels, occupied_only=True)
+        if cluster_model is not None
+        else set()
+    )
 
     edge_sets = {
         "raw_state_kNN": raw_edges,
+        "xy_state_kNN": xy_edges,
         "PCA_state_kNN": pca_edges,
         "random_edges": random_edges,
-        "support_graph": support_edges,
+        "support_graph": empirical_support_edges,
     }
+    if cluster_model is not None and cluster_model.get("method") == "grid_xy":
+        edge_sets["grid_adjacent_edges"] = grid_edges
 
     rows: list[dict[str, Any]] = []
     for name, edges in edge_sets.items():

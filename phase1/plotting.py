@@ -62,7 +62,13 @@ def plot_unsupported_edge_rate(candidate_summary: pd.DataFrame, output_dir: str 
     output_path = _ensure_output_dir(output_dir)
     plot_df = candidate_summary[
         candidate_summary["candidate_type"].isin(
-            ["raw_state_kNN", "PCA_state_kNN", "random_edges"]
+            [
+                "raw_state_kNN",
+                "xy_state_kNN",
+                "PCA_state_kNN",
+                "grid_adjacent_edges",
+                "random_edges",
+            ]
         )
     ].copy()
     plot_df[["candidate_type", "unsupported_edge_rate"]].to_csv(
@@ -114,6 +120,27 @@ def plot_bottleneck_retention(filtering_summary: pd.DataFrame, output_dir: str |
     plt.xticks(rotation=20, ha="right")
     plt.tight_layout()
     plt.savefig(output_path / "bottleneck_retention_bar.png", dpi=180)
+    plt.close()
+
+
+def plot_bottleneck_retention_by_H(retention_by_h: pd.DataFrame, output_dir: str | Path) -> None:
+    if retention_by_h.empty:
+        return
+    output_path = _ensure_output_dir(output_dir)
+    retention_by_h.to_csv(output_path / "bottleneck_retention_by_H.csv", index=False)
+    plot_df = retention_by_h.copy()
+    plt.figure(figsize=(7, 4))
+    for column in plot_df.columns:
+        if column == "H":
+            continue
+        plt.plot(plot_df["H"], plot_df[column], marker="o", linewidth=2, label=column)
+    plt.xlabel("H")
+    plt.ylabel("High-bottleneck retention")
+    plt.ylim(0.0, 1.0)
+    plt.grid(alpha=0.3)
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(output_path / "bottleneck_retention_by_H.png", dpi=180)
     plt.close()
 
 
@@ -181,10 +208,12 @@ def plot_all(
     filtering_summary: pd.DataFrame,
     support_matrix: sparse.spmatrix | np.ndarray,
     output_dir: str | Path,
+    bottleneck_retention_by_h: pd.DataFrame | None = None,
 ) -> None:
     plot_support_metrics(graph_summary, output_dir)
     plot_unsupported_edge_rate(candidate_summary, output_dir)
     plot_density_vs_bottleneck(bottleneck_scores, output_dir)
     plot_bottleneck_retention(filtering_summary, output_dir)
+    if bottleneck_retention_by_h is not None:
+        plot_bottleneck_retention_by_H(bottleneck_retention_by_h, output_dir)
     plot_support_matrix_heatmaps(support_matrix, bottleneck_scores, output_dir)
-
