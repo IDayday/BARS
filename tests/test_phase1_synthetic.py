@@ -10,6 +10,7 @@ import numpy as np
 from scipy import sparse
 
 from phase1.bottleneck import betweenness_score, removal_impact_score
+from phase1.diagnostics import compare_candidate_graphs
 from phase1.support_graph import (
     build_directed_support_graph,
     compute_support_counts,
@@ -132,3 +133,46 @@ def test_directed_support_graph_excludes_self_loops_by_default():
     assert not graph.has_edge(0, 0)
     assert not graph.has_edge(1, 1)
     assert graph_with_self.number_of_edges() == 3
+
+
+def test_geometry_candidate_baseline_is_opt_in_for_non_maze_tasks():
+    observations = np.asarray(
+        [
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 1.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+    labels = np.arange(4, dtype=np.int64)
+    N = sparse.csr_matrix((4, 4), dtype=np.int64)
+
+    summary, _ = compare_candidate_graphs(
+        observations,
+        labels,
+        n_clusters=4,
+        N=N,
+        min_support=1,
+        k=1,
+        geometry_dims=None,
+        seed=0,
+    )
+    candidate_types = set(summary["candidate_type"])
+    assert "xy_state_kNN" not in candidate_types
+    assert "first2_or_geometry_dims_kNN" not in candidate_types
+
+    explicit_summary, _ = compare_candidate_graphs(
+        observations,
+        labels,
+        n_clusters=4,
+        N=N,
+        min_support=1,
+        k=1,
+        geometry_dims=[0, 1],
+        geometry_label="first2_or_geometry_dims_kNN",
+        seed=0,
+    )
+    explicit_types = set(explicit_summary["candidate_type"])
+    assert "first2_or_geometry_dims_kNN" in explicit_types
+    assert "xy_state_kNN" not in explicit_types

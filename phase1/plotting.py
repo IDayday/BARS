@@ -60,17 +60,7 @@ def plot_support_metrics(graph_summary: pd.DataFrame, output_dir: str | Path) ->
 
 def plot_unsupported_edge_rate(candidate_summary: pd.DataFrame, output_dir: str | Path) -> None:
     output_path = _ensure_output_dir(output_dir)
-    plot_df = candidate_summary[
-        candidate_summary["candidate_type"].isin(
-            [
-                "raw_state_kNN",
-                "xy_state_kNN",
-                "PCA_state_kNN",
-                "grid_adjacent_edges",
-                "random_edges",
-            ]
-        )
-    ].copy()
+    plot_df = candidate_summary[candidate_summary["candidate_type"] != "support_graph"].copy()
     plot_df[["candidate_type", "unsupported_edge_rate"]].to_csv(
         output_path / "unsupported_edge_rate_bar.csv",
         index=False,

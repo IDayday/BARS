@@ -246,6 +246,8 @@ def compare_candidate_graphs(
     k: int,
     cluster_model: dict[str, Any] | None = None,
     geometry_dims: list[int] | None = None,
+    geometry_label: str = "geometry_dims_kNN",
+    include_grid_adjacent: bool = False,
     include_self_loops: bool = False,
     seed: int = 0,
     pca_dim: int = 16,
@@ -256,12 +258,17 @@ def compare_candidate_graphs(
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
 
     raw_edges = build_knn_edges(features, labels, n_clusters, k, "cluster_center_knn", seed=seed)
-    if geometry_dims is None and features.shape[1] >= 2:
-        geometry_dims = [0, 1]
-    xy_edges: set[tuple[int, int]] = set()
+    geometry_edges: set[tuple[int, int]] = set()
     if geometry_dims is not None:
-        xy_features = _select_dims(features, geometry_dims)
-        xy_edges = build_knn_edges(xy_features, labels, n_clusters, k, "cluster_center_knn", seed=seed)
+        geometry_features = _select_dims(features, geometry_dims)
+        geometry_edges = build_knn_edges(
+            geometry_features,
+            labels,
+            n_clusters,
+            k,
+            "cluster_center_knn",
+            seed=seed,
+        )
 
     pca_components = min(int(pca_dim), features.shape[1], max(1, features.shape[0] - 1))
     scaled = StandardScaler().fit_transform(features)
@@ -279,18 +286,19 @@ def compare_candidate_graphs(
     )
     grid_edges = (
         build_grid_adjacent_edges(cluster_model, labels=labels, occupied_only=True)
-        if cluster_model is not None
+        if include_grid_adjacent and cluster_model is not None
         else set()
     )
 
     edge_sets = {
         "raw_state_kNN": raw_edges,
-        "xy_state_kNN": xy_edges,
         "PCA_state_kNN": pca_edges,
         "random_edges": random_edges,
         "support_graph": empirical_support_edges,
     }
-    if cluster_model is not None and cluster_model.get("method") == "grid_xy":
+    if geometry_dims is not None:
+        edge_sets[geometry_label] = geometry_edges
+    if include_grid_adjacent and cluster_model is not None and cluster_model.get("method") == "grid_xy":
         edge_sets["grid_adjacent_edges"] = grid_edges
 
     rows: list[dict[str, Any]] = []

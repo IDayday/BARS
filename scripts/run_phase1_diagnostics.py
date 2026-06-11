@@ -110,6 +110,7 @@ def _merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "max_pairs_per_horizon": None,
         "pair_mode": "exact",
         "horizon_stride": 1,
+        "task_type": "generic",
         "geometry_dims": None,
         "pca_dim": 16,
         "crossing_lag": 5,
@@ -124,10 +125,17 @@ def _merge_args(args: argparse.Namespace) -> argparse.Namespace:
             merged[key] = value
 
     merged["state_dims"] = _parse_int_list(merged.get("state_dims"))
+    geometry_dims_explicit = args.geometry_dims is not None or (
+        "geometry_dims" in config and config.get("geometry_dims") not in (None, "")
+    )
     merged["geometry_dims"] = _parse_int_list(merged.get("geometry_dims"))
-    if merged["geometry_dims"] is None and merged["state_dims"] is not None:
-        merged["geometry_dims"] = list(merged["state_dims"])
     merged["horizons"] = _parse_int_list(merged.get("horizons")) or defaults["horizons"]
+    merged["geometry_dims_explicit"] = bool(geometry_dims_explicit)
+    merged["task_type"] = str(merged["task_type"]).lower()
+    if merged["task_type"] not in {"maze", "manipulation", "generic"}:
+        raise ValueError(
+            f"task_type must be maze, manipulation, or generic; got {merged['task_type']!r}"
+        )
     if merged.get("dataset_dir") is not None:
         merged["dataset_dir"] = str(Path(str(merged["dataset_dir"])).expanduser())
     if merged.get("output_dir") is not None:
@@ -157,7 +165,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_pairs_per_horizon", type=int, default=None)
     parser.add_argument("--pair_mode", default=None, choices=["exact", "dense_upto", "strided_upto"])
     parser.add_argument("--horizon_stride", type=int, default=None)
-    parser.add_argument("--geometry_dims", default=None, help="Comma-separated geometry dims for xy kNN")
+    parser.add_argument("--task_type", default=None, choices=["maze", "manipulation", "generic"])
+    parser.add_argument("--geometry_dims", default=None, help="Comma-separated geometry dims for optional geometry kNN")
     parser.add_argument("--pca_dim", type=int, default=None)
     parser.add_argument("--crossing_lag", type=int, default=None)
     parser.add_argument("--betweenness_sample_k", type=int, default=None)
@@ -304,9 +313,21 @@ def main() -> None:
     final_horizon = int(max(args.horizons))
     final_N = support_counts[final_horizon]
     final_G = graphs[final_horizon]
-    effective_geometry_dims = args.geometry_dims
-    if effective_geometry_dims is None and flat_observations.shape[1] >= 2:
-        effective_geometry_dims = [0, 1]
+    geometry_baseline_semantic = args.task_type == "maze"
+    effective_geometry_dims = None
+    geometry_label = "first2_or_geometry_dims_kNN"
+    include_grid_adjacent = False
+    if args.task_type == "maze":
+        geometry_label = "xy_state_kNN"
+        include_grid_adjacent = cluster_model.get("method") == "grid_xy"
+        if args.geometry_dims is not None:
+            effective_geometry_dims = args.geometry_dims
+        elif args.state_dims is not None and len(args.state_dims) == 2:
+            effective_geometry_dims = list(args.state_dims)
+        elif flat_observations.shape[1] >= 2:
+            effective_geometry_dims = [0, 1]
+    elif args.geometry_dims_explicit and args.geometry_dims is not None:
+        effective_geometry_dims = args.geometry_dims
 
     candidate_summary, _ = compare_candidate_graphs(
         flat_observations,
@@ -317,6 +338,8 @@ def main() -> None:
         k=args.knn_k,
         cluster_model=cluster_model,
         geometry_dims=effective_geometry_dims,
+        geometry_label=geometry_label,
+        include_grid_adjacent=include_grid_adjacent,
         include_self_loops=False,
         seed=args.seed,
         pca_dim=args.pca_dim,
@@ -397,8 +420,11 @@ def main() -> None:
         "horizons": [int(h) for h in args.horizons],
         "pair_mode": args.pair_mode,
         "horizon_stride": int(args.horizon_stride),
+        "task_type": args.task_type,
         "num_pairs_by_h": {str(h): int(count) for h, count in num_pairs_by_h.items()},
         "geometry_dims": effective_geometry_dims,
+        "geometry_dims_explicit": bool(args.geometry_dims_explicit),
+        "geometry_baseline_semantic": bool(geometry_baseline_semantic),
         "support_asymmetry_by_H": {
             str(int(row.H)): float(row.support_asymmetry)
             for row in graph_summary.itertuples(index=False)
