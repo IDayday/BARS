@@ -1,0 +1,2 @@
+dataset_name,H,node_selection,node_budget,num_selected_nodes,num_option_edges,num_edge_segments,mean_option_median_h,mean_num_segments_per_edge,strict_path_coverage,virtual_path_coverage,cluster_compatible_rate,strict_compatible_rate,graph_reachable_pair_ratio_sampled
+scene-play-v0,10,core_plus_bottleneck,128,128,1089,181079,6.977961432506887,166.28007346189165,1.0,0.99,1.0,0.3347826086956522,0.9386

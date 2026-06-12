@@ -1,0 +1,2 @@
+dataset_name,H,node_selection,node_budget,num_selected_nodes,num_option_edges,num_edge_segments,mean_option_median_h,mean_num_segments_per_edge,strict_path_coverage,virtual_path_coverage,cluster_compatible_rate,strict_compatible_rate,graph_reachable_pair_ratio_sampled
+antmaze-large-stitch-v0,5,core_plus_bottleneck,10,10,12,470,4.0,39.166666666666664,0.0,0.0,1.0,0.5,0.2

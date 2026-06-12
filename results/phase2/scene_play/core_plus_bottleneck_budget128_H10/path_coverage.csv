@@ -1,0 +1,3 @@
+dataset_name,H,node_selection,node_budget,mode,num_queries,num_reachable,path_coverage,mean_path_edges,mean_path_cost,median_path_cost
+scene-play-v0,10,core_plus_bottleneck,128,strict_selected,17,17,1.0,2.823529411764706,16.845216705571964,17.715203900721903
+scene-play-v0,10,core_plus_bottleneck,128,virtual_query,100,99,0.99,2.525252525252525,22.51748556416596,20.0

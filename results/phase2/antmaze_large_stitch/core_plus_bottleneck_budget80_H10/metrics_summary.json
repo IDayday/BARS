@@ -1,0 +1,16 @@
+{
+  "H": 10,
+  "cluster_compatible_rate": 1.0,
+  "dataset_name": "antmaze-large-stitch-v0",
+  "graph_reachable_pair_ratio_sampled": 0.8694,
+  "mean_num_segments_per_edge": 1118.4198717948718,
+  "mean_option_median_h": 8.068910256410257,
+  "node_budget": 80,
+  "node_selection": "core_plus_bottleneck",
+  "num_edge_segments": 348947,
+  "num_option_edges": 312,
+  "num_selected_nodes": 80,
+  "strict_compatible_rate": 0.6844594594594594,
+  "strict_path_coverage": 0.8055555555555556,
+  "virtual_path_coverage": 0.592
+}

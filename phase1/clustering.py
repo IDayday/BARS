@@ -4,8 +4,13 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.preprocessing import StandardScaler
+
+try:
+    from sklearn.cluster import MiniBatchKMeans
+    from sklearn.preprocessing import StandardScaler
+except ModuleNotFoundError:  # pragma: no cover - exercised only in minimal envs.
+    MiniBatchKMeans = None
+    StandardScaler = None
 
 
 def _flatten_observations(observations: np.ndarray) -> np.ndarray:
@@ -51,6 +56,8 @@ def fit_state_clusters(
 
     method = method.lower()
     if method == "kmeans":
+        if MiniBatchKMeans is None or StandardScaler is None:
+            raise ImportError("cluster_method='kmeans' requires scikit-learn")
         features = _select_state_dims(observations, state_dims)
         actual_clusters = min(int(n_clusters), features.shape[0])
         scaler = StandardScaler()
@@ -171,4 +178,3 @@ def compute_cluster_density(labels: np.ndarray, n_clusters: int | None = None) -
             "density": counts.astype(np.float64) / float(total),
         }
     )
-

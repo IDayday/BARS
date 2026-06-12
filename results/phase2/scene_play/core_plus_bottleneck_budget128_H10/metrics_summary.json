@@ -1,0 +1,16 @@
+{
+  "H": 10,
+  "cluster_compatible_rate": 1.0,
+  "dataset_name": "scene-play-v0",
+  "graph_reachable_pair_ratio_sampled": 0.9386,
+  "mean_num_segments_per_edge": 166.28007346189165,
+  "mean_option_median_h": 6.977961432506887,
+  "node_budget": 128,
+  "node_selection": "core_plus_bottleneck",
+  "num_edge_segments": 181079,
+  "num_option_edges": 1089,
+  "num_selected_nodes": 128,
+  "strict_compatible_rate": 0.3347826086956522,
+  "strict_path_coverage": 1.0,
+  "virtual_path_coverage": 0.99
+}

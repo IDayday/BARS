@@ -1,0 +1,6 @@
+query_id,src,dst,reachable,path_edges_count,path_cost,path_nodes,path_edge_ids,ep_id
+0,4,8,False,0,inf,,,0
+1,5,15,False,0,inf,,,1
+2,0,3,False,0,inf,,,2
+3,23,20,False,0,inf,,,3
+4,0,2,False,0,inf,,,4

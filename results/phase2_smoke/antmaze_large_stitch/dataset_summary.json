@@ -1,0 +1,23 @@
+{
+  "action_dim": 8,
+  "action_shape": [
+    1000,
+    8
+  ],
+  "has_masks": false,
+  "has_next_observations": true,
+  "has_valids": false,
+  "keys": [
+    "actions",
+    "next_observations",
+    "observations",
+    "terminals"
+  ],
+  "num_terminal_flags": 5,
+  "num_transitions": 1000,
+  "observation_dim": 29,
+  "observation_shape": [
+    1000,
+    29
+  ]
+}

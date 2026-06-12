@@ -1,0 +1,3 @@
+dataset_name,H,node_selection,node_budget,mode,num_queries,num_reachable,path_coverage,mean_path_edges,mean_path_cost,median_path_cost
+antmaze-large-stitch-v0,5,core_plus_bottleneck,10,strict_selected,2,0,0.0,0.0,0.0,0.0
+antmaze-large-stitch-v0,5,core_plus_bottleneck,10,virtual_query,5,0,0.0,0.0,0.0,0.0

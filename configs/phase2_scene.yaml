@@ -1,0 +1,20 @@
+dataset_name: scene-play-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+max_transitions: 200000
+cluster_method: kmeans
+state_dims:
+geometry_dims:
+n_clusters: 512
+pair_mode: dense_upto
+horizon_stride: 1
+H: 10
+min_support: 3
+min_episodes: 2
+node_budget: 128
+node_selection: core_plus_bottleneck
+compat_H_intra: 10
+support_penalty: 1.0
+seed: 0
+path_eval_pairs: 5000
+task_type: manipulation
+
