@@ -1,0 +1,6 @@
+baseline,node_selection,H,node_budget,num_edges,unsupported_edge_rate,path_coverage_strict,path_coverage_virtual,mean_path_cost_strict,mean_path_cost_virtual,hop_count_cost,num_queries_strict,num_reachable_strict,num_queries_virtual,num_reachable_virtual
+support_core_plus_bottleneck,core_plus_bottleneck,10,80,444,0.0,0.5714285714285714,0.33,56.430544442553,66.08642113587723,,14,8,100.0,33.0
+kNN_same_nodes,core_plus_bottleneck,10,80,444,0.10810810810810811,0.35714285714285715,,,,6.2,14,5,,
+kNN_geometry_same_nodes,core_plus_bottleneck,10,80,395,0.0379746835443038,0.6428571428571429,,,,10.0,14,9,,
+grid_adjacent_same_nodes,core_plus_bottleneck,10,80,180,0.0,0.5714285714285714,,,,12.25,14,8,,
+random_same_edge_budget,core_plus_bottleneck,10,80,444,0.9031531531531531,0.9285714285714286,,,,2.230769230769231,14,13,,

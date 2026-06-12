@@ -14,11 +14,18 @@ OPTION_EDGE_COLUMNS = [
     "dst",
     "num_segments",
     "num_episodes",
+    "num_unique_episodes",
+    "num_unique_starts",
+    "num_unique_terminations",
+    "num_unique_start_goal_pairs",
+    "support_density_per_episode",
     "min_h",
     "median_h",
     "mean_h",
     "max_h",
     "support_count",
+    "reverse_support_raw",
+    "reverse_support_certified",
     "reverse_support_count",
     "asymmetry",
     "src_density",
@@ -119,17 +126,37 @@ def build_option_edges(
     )
 
     grouped = base.groupby(["src", "dst"], sort=True)
-    edge_df = grouped.agg(
+    raw_edge_df = grouped.agg(
         num_segments=("h", "size"),
         num_episodes=("ep_id", pd.Series.nunique),
+        num_unique_starts=("global_i", pd.Series.nunique),
+        num_unique_terminations=("global_j", pd.Series.nunique),
         min_h=("h", "min"),
         median_h=("h", "median"),
         mean_h=("h", "mean"),
         max_h=("h", "max"),
     ).reset_index()
-    edge_df = edge_df[
-        (edge_df["num_segments"] >= int(min_support))
-        & (edge_df["num_episodes"] >= int(min_episodes))
+    unique_pairs = (
+        base.drop_duplicates(["src", "dst", "global_i", "global_j"])
+        .groupby(["src", "dst"], sort=True)
+        .size()
+        .rename("num_unique_start_goal_pairs")
+        .reset_index()
+    )
+    raw_edge_df = raw_edge_df.merge(unique_pairs, on=["src", "dst"], how="left")
+    raw_edge_df["num_unique_start_goal_pairs"] = raw_edge_df["num_unique_start_goal_pairs"].fillna(0).astype(int)
+    raw_edge_df["num_unique_episodes"] = raw_edge_df["num_episodes"].astype(int)
+    raw_edge_df["support_density_per_episode"] = (
+        raw_edge_df["num_segments"] / raw_edge_df["num_episodes"].clip(lower=1)
+    )
+    raw_support_lookup = {
+        (int(row.src), int(row.dst)): int(row.num_segments)
+        for row in raw_edge_df.itertuples(index=False)
+    }
+
+    edge_df = raw_edge_df[
+        (raw_edge_df["num_segments"] >= int(min_support))
+        & (raw_edge_df["num_episodes"] >= int(min_episodes))
     ].copy()
     if edge_df.empty:
         return _empty_option_edges(), _empty_segments()
@@ -139,13 +166,18 @@ def build_option_edges(
         for row in edge_df.itertuples(index=False)
     }
     edge_df["support_count"] = edge_df["num_segments"].astype(int)
-    edge_df["reverse_support_count"] = [
+    edge_df["reverse_support_raw"] = [
+        int(raw_support_lookup.get((int(row.dst), int(row.src)), 0))
+        for row in edge_df.itertuples(index=False)
+    ]
+    edge_df["reverse_support_certified"] = [
         int(support_lookup.get((int(row.dst), int(row.src)), 0))
         for row in edge_df.itertuples(index=False)
     ]
+    edge_df["reverse_support_count"] = edge_df["reverse_support_certified"].astype(int)
     edge_df["asymmetry"] = (
-        (edge_df["support_count"] - edge_df["reverse_support_count"])
-        / (edge_df["support_count"] + edge_df["reverse_support_count"] + EPS)
+        (edge_df["support_count"] - edge_df["reverse_support_certified"])
+        / (edge_df["support_count"] + edge_df["reverse_support_certified"] + EPS)
     )
     edge_df["src_density"] = edge_df["src"].map(lambda x: info[int(x)]["density"])
     edge_df["dst_density"] = edge_df["dst"].map(lambda x: info[int(x)]["density"])

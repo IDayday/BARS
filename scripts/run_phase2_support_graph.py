@@ -45,13 +45,29 @@ from phase2.evaluation import (  # noqa: E402
 from phase2.node_selection import select_nodes  # noqa: E402
 from phase2.option_graph import add_edge_costs, build_option_graph, graph_summary  # noqa: E402
 from phase2.planning import evaluate_query_paths  # noqa: E402
-from phase2.plotting import plot_all  # noqa: E402
+from phase2.plotting import plot_aggregate_summary, plot_all  # noqa: E402
 
 SUPPORT_BASELINE_LABELS = {
     "density": "support_density",
     "bottleneck": "support_bottleneck",
     "core_plus_bottleneck": "support_core_plus_bottleneck",
     "all": "support_all_upper_bound",
+}
+
+PHASE21_METRIC_KEYS = {
+    "strict_query_selection_rate",
+    "strict_coverage_over_all",
+    "virtual_path_coverage",
+    "mean_num_virtual_edges_used",
+    "mean_virtual_edge_ratio",
+    "strict_compatible_rate",
+    "mean_compatibility_support_rate",
+    "num_option_edges",
+    "num_edge_segments",
+    "mean_num_unique_starts_per_edge",
+    "mean_num_unique_episodes_per_edge",
+    "bottleneck_removal_delta_coverage",
+    "bottleneck_removal_delta_cost",
 }
 
 
@@ -98,6 +114,14 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         json.dump(_json_safe(payload), f, indent=2, sort_keys=True)
 
 
+def _read_json(path: Path) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return data
+
+
 def _merge_args(args: argparse.Namespace) -> argparse.Namespace:
     config = _load_config(args.config)
     merged = vars(args).copy()
@@ -125,11 +149,13 @@ def _merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "path_eval_pairs": 5000,
         "compat_H_intra": 10,
         "support_penalty": 1.0,
+        "support_unit": "segments",
         "cost_type": "default",
         "sweep": False,
         "knn_k": 10,
         "task_type": "generic",
         "bottleneck_top_q": 0.1,
+        "no_resume": False,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -177,11 +203,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--path_eval_pairs", type=int, default=None)
     parser.add_argument("--compat_H_intra", type=int, default=None)
     parser.add_argument("--support_penalty", type=float, default=None)
+    parser.add_argument("--support_unit", default=None, choices=["segments", "unique_starts", "episodes"])
     parser.add_argument("--cost_type", default=None, choices=["default", "median_h", "support_weighted"])
     parser.add_argument("--sweep", action="store_true", default=None)
     parser.add_argument("--knn_k", type=int, default=None)
     parser.add_argument("--task_type", default=None, choices=["maze", "manipulation", "generic"])
     parser.add_argument("--bottleneck_top_q", type=float, default=None)
+    parser.add_argument("--no_resume", action="store_true", default=None)
     return _merge_args(parser.parse_args())
 
 
@@ -272,7 +300,7 @@ def _candidate_baseline_row(
         "num_edges": int(len(edges)),
         "unsupported_edge_rate": float(unsupported["unsupported_edge_rate"]),
         "path_coverage_strict": float(metrics["path_coverage"]),
-        "mean_path_cost_strict": float(metrics["mean_path_cost"]),
+        "hop_count_cost": float(metrics["mean_path_cost"]),
         "num_queries_strict": int(metrics["num_queries"]),
         "num_reachable_strict": int(metrics["num_reachable"]),
     }
@@ -388,6 +416,7 @@ def _support_comparison_row(metrics: dict[str, Any]) -> dict[str, Any]:
         "path_coverage_virtual": float(metrics["virtual_path_coverage"]),
         "mean_path_cost_strict": float(metrics["strict_mean_path_cost"]),
         "mean_path_cost_virtual": float(metrics["virtual_mean_path_cost"]),
+        "hop_count_cost": np.nan,
         "num_queries_strict": int(metrics["strict_num_queries"]),
         "num_reachable_strict": int(metrics["strict_num_reachable"]),
         "num_queries_virtual": int(metrics["virtual_num_queries"]),
@@ -413,8 +442,9 @@ def _candidate_comparison_rows(
                 "unsupported_edge_rate": float(row["unsupported_edge_rate"]),
                 "path_coverage_strict": float(row["path_coverage_strict"]),
                 "path_coverage_virtual": np.nan,
-                "mean_path_cost_strict": float(row["mean_path_cost_strict"]),
+                "mean_path_cost_strict": np.nan,
                 "mean_path_cost_virtual": np.nan,
+                "hop_count_cost": float(row["hop_count_cost"]),
                 "num_queries_strict": int(row["num_queries_strict"]),
                 "num_reachable_strict": int(row["num_reachable_strict"]),
                 "num_queries_virtual": np.nan,
@@ -422,6 +452,39 @@ def _candidate_comparison_rows(
             }
         )
     return rows
+
+
+def _load_completed_run_if_valid(
+    run_dir: Path,
+    args: argparse.Namespace,
+    method: str,
+) -> tuple[dict[str, Any], pd.DataFrame] | None:
+    metrics_path = run_dir / "metrics_summary.json"
+    baseline_path = run_dir / "baseline_summary.csv"
+    if not metrics_path.exists():
+        return None
+    try:
+        metrics = _read_json(metrics_path)
+    except Exception:
+        return None
+    if not PHASE21_METRIC_KEYS.issubset(metrics.keys()):
+        return None
+    expected = {
+        "dataset_name": args.dataset_name,
+        "H": int(args.H),
+        "node_selection": method,
+        "support_unit": args.support_unit,
+        "node_budget": int(args.node_budget),
+    }
+    for key, value in expected.items():
+        if metrics.get(key) != value:
+            return None
+    if baseline_path.exists():
+        baselines = pd.read_csv(baseline_path)
+    else:
+        baselines = pd.DataFrame()
+    print(f"[phase2] resume completed method={method} budget={args.node_budget} H={args.H}")
+    return metrics, baselines
 
 
 def _run_method(
@@ -441,6 +504,10 @@ def _run_method(
     dataset_key = _dataset_key(args.dataset_name)
     run_dir = base_output_dir / dataset_key / f"{method}_budget{args.node_budget}_H{args.H}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    if not getattr(args, "no_resume", False):
+        completed = _load_completed_run_if_valid(run_dir, args, method)
+        if completed is not None:
+            return completed
 
     selected_nodes = select_nodes(density_df, bottleneck_df, method, args.node_budget, args.seed)
     selected_nodes.to_csv(run_dir / "selected_nodes.csv", index=False)
@@ -456,6 +523,7 @@ def _run_method(
         option_edges,
         cost_type=args.cost_type,
         support_penalty=args.support_penalty,
+        support_unit=args.support_unit,
     )
     option_edges.to_csv(run_dir / "option_edges.csv", index=False)
     np.savez_compressed(run_dir / "edge_segments.npz", **edge_segments)
@@ -466,6 +534,7 @@ def _run_method(
         option_edges,
         cost_type=args.cost_type,
         support_penalty=args.support_penalty,
+        support_unit=args.support_unit,
         selected_nodes=selected_nodes,
     )
     graph_df = graph_summary(G, sample_pairs=args.path_eval_pairs, seed=args.seed)
@@ -546,11 +615,22 @@ def _run_method(
 
     strict_row = strict_summary.iloc[0].to_dict() if not strict_summary.empty else {}
     virtual_row = virtual_summary.iloc[0].to_dict() if not virtual_summary.empty else {}
+    compat_row = compatibility_summary.iloc[0].to_dict() if not compatibility_summary.empty else {}
+    if not utility.empty and {"before", "after"}.issubset(set(utility["condition"])):
+        before_row = utility[utility["condition"] == "before"].iloc[0]
+        after_row = utility[utility["condition"] == "after"].iloc[0]
+        bottleneck_delta_coverage = float(before_row["path_coverage"] - after_row["path_coverage"])
+        bottleneck_delta_cost = float(after_row["mean_path_cost"] - before_row["mean_path_cost"])
+    else:
+        bottleneck_delta_coverage = 0.0
+        bottleneck_delta_cost = 0.0
     metrics = {
         "dataset_name": args.dataset_name,
         "H": int(args.H),
         "node_selection": method,
         "support_baseline": _support_baseline_label(method),
+        "support_unit": args.support_unit,
+        "cost_type": args.cost_type,
         "node_budget": int(args.node_budget),
         "num_selected_nodes": int(selected_nodes["selected"].sum()),
         "num_option_edges": int(option_edges.shape[0]),
@@ -561,16 +641,34 @@ def _run_method(
         "mean_num_segments_per_edge": float(option_edges["num_segments"].mean())
         if not option_edges.empty
         else 0.0,
+        "mean_num_unique_starts_per_edge": float(option_edges["num_unique_starts"].mean())
+        if not option_edges.empty
+        else 0.0,
+        "mean_num_unique_episodes_per_edge": float(option_edges["num_unique_episodes"].mean())
+        if not option_edges.empty
+        else 0.0,
+        "all_num_queries": int(strict_row.get("all_num_queries", virtual_row.get("all_num_queries", 0))),
         "strict_num_queries": int(strict_row.get("num_queries", 0)),
+        "strict_query_selection_rate": float(strict_row.get("strict_query_selection_rate", 0.0)),
         "strict_num_reachable": int(strict_row.get("num_reachable", 0)),
         "strict_path_coverage": float(strict_row.get("path_coverage", 0.0)),
+        "strict_coverage_over_all": float(strict_row.get("strict_coverage_over_all", 0.0)),
         "strict_mean_path_cost": float(strict_row.get("mean_path_cost", 0.0)),
         "virtual_num_queries": int(virtual_row.get("num_queries", 0)),
         "virtual_num_reachable": int(virtual_row.get("num_reachable", 0)),
         "virtual_path_coverage": float(virtual_row.get("path_coverage", 0.0)),
         "virtual_mean_path_cost": float(virtual_row.get("mean_path_cost", 0.0)),
-        "cluster_compatible_rate": float(compatibility_summary.iloc[0]["cluster_compatible_rate"]),
-        "strict_compatible_rate": float(compatibility_summary.iloc[0]["strict_compatible_rate"]),
+        "mean_num_virtual_edges_used": float(virtual_row.get("mean_num_virtual_edges_used", 0.0)),
+        "median_num_virtual_edges_used": float(virtual_row.get("median_num_virtual_edges_used", 0.0)),
+        "mean_virtual_edge_ratio": float(virtual_row.get("mean_virtual_edge_ratio", 0.0)),
+        "cluster_compatible_rate": float(compat_row.get("cluster_compatible_rate", 0.0)),
+        "strict_compatible_rate": float(compat_row.get("strict_compatible_rate", 0.0)),
+        "mean_compatibility_support_rate": float(compat_row.get("mean_compatibility_support_rate", 0.0)),
+        "mean_num_bridge_segments": float(compat_row.get("mean_num_bridge_segments", 0.0)),
+        "median_num_bridge_segments": float(compat_row.get("median_num_bridge_segments", 0.0)),
+        "lcb_compatible_rate": float(compat_row.get("lcb_compatible_rate", 0.0)),
+        "bottleneck_removal_delta_coverage": bottleneck_delta_coverage,
+        "bottleneck_removal_delta_cost": bottleneck_delta_cost,
         "graph_reachable_pair_ratio_sampled": float(
             graph_df.iloc[0]["reachable_pair_ratio_sampled"]
         ),
@@ -688,6 +786,7 @@ def main() -> None:
     aggregate = pd.DataFrame(rows)
     aggregate.to_csv(dataset_dir / "aggregate_summary.csv", index=False)
     pd.DataFrame(baseline_rows).to_csv(dataset_dir / "baseline_comparison.csv", index=False)
+    plot_aggregate_summary(aggregate, dataset_dir)
     print(f"[phase2] wrote outputs under {dataset_dir}")
 
 

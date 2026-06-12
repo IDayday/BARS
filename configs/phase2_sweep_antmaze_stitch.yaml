@@ -1,0 +1,21 @@
+dataset_name: antmaze-large-stitch-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+max_transitions: 200000
+cluster_method: grid_xy
+state_dims: [0, 1]
+geometry_dims: [0, 1]
+n_clusters: 400
+pair_mode: dense_upto
+horizon_stride: 1
+H_values: [5, 10, 25]
+node_budgets: [40, 80, 120]
+min_support: 3
+min_episodes: 2
+node_selection: core_plus_bottleneck
+sweep: true
+compat_H_intra: 10
+support_penalty: 1.0
+support_unit: unique_starts
+seed: 0
+path_eval_pairs: 5000
+task_type: maze

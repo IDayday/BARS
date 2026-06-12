@@ -1,0 +1,2 @@
+query_id,src,dst,reachable,path_edges_count,path_cost,path_nodes,path_edge_ids
+0,143,271,True,3,11.357897198022918,143 163 410 271,85 112 260

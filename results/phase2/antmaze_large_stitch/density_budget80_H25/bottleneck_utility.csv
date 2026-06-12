@@ -1,0 +1,3 @@
+condition,top_q,removed_nodes,path_coverage,mean_path_cost,reachable_pair_ratio,average_shortest_path_length
+before,0.1,,1.0,76.55425986443515,1.0,117.24378041704396
+after,0.1,332 207 206 146 86 232 126 166,0.8809523809523809,78.23319129137919,0.8809523809523809,128.01260448214242

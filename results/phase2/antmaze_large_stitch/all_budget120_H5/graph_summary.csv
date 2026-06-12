@@ -1,0 +1,2 @@
+num_selected_nodes,num_option_edges,average_out_degree,average_in_degree,num_weakly_connected_components,largest_wcc_size,num_strongly_connected_components,largest_scc_size,reachable_pair_ratio_sampled
+260,1141,4.388461538461539,4.388461538461539,7,254,10,248,0.9346

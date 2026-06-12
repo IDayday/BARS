@@ -1,0 +1,3 @@
+baseline,num_edges,unsupported_edge_rate,path_coverage_strict,hop_count_cost,num_queries_strict,num_reachable_strict
+kNN_same_nodes,559,0.59391771019678,0.8,5.0,5,4
+random_same_edge_budget,699,0.9413447782546495,1.0,2.8,5,5

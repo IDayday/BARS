@@ -84,3 +84,78 @@ def plot_all(
     plot_path_coverage(path_coverage, output_dir)
     plot_bottleneck_utility(bottleneck_utility, output_dir)
 
+
+def _series_label(row: tuple[object, object]) -> str:
+    method, H = row
+    return f"{method}, H={H}"
+
+
+def _plot_metric_by_budget(
+    aggregate: pd.DataFrame,
+    metric: str,
+    ylabel: str,
+    output_dir: str | Path,
+    filename: str,
+) -> None:
+    if aggregate.empty or metric not in aggregate.columns:
+        return
+    plots = _plots_dir(output_dir)
+    df = aggregate.dropna(subset=["node_budget", metric]).copy()
+    if df.empty:
+        return
+    plt.figure(figsize=(7, 4.5))
+    for key, group in df.groupby(["node_selection", "H"], sort=True):
+        group = group.sort_values("node_budget", kind="mergesort")
+        plt.plot(
+            group["node_budget"],
+            group[metric],
+            marker="o",
+            linewidth=1.5,
+            markersize=4,
+            label=_series_label(key),
+        )
+    plt.xlabel("Node budget")
+    plt.ylabel(ylabel)
+    plt.grid(alpha=0.25)
+    plt.legend(fontsize=7, ncol=2)
+    plt.tight_layout()
+    plt.savefig(plots / filename, dpi=180)
+    plt.close()
+
+
+def plot_aggregate_summary(aggregate: pd.DataFrame, output_dir: str | Path) -> None:
+    _plot_metric_by_budget(
+        aggregate,
+        "strict_coverage_over_all",
+        "Strict coverage over all queries",
+        output_dir,
+        "coverage_vs_budget_by_method.png",
+    )
+    _plot_metric_by_budget(
+        aggregate,
+        "virtual_path_coverage",
+        "Virtual path coverage",
+        output_dir,
+        "virtual_coverage_vs_budget_by_method.png",
+    )
+    _plot_metric_by_budget(
+        aggregate,
+        "strict_compatible_rate",
+        "Strict compatible rate",
+        output_dir,
+        "compatibility_vs_budget_by_method.png",
+    )
+    _plot_metric_by_budget(
+        aggregate,
+        "num_option_edges",
+        "Option edges",
+        output_dir,
+        "num_edges_vs_budget_by_method.png",
+    )
+    _plot_metric_by_budget(
+        aggregate,
+        "bottleneck_removal_delta_coverage",
+        "Coverage drop after bottleneck removal",
+        output_dir,
+        "bottleneck_removal_delta_by_method.png",
+    )

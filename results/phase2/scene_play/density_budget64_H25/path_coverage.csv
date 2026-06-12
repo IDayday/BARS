@@ -1,0 +1,3 @@
+dataset_name,H,node_selection,node_budget,mode,num_queries,num_reachable,path_coverage,mean_path_edges,mean_path_cost,median_path_cost,all_num_queries,strict_num_queries,strict_num_reachable,strict_query_selection_rate,strict_coverage_over_all,mean_num_virtual_edges_used,median_num_virtual_edges_used,mean_virtual_edge_ratio
+scene-play-v0,25,density,64,strict_selected,0,0,0.0,0.0,0.0,0.0,100,0.0,0.0,0.0,0.0,,,
+scene-play-v0,25,density,64,virtual_query,100,95,0.95,2.431578947368421,52.41017464127727,50.0,100,,,,,1.78,2.0,0.8176666666666667

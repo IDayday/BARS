@@ -1,0 +1,3 @@
+dataset_name,H,node_selection,node_budget,mode,num_queries,num_reachable,path_coverage,mean_path_edges,mean_path_cost,median_path_cost,all_num_queries,strict_num_queries,strict_num_reachable,strict_query_selection_rate,strict_coverage_over_all,mean_num_virtual_edges_used,median_num_virtual_edges_used,mean_virtual_edge_ratio
+antmaze-large-stitch-v0,25,density,40,strict_selected,50,29,0.58,3.4827586206896552,75.01103062042223,76.56741769336739,500,50.0,29.0,0.1,0.058,,,
+antmaze-large-stitch-v0,25,density,40,virtual_query,500,264,0.528,3.590909090909091,83.53607630741527,90.13981673620964,500,,,,,1.042,2.0,0.30186666666666667

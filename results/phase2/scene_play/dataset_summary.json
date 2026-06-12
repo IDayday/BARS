@@ -9,11 +9,14 @@
   "has_valids": false,
   "keys": [
     "actions",
+    "button_states",
     "next_observations",
     "observations",
+    "qpos",
+    "qvel",
     "terminals"
   ],
-  "num_terminal_flags": 200,
+  "num_terminal_flags": 199,
   "num_transitions": 200000,
   "observation_dim": 40,
   "observation_shape": [

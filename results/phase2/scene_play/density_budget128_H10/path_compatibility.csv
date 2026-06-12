@@ -1,0 +1,6 @@
+query_id,reachable,num_adjacent_edge_pairs,strict_compatible_rate
+0,True,1,0.0
+1,True,3,0.0
+2,True,2,0.0
+3,True,2,0.0
+4,True,3,0.0

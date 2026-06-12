@@ -68,7 +68,7 @@ def evaluate_query_paths(
                 "path_edges_count": int(max(0, len(rec["path"]) - 1)),
                 "path_cost": float(rec["path_cost"]),
                 "path_nodes": " ".join(str(x) for x in rec["path"]),
-                "path_edge_ids": " ".join(str(x) for x in rec["path_edges"] if int(x) >= 0),
+                "path_edge_ids": " ".join(str(x) for x in rec["path_edges"]),
             }
         )
     paths = pd.DataFrame(rows)

@@ -1,0 +1,2 @@
+query_id,reachable,num_adjacent_edge_pairs,strict_compatible_rate
+0,True,2,0.5

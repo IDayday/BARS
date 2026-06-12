@@ -1,0 +1,2 @@
+num_adjacent_edge_pairs,cluster_compatible_rate,strict_compatible_rate,incompatible_rate,mean_num_bridge_segments,median_num_bridge_segments,mean_compatibility_support_rate,lcb_compatible_rate
+7999,1.0,0.5711963995499437,0.4288036004500563,13120.860607575947,183.0,8.612991163883619,0.56035063517246

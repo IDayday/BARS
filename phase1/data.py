@@ -10,6 +10,11 @@ import numpy as np
 REQUIRED_KEYS = ("observations", "actions", "next_observations", "terminals")
 
 
+def _dataset_file_name(dataset_name: str, split: str) -> str:
+    suffix = "" if split == "train" else "-val"
+    return f"{dataset_name}{suffix}.npz"
+
+
 def _dataset_keys(dataset: Any) -> list[str]:
     if hasattr(dataset, "keys"):
         return list(dataset.keys())
@@ -56,6 +61,43 @@ def _truncate_arrays(dataset: dict[str, Any], max_transitions: int | None) -> di
     return truncated
 
 
+def _with_next_observations(dataset: dict[str, Any]) -> dict[str, Any]:
+    if "next_observations" in dataset:
+        return dataset
+    observations = np.asarray(dataset["observations"])
+    terminals = np.asarray(dataset.get("terminals", np.zeros(observations.shape[0], dtype=bool))).reshape(-1).astype(bool)
+    next_observations = np.empty_like(observations)
+    if observations.shape[0] == 0:
+        dataset["next_observations"] = next_observations
+        return dataset
+    next_observations[:-1] = observations[1:]
+    next_observations[-1] = observations[-1]
+    terminal_idx = np.flatnonzero(terminals[: observations.shape[0]])
+    next_observations[terminal_idx] = observations[terminal_idx]
+    dataset["next_observations"] = next_observations
+    return dataset
+
+
+def _load_local_npz_dataset(
+    dataset_name: str,
+    dataset_dir: str | None,
+    split: str,
+    max_transitions: int | None,
+) -> dict[str, Any]:
+    root = Path(dataset_dir or "/mnt/project/offlinerl_datasets/ogbench").expanduser()
+    path = root / _dataset_file_name(dataset_name, split)
+    if not path.exists():
+        raise FileNotFoundError(f"Local OGBench npz not found: {path}")
+    with np.load(path, allow_pickle=False) as data:
+        dataset = {key: np.asarray(data[key]) for key in data.files}
+    dataset = _with_next_observations(_truncate_arrays(dataset, max_transitions))
+    missing = [key for key in REQUIRED_KEYS if key not in dataset]
+    if missing:
+        raise KeyError(f"Local OGBench npz is missing required keys: {missing}")
+    print(f"[phase1] loaded local npz dataset={dataset_name!r} split={split!r} path={path}")
+    return dataset
+
+
 def _shape(value: Any) -> list[int] | None:
     return list(value.shape) if isinstance(value, np.ndarray) else None
 
@@ -92,26 +134,27 @@ def load_ogbench_dataset(
     split: str = "train",
     max_transitions: int | None = None,
 ) -> dict[str, Any]:
-    """Load an OGBench dataset with the official non-compact dataset path."""
-
-    try:
-        import ogbench
-    except ImportError as exc:
-        raise ImportError(
-            "ogbench is required for load_ogbench_dataset. Install it with "
-            "`pip install ogbench` in the active environment."
-        ) from exc
+    """Load an OGBench dataset, falling back to local offline npz arrays."""
 
     if split not in {"train", "val"}:
         raise ValueError(f"split must be 'train' or 'val', got {split!r}")
 
-    _, train_dataset, val_dataset = ogbench.make_env_and_datasets(
-        dataset_name,
-        dataset_dir=dataset_dir,
-        compact_dataset=False,
-    )
-    selected = train_dataset if split == "train" else val_dataset
-    dataset = _truncate_arrays(_to_plain_dict(selected), max_transitions)
+    try:
+        import ogbench
+
+        _, train_dataset, val_dataset = ogbench.make_env_and_datasets(
+            dataset_name,
+            dataset_dir=dataset_dir,
+            compact_dataset=False,
+        )
+        selected = train_dataset if split == "train" else val_dataset
+        dataset = _with_next_observations(_truncate_arrays(_to_plain_dict(selected), max_transitions))
+    except Exception as exc:
+        print(
+            "[phase1] official ogbench load unavailable; using local npz fallback "
+            f"for dataset={dataset_name!r} split={split!r}: {type(exc).__name__}: {exc}"
+        )
+        dataset = _load_local_npz_dataset(dataset_name, dataset_dir, split, max_transitions)
 
     missing = [key for key in REQUIRED_KEYS if key not in dataset]
     if missing:
@@ -138,4 +181,3 @@ def save_dataset_summary(dataset: dict[str, Any], output_dir: str | Path) -> dic
     with (output_path / "dataset_summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, sort_keys=True)
     return summary
-

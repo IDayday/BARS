@@ -8,15 +8,28 @@ import pandas as pd
 EPS = 1e-12
 
 
-def _edge_cost(row: object, cost_type: str, support_penalty: float) -> float:
+def _support_unit_count(row: object, support_unit: str) -> float:
+    support_unit = support_unit.lower()
+    if support_unit == "segments":
+        value = getattr(row, "num_segments")
+    elif support_unit == "unique_starts":
+        value = getattr(row, "num_unique_starts")
+    elif support_unit == "episodes":
+        value = getattr(row, "num_episodes")
+    else:
+        raise ValueError("support_unit must be segments, unique_starts, or episodes")
+    return max(1.0, float(value))
+
+
+def _edge_cost(row: object, cost_type: str, support_penalty: float, support_unit: str = "segments") -> float:
     median_h = float(getattr(row, "median_h"))
-    num_segments = max(1.0, float(getattr(row, "num_segments")))
+    support_count = _support_unit_count(row, support_unit)
     if cost_type == "median_h":
         return median_h
     if cost_type == "support_weighted":
-        return median_h * (1.0 + float(support_penalty) / np.sqrt(num_segments))
+        return median_h * (1.0 + float(support_penalty) / np.sqrt(support_count))
     if cost_type == "default":
-        return median_h + float(support_penalty) / np.sqrt(num_segments)
+        return median_h + float(support_penalty) / np.sqrt(support_count)
     raise ValueError(f"Unsupported cost_type {cost_type!r}")
 
 
@@ -24,6 +37,7 @@ def add_edge_costs(
     option_edges_df: pd.DataFrame,
     cost_type: str = "default",
     support_penalty: float = 1.0,
+    support_unit: str = "segments",
     cost_column: str = "cost",
 ) -> pd.DataFrame:
     """Return option edges annotated with the planner cost used in the graph."""
@@ -32,12 +46,20 @@ def add_edge_costs(
         df = pd.DataFrame() if option_edges_df is None else option_edges_df.copy()
         if cost_column not in df.columns:
             df[cost_column] = pd.Series(dtype=np.float64)
+        if "cost_support_unit" not in df.columns:
+            df["cost_support_unit"] = pd.Series(dtype=object)
         return df
     df = option_edges_df.copy()
     df[cost_column] = [
-        _edge_cost(row, cost_type=cost_type, support_penalty=support_penalty)
+        _edge_cost(
+            row,
+            cost_type=cost_type,
+            support_penalty=support_penalty,
+            support_unit=support_unit,
+        )
         for row in df.itertuples(index=False)
     ]
+    df["cost_support_unit"] = str(support_unit)
     return df
 
 
@@ -45,6 +67,7 @@ def build_option_graph(
     option_edges_df: pd.DataFrame,
     cost_type: str = "default",
     support_penalty: float = 1.0,
+    support_unit: str = "segments",
     selected_nodes: pd.DataFrame | None = None,
 ) -> nx.DiGraph:
     G = nx.DiGraph()
@@ -54,12 +77,13 @@ def build_option_graph(
     if option_edges_df is None or option_edges_df.empty:
         G.graph["cost_type"] = cost_type
         G.graph["support_penalty"] = float(support_penalty)
+        G.graph["support_unit"] = support_unit
         return G
     for row in option_edges_df.itertuples(index=False):
         cost = (
             float(getattr(row, "cost"))
             if hasattr(row, "cost")
-            else _edge_cost(row, cost_type, support_penalty)
+            else _edge_cost(row, cost_type, support_penalty, support_unit)
         )
         G.add_edge(
             int(row.src),
@@ -70,12 +94,18 @@ def build_option_graph(
             mean_h=float(row.mean_h),
             num_segments=int(row.num_segments),
             num_episodes=int(row.num_episodes),
+            num_unique_starts=int(getattr(row, "num_unique_starts", row.num_segments)),
             support_count=int(row.support_count),
+            reverse_support_raw=int(getattr(row, "reverse_support_raw", row.reverse_support_count)),
+            reverse_support_certified=int(
+                getattr(row, "reverse_support_certified", row.reverse_support_count)
+            ),
             reverse_support_count=int(row.reverse_support_count),
             asymmetry=float(row.asymmetry),
         )
     G.graph["cost_type"] = cost_type
     G.graph["support_penalty"] = float(support_penalty)
+    G.graph["support_unit"] = support_unit
     return G
 
 

@@ -8,6 +8,32 @@ from scipy import sparse
 from phase2.planning import evaluate_query_paths
 
 
+def _parse_path_edge_ids(value: object) -> list[int]:
+    return [int(x) for x in str(value).split() if str(x).strip()]
+
+
+def _annotate_virtual_edge_usage(paths: pd.DataFrame) -> pd.DataFrame:
+    if paths.empty:
+        out = paths.copy()
+        for column in ["num_virtual_edges_used", "num_real_option_edges_used", "virtual_edge_ratio"]:
+            if column not in out.columns:
+                out[column] = pd.Series(dtype=np.float64 if column.endswith("ratio") else np.int64)
+        return out
+
+    rows = []
+    for row in paths.itertuples(index=False):
+        edge_ids = _parse_path_edge_ids(getattr(row, "path_edge_ids", ""))
+        virtual_count = sum(1 for edge_id in edge_ids if edge_id == -1)
+        real_count = sum(1 for edge_id in edge_ids if edge_id >= 0)
+        total = virtual_count + real_count
+        rows.append((virtual_count, real_count, float(virtual_count / total) if total else 0.0))
+    out = paths.copy()
+    out["num_virtual_edges_used"] = [int(x[0]) for x in rows]
+    out["num_real_option_edges_used"] = [int(x[1]) for x in rows]
+    out["virtual_edge_ratio"] = [float(x[2]) for x in rows]
+    return out
+
+
 def make_episode_queries(
     labels_obs: np.ndarray,
     goal_labels: np.ndarray,
@@ -95,17 +121,38 @@ def evaluate_task_path_coverage(
     if max_queries is not None and queries.shape[0] > int(max_queries):
         queries = queries.sample(n=int(max_queries), random_state=int(seed)).reset_index(drop=True)
         queries["query_id"] = np.arange(queries.shape[0], dtype=np.int64)
+    all_num_queries = int(queries.shape[0])
 
     if mode == "strict_selected":
         eval_queries = queries[
             queries["start_cluster"].isin(selected) & queries["goal_cluster"].isin(selected)
         ].reset_index(drop=True)
         paths, metrics = evaluate_query_paths(G, eval_queries)
+        strict_num_queries = int(metrics["num_queries"])
+        strict_num_reachable = int(metrics["num_reachable"])
+        metrics.update(
+            {
+                "all_num_queries": all_num_queries,
+                "strict_num_queries": strict_num_queries,
+                "strict_num_reachable": strict_num_reachable,
+                "strict_query_selection_rate": float(strict_num_queries / max(1, all_num_queries)),
+                "strict_coverage_over_all": float(strict_num_reachable / max(1, all_num_queries)),
+            }
+        )
     elif mode == "virtual_query":
         if support_N is None:
             raise ValueError("support_N is required for virtual_query mode")
         if queries.empty:
             paths, metrics = evaluate_query_paths(G, queries)
+            paths = _annotate_virtual_edge_usage(paths)
+            metrics.update(
+                {
+                    "all_num_queries": all_num_queries,
+                    "mean_num_virtual_edges_used": 0.0,
+                    "median_num_virtual_edges_used": 0.0,
+                    "mean_virtual_edge_ratio": 0.0,
+                }
+            )
             summary = pd.DataFrame(
                 [
                     {
@@ -144,15 +191,23 @@ def evaluate_task_path_coverage(
             out["query_id"] = int(idx)
             out["ep_id"] = int(row.get("ep_id", -1))
             path_rows.append(out)
-        paths = pd.DataFrame(path_rows)
+        paths = _annotate_virtual_edge_usage(pd.DataFrame(path_rows))
         reachable = paths[paths["reachable"]]
         metrics = {
+            "all_num_queries": int(paths.shape[0]),
             "num_queries": int(paths.shape[0]),
             "num_reachable": int(reachable.shape[0]),
             "path_coverage": float(reachable.shape[0] / max(1, paths.shape[0])),
             "mean_path_edges": float(reachable["path_edges_count"].mean()) if not reachable.empty else 0.0,
             "mean_path_cost": float(reachable["path_cost"].mean()) if not reachable.empty else 0.0,
             "median_path_cost": float(reachable["path_cost"].median()) if not reachable.empty else 0.0,
+            "mean_num_virtual_edges_used": float(paths["num_virtual_edges_used"].mean())
+            if not paths.empty
+            else 0.0,
+            "median_num_virtual_edges_used": float(paths["num_virtual_edges_used"].median())
+            if not paths.empty
+            else 0.0,
+            "mean_virtual_edge_ratio": float(paths["virtual_edge_ratio"].mean()) if not paths.empty else 0.0,
         }
     else:
         raise ValueError("mode must be strict_selected or virtual_query")

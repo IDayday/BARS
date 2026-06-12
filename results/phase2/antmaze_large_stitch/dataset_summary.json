@@ -11,9 +11,11 @@
     "actions",
     "next_observations",
     "observations",
+    "qpos",
+    "qvel",
     "terminals"
   ],
-  "num_terminal_flags": 1000,
+  "num_terminal_flags": 995,
   "num_transitions": 200000,
   "observation_dim": 29,
   "observation_shape": [
