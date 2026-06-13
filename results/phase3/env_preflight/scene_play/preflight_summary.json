@@ -1,0 +1,52 @@
+{
+  "dataset_loaded": false,
+  "dataset_name": "scene-play-v0",
+  "env_error_trace": "ModuleNotFoundError: No module named 'gymnasium'",
+  "missing_packages": [
+    "gym",
+    "gymnasium",
+    "mujoco"
+  ],
+  "ogbench_env_constructed": false,
+  "ogbench_imported": false,
+  "package_imports": {
+    "d4rl": {
+      "error": "ModuleNotFoundError: No module named 'd4rl'",
+      "imported": false,
+      "missing_dependency": "d4rl",
+      "optional": true,
+      "version": null
+    },
+    "gym": {
+      "error": "ModuleNotFoundError: No module named 'gym'",
+      "imported": false,
+      "missing_dependency": "gym",
+      "optional": false,
+      "version": null
+    },
+    "gymnasium": {
+      "error": "ModuleNotFoundError: No module named 'gymnasium'",
+      "imported": false,
+      "missing_dependency": "gymnasium",
+      "optional": false,
+      "version": null
+    },
+    "mujoco": {
+      "error": "ModuleNotFoundError: No module named 'mujoco'",
+      "imported": false,
+      "missing_dependency": "mujoco",
+      "optional": false,
+      "version": null
+    },
+    "ogbench": {
+      "error": "ModuleNotFoundError: No module named 'gymnasium'",
+      "imported": false,
+      "missing_dependency": "gymnasium",
+      "optional": false,
+      "version": null
+    }
+  },
+  "recommended_install_hint": "Install gymnasium or gym plus the backend extras required by the target OGBench env. Install mujoco if the target environment uses MuJoCo physics. Verify that ogbench.make_env_and_datasets(dataset_name, dataset_dir=...) works in the same Python env. d4rl is checked for compatibility only; a missing d4rl import is not fatal for this preflight.",
+  "status": "env_unavailable",
+  "train_dataset_keys": []
+}
