@@ -1,0 +1,33 @@
+action_dim: 5
+batch_size: 1024
+config: configs/phase3_sampling_ablation_scene.yaml
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+dataset_name: scene-play-v0
+device: cpu
+edge_embedding_dim: 0
+hidden_dims:
+- 512
+- 512
+- 512
+log_interval: 100
+lr: 0.0003
+max_transitions: 200000
+no_resume: false
+num_edges: 2743
+num_steps: 200
+obs_dim: 40
+output_dir: results/phase3_sampling/scene_play/core_plus_bottleneck_budget192_H10/uniform_edge_seed0
+phase2_run_dir: results/phase2/scene_play/core_plus_bottleneck_budget192_H10
+phase2_run_dirs:
+- results/phase2/scene_play/core_plus_bottleneck_budget192_H5
+- results/phase2/scene_play/core_plus_bottleneck_budget192_H10
+sampling_mode: uniform_edge
+sampling_modes:
+- uniform_transition
+- uniform_edge
+- bottleneck_weighted
+seed: 0
+seeds:
+- 0
+val_examples: 4096
+val_fraction: 0.05

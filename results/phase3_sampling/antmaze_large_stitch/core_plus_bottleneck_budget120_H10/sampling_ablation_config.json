@@ -1,0 +1,20 @@
+{
+  "batch_size": 1024,
+  "dataset_name": "antmaze-large-stitch-v0",
+  "hidden_dims": [
+    512,
+    512,
+    512
+  ],
+  "lr": "3e-4",
+  "num_steps": 200,
+  "phase2_run_dir": "results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10",
+  "sampling_modes": [
+    "uniform_transition",
+    "uniform_edge",
+    "bottleneck_weighted"
+  ],
+  "seeds": [
+    0
+  ]
+}

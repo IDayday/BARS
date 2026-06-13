@@ -1,0 +1,20 @@
+{
+  "attempted_method": "env_construction",
+  "attempted_methods": [],
+  "dataset_name": "antmaze-large-stitch-v0",
+  "env_available": false,
+  "env_construction_error": "env_construction_failed: RuntimeError: Could not construct env 'antmaze-large-stitch-v0': ogbench=ModuleNotFoundError: No module named 'gymnasium'; gym=ModuleNotFoundError: No module named 'gym'",
+  "failure_reason": "env_construction_failed: RuntimeError: Could not construct env 'antmaze-large-stitch-v0': ogbench=ModuleNotFoundError: No module named 'gymnasium'; gym=ModuleNotFoundError: No module named 'gym'",
+  "method": null,
+  "missing_packages": [
+    "gymnasium",
+    "gym"
+  ],
+  "num_probe_states": 1,
+  "obs_reconstruction_error": null,
+  "obs_reconstruction_error_max": null,
+  "obs_reconstruction_error_mean": null,
+  "reset_method": null,
+  "reset_probe_status": "env_unavailable",
+  "reset_supported": null
+}

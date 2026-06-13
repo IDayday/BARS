@@ -1,0 +1,28 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "offline_supervised_metrics_only": true,
+  "output_dir": "results/phase3/antmaze_large_stitch/core_plus_bottleneck",
+  "phase2_run_dir": "results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10",
+  "reset_probe": {
+    "attempted_method": "env_construction",
+    "attempted_methods": [],
+    "env_available": false,
+    "env_construction_error": "env_construction_failed: RuntimeError: Could not construct env 'antmaze-large-stitch-v0': ogbench=ModuleNotFoundError: No module named 'gymnasium'; gym=ModuleNotFoundError: No module named 'gym'",
+    "failure_reason": "env_construction_failed: RuntimeError: Could not construct env 'antmaze-large-stitch-v0': ogbench=ModuleNotFoundError: No module named 'gymnasium'; gym=ModuleNotFoundError: No module named 'gym'",
+    "method": null,
+    "missing_packages": [
+      "gymnasium",
+      "gym"
+    ],
+    "num_probe_states": 1,
+    "obs_reconstruction_error": null,
+    "obs_reconstruction_error_max": null,
+    "obs_reconstruction_error_mean": null,
+    "reset_method": null,
+    "reset_probe_status": "env_unavailable",
+    "reset_supported": null
+  },
+  "rollout_skipped": true,
+  "skip_reason": "env_unavailable",
+  "skipped_reason": "env_unavailable"
+}
