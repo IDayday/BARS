@@ -3,12 +3,12 @@
     "antmaze-large-stitch-v0",
     "scene-play-v0"
   ],
-  "mean_direct_repair_mse_ratio": 0.9823575835256515,
-  "mean_final_val_mse_ratio": 0.987081142066941,
-  "mean_planner_used_repair_mse_ratio": 0.9836659095617538,
+  "mean_direct_repair_mse_ratio": 0.9860633397796476,
+  "mean_final_val_mse_ratio": 0.9943045902509943,
+  "mean_planner_used_repair_mse_ratio": 0.9765994317950387,
   "note": "Offline supervised replication summary; not rollout success.",
-  "num_runs": 2,
-  "num_runs_direct_repair_improved": 2,
+  "num_runs": 3,
+  "num_runs_direct_repair_improved": 3,
   "num_runs_final_val_improved": 2,
-  "num_runs_planner_used_improved": 2
+  "num_runs_planner_used_improved": 3
 }

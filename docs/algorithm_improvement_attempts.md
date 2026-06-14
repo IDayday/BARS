@@ -503,6 +503,10 @@ Evidence:
 - Scene repaired support shortest-path coverage improves from 0.160 to 0.510,
   showing that the broader support bank contains useful connectivity omitted by
   the compressed graph.
+- Scene H10 repair adds 500 support-bank edges and improves repaired support
+  shortest-path coverage from 0.160 to 0.550. Strict `compat_threshold`
+  coverage improves from 0.160 to 0.510 while keeping pair incompatible
+  fraction at 0.000.
 
 Analysis:
 
@@ -930,9 +934,13 @@ Evidence:
   final validation MSE ratio `0.995`, direct repair-edge MSE ratio `0.995`,
   planner-used repair-edge MSE ratio `0.986`, and policy support score ratio
   `1.004`.
-- Across the two available repaired graphs, mean final validation MSE ratio is
-  `0.987`, mean direct repair-edge MSE ratio is `0.982`, and mean planner-used
-  repair-edge MSE ratio is `0.984`.
+- Scene H10 `core_plus_bottleneck_budget192_H10`, two seeds, 3000 steps:
+  final validation MSE ratio `1.009`, direct repair-edge MSE ratio `0.993`,
+  planner-used repair-edge MSE ratio `0.962`, and policy support score ratio
+  `1.000`.
+- Across the three repaired graph runs, mean final validation MSE ratio is
+  `0.994`, mean direct repair-edge MSE ratio is `0.986`, and mean planner-used
+  repair-edge MSE ratio is `0.977`.
 - Scene's 48 planner-used repair edges receive the highest mean loss weight
   (`1.217`). AntMaze's 21 planner-used repair edges receive the highest
   repair-subgroup mean loss weight (`1.151`). Weights remain clipped below
@@ -942,15 +950,18 @@ Analysis:
 
 This is the cleanest training-side response to the Phase 4L mismatch so far,
 and it now has first replication across Scene and AntMaze. The result suggests
-planner relevance can be added as a mild supervised weighting signal without
-harming overall heldout action fitting. It also avoids the Phase 4I failure mode
-of hard oversampling because transition coverage is unchanged and only the loss
-is reweighted.
+planner relevance can be added as a mild supervised weighting signal that
+consistently improves planner-used repair-edge MSE. However, Scene H10 shows a
+small overall validation-MSE regression, so planner relevance should be treated
+as a targeted repair-edge objective with an overall-regret guard rather than an
+unqualified default. It still avoids the Phase 4I failure mode of hard
+oversampling because transition coverage is unchanged and only the loss is
+reweighted.
 
 Remaining gap:
 
 This is still reset-free offline supervised evidence. It is not rollout success.
-It still needs Scene H10/H25 and longer-training replication before becoming a
+It still needs Scene H25 and longer-training replication before becoming a
 general default.
 
 ## Lessons So Far
@@ -1050,8 +1061,8 @@ Evidence required:
 
 Status:
 
-Completed as Phase 4M on Scene H5 and AntMaze H10. The remaining work is Scene
-H10/H25 plus longer training.
+Completed as Phase 4M on Scene H5, Scene H10, and AntMaze H10. The remaining
+work is Scene H25 plus longer training.
 
 ### Closed-Loop Edge Execution
 
@@ -1111,8 +1122,9 @@ Evidence required:
   long-horizon, and high-bottleneck repair edges, while planner-used repair
   edges improve much less.
 - Phase 4M shows that mild planner-relevant repair loss weighting improves
-  final validation MSE, direct repair-edge MSE, and planner-used repair-edge MSE
-  on both available repaired graphs: Scene H5 and AntMaze H10.
+  direct repair-edge MSE and planner-used repair-edge MSE on Scene H5, Scene
+  H10, and AntMaze H10, while Scene H10 exposes a small overall validation-MSE
+  trade-off.
 
 ## Claims Not Yet Supported
 
@@ -1136,4 +1148,4 @@ Evidence required:
 - The Phase 4K Scene H5 result generalizes to AntMaze or Scene H10/H25.
 - Phase 4M planner-relevant loss weighting improves closed-loop repair-edge
   execution or online task success.
-- The Phase 4M result generalizes to Scene H10/H25 or longer training.
+- The Phase 4M result generalizes to Scene H25 or longer training.

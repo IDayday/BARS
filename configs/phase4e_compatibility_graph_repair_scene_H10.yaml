@@ -1,0 +1,32 @@
+dataset_name: scene-play-v0
+base_phase2_run_dir: results/phase2/scene_play/core_plus_bottleneck_budget192_H10
+repair_bank_phase2_run_dir: results/phase2/scene_play/all_budget192_H10
+path_queries_csv: results/phase2/scene_play/path_queries.csv
+output_dir: results/phase4e
+H_intra: 10
+max_queries: 100
+seed: 0
+methods:
+  - support_shortest_path
+  - compat_penalized
+  - compat_threshold
+max_repair_edges: 500
+min_repair_support: 3
+min_repair_episodes: 2
+min_pair_coverage: 0.05
+bad_junction_weight: 3.0
+bad_endpoint_weight: 1.0
+support_weight: 0.25
+diversity_weight: 0.25
+short_horizon_weight: 0.25
+pair_weight: 10.0
+missing_pair_coverage: 0.0
+high_pair_risk_threshold: 0.5
+risk_weight: 2.0
+ood_weight: 1.0
+incompat_weight: 1.0
+uncertified_weight: 1.0
+min_proxy_score: 0.25
+min_heldout_support_lcb: 0.01
+high_ood_threshold: 0.5
+high_incompat_threshold: 0.5
