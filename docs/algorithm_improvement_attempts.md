@@ -785,6 +785,62 @@ repair-edge re-evaluation and, eventually, closed-loop execution once
 environment dependencies are available. It also needs AntMaze and Scene H10
 replication before becoming a general default.
 
+### Phase 4K: Loss-Weighted GCBC Direct Repair-Edge Validation
+
+Question:
+
+Does the Phase 4J clipped loss-weighting gain transfer from ordinary edge
+validation groups to the more relevant Phase 4G/4H direct repair-edge evidence?
+
+Reviewed before implementation:
+
+- Phase 4G direct repair-edge policy evidence and repaired planner evaluation.
+- Phase 4H stronger Scene GCBC validation.
+- GCSL and RvS supervised offline RL framing.
+- Class-balanced and focal-loss long-tail learning motivation.
+- GCSL reference implementation as a simple GCBC-style code baseline.
+
+Implemented:
+
+- Added a Phase 4K batch validation script that reuses Phase 4G direct
+  repair-edge scoring for arbitrary GCBC checkpoints.
+- Compared Phase 4I `uniform_transition` baseline checkpoints against Phase 4J
+  `loss_support_s03`, `loss_bottleneck_s03`, and
+  `loss_support_bottleneck_s03`.
+- Kept the repaired graph, repair-bank segments, path queries, compatibility
+  planner, and calibration settings fixed.
+- Ran Scene H5 `core_plus_bottleneck_budget192_H5` for two seeds per method.
+
+Evidence:
+
+- `uniform_transition_none`: direct repair-edge MSE `0.015525`, direct
+  certified rate `0.887`, `calibrated_compat_threshold` uncertified edge
+  fraction `0.035252`.
+- `loss_support_s03`: direct repair-edge MSE `0.015547` (1.001x baseline),
+  direct certified rate `0.888`.
+- `loss_bottleneck_s03`: direct repair-edge MSE `0.015677` (1.010x baseline),
+  direct certified rate `0.889`.
+- `loss_support_bottleneck_s03`: direct repair-edge MSE `0.015314` (0.986x
+  baseline), direct certified rate `0.890`, planner uncertified edge fraction
+  `0.034210`.
+
+Analysis:
+
+Phase 4K strengthens but also narrows the Phase 4J conclusion. The combined
+support+bottleneck loss weight still looks useful under direct repair-edge
+evidence, improving repair-edge supervised MSE by about 1.4% with only about
+1.6% ordinary validation-MSE regret. Single-component weights do not clearly
+transfer: support-only is essentially flat and bottleneck-only worsens direct
+repair MSE despite small certification-rate changes. The current training-side
+default should therefore be conservative: small clipped combined weights, not
+hard oversampling or single-signal weighting.
+
+Remaining gap:
+
+This is still reset-free offline supervised evidence. It does not prove
+closed-loop repair-edge execution. The result also needs AntMaze and longer
+Scene-H10/H25 replication before becoming a general cross-environment default.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -855,38 +911,42 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4K Direct Evidence for Loss-Weighted GCBC
+### Phase 4L Loss-Weighted Replication
 
 Hypothesis:
 
-The Phase 4J `loss_support_bottleneck_s03` model improves direct repair-edge
-policy evidence relative to the 10000-step uniform-transition Scene model,
-especially on repair edges with low support or high bottleneck score.
+The Phase 4J/4K `loss_support_bottleneck_s03` gain generalizes beyond Scene H5
+3000-step checkpoints to AntMaze and Scene H10/H25, and remains stable under
+longer training.
 
 Required review before implementation:
 
-- Phase 4G direct repair-edge policy evidence.
-- Phase 4H stronger Scene GCBC validation.
-- Direct repair-edge grouped diagnostics by support, bottleneck, and horizon.
+- Phase 4J loss-weighting aggregate metrics.
+- Phase 4K direct repair-edge validation metrics.
+- Related loss reweighting and goal-conditioned supervised policy references.
 
 Evidence required:
 
-- Train a longer loss-weighted Scene model or reuse a matched-step comparison.
-- Re-run direct repair-edge policy evidence.
-- Compare direct repair-edge MSE, certification rate, and planner risk metrics.
+- Run the same clipped combined loss weighting across AntMaze and Scene H10/H25.
+- Include at least matched baseline checkpoints and multiple seeds.
+- Compare ordinary edge validation, direct repair-edge MSE, certification rate,
+  and planner risk metrics.
 - Keep offline proxy language unless closed-loop rollout is available.
 
-### Mixed/Loss-Weighted Replication
+### Direct Repair-Edge Group Diagnostics
 
 Hypothesis:
 
-The Phase 4J loss-weighting gain generalizes to AntMaze and Scene H10/H25.
+The combined loss-weighting gain is concentrated on low-support,
+long-horizon, or high-bottleneck repair edges, rather than uniformly improving
+all repair edges.
 
 Evidence required:
 
-- Same weighting scheme across multiple graphs and seeds.
-- Compare rare-edge gains and overall validation regret.
-- Report cases where weighting hurts.
+- Group Phase 4K direct repair-edge scores by support, bottleneck, horizon, and
+  compatibility context.
+- Report where the method helps, where it hurts, and whether the planner uses
+  the improved groups.
 
 ### Closed-Loop Edge Execution
 
@@ -939,6 +999,9 @@ Evidence required:
   the tested Scene H5 setup.
 - Phase 4J shows clipped support+bottleneck loss weighting improves Scene H5
   rare-edge supervised fitting with only small overall validation regret.
+- Phase 4K shows the same clipped support+bottleneck weighting also improves
+  Scene H5 direct repair-edge supervised MSE slightly under matched two-seed
+  3000-step checkpoints.
 
 ## Claims Not Yet Supported
 
@@ -957,5 +1020,6 @@ Evidence required:
   GCBC sampling strategy.
 - Naive support-balanced or bottleneck-support-balanced sampling is a better
   default than `uniform_transition`.
-- Phase 4J loss weighting improves direct repair-edge evidence or online
-  execution; that still needs the next validation step.
+- Phase 4K loss weighting improves closed-loop repair-edge execution or online
+  task success.
+- The Phase 4K Scene H5 result generalizes to AntMaze or Scene H10/H25.

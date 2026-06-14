@@ -1,0 +1,86 @@
+dataset_name: scene-play-v0
+phase2_run: core_plus_bottleneck_budget192_H5
+base_direct_repair_config: configs/phase4g_direct_repair_policy_scene.yaml
+output_dir: results/phase4k
+summary_output_dir: results/phase4k/scene_play/core_plus_bottleneck_budget192_H5_3000
+baseline_method: uniform_transition_none
+planner_method: calibrated_compat_threshold
+max_overall_regret: 0.05
+require_direct_mse_improvement: true
+max_examples: 50000
+batch_size: 2048
+device: cuda
+cuda_visible_devices: "7"
+models:
+  - method: uniform_transition_none
+    seed: 0
+    sampling_mode: uniform_transition
+    loss_weight_mode: none
+    loss_weight_strength: 0.0
+    loss_weight_min: 1.0
+    loss_weight_max: 1.0
+    model_path: results/phase4i_sampling/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_seed0/model.pt
+    training_run_dir: results/phase4i_sampling/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_seed0
+  - method: uniform_transition_none
+    seed: 1
+    sampling_mode: uniform_transition
+    loss_weight_mode: none
+    loss_weight_strength: 0.0
+    loss_weight_min: 1.0
+    loss_weight_max: 1.0
+    model_path: results/phase4i_sampling/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_seed1/model.pt
+    training_run_dir: results/phase4i_sampling/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_seed1
+  - method: loss_support_s03
+    seed: 0
+    sampling_mode: uniform_transition
+    loss_weight_mode: support
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_s03_seed0/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_s03_seed0
+  - method: loss_support_s03
+    seed: 1
+    sampling_mode: uniform_transition
+    loss_weight_mode: support
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_s03_seed1/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_s03_seed1
+  - method: loss_bottleneck_s03
+    seed: 0
+    sampling_mode: uniform_transition
+    loss_weight_mode: bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_bottleneck_s03_seed0/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_bottleneck_s03_seed0
+  - method: loss_bottleneck_s03
+    seed: 1
+    sampling_mode: uniform_transition
+    loss_weight_mode: bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_bottleneck_s03_seed1/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_bottleneck_s03_seed1
+  - method: loss_support_bottleneck_s03
+    seed: 0
+    sampling_mode: uniform_transition
+    loss_weight_mode: support_bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_bottleneck_s03_seed0/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_bottleneck_s03_seed0
+  - method: loss_support_bottleneck_s03
+    seed: 1
+    sampling_mode: uniform_transition
+    loss_weight_mode: support_bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+    model_path: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_bottleneck_s03_seed1/model.pt
+    training_run_dir: results/phase4j_weighted/scene_play/core_plus_bottleneck_budget192_H5/loss_support_bottleneck_s03_seed1
