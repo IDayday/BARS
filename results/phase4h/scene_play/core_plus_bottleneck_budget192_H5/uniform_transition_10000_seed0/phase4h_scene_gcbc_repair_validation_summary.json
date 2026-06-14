@@ -1,0 +1,418 @@
+{
+  "baseline_diagnostics": {
+    "direct_certified_rate": 0.87,
+    "mean_direct_edge_action_mse": 0.038237718896338785,
+    "mean_direct_policy_support_score": 0.5613987912850971,
+    "mean_direct_reliability": 0.3665760088594466,
+    "mean_policy_score_delta_direct_minus_transfer": 0.21998491071931187,
+    "mean_transfer_reliability": 0.3200390060463293,
+    "median_direct_edge_action_mse": 0.023924724622206253,
+    "median_direct_policy_support_score": 0.6190438053660963,
+    "note": "Direct repair policy MSE is offline supervised evidence, not rollout success.",
+    "num_direct_scored_edges": 500,
+    "num_repair_edges": 500,
+    "spearman_transfer_vs_direct_policy_score": 0.5467250685239224,
+    "transfer_certified_rate": 0.794
+  },
+  "candidate_diagnostics": {
+    "direct_certified_rate": 0.894,
+    "mean_direct_edge_action_mse": 0.011463576496073543,
+    "mean_direct_policy_support_score": 0.8332988952585879,
+    "mean_direct_reliability": 0.40188976399671994,
+    "mean_policy_score_delta_direct_minus_transfer": 0.4918850146928027,
+    "mean_transfer_reliability": 0.3200390060463293,
+    "median_direct_edge_action_mse": 0.005752590353949927,
+    "median_direct_policy_support_score": 0.8911249055165809,
+    "note": "Direct repair policy MSE is offline supervised evidence, not rollout success.",
+    "num_direct_scored_edges": 500,
+    "num_repair_edges": 500,
+    "spearman_transfer_vs_direct_policy_score": 0.49820359303897216,
+    "transfer_certified_rate": 0.794
+  },
+  "config": {
+    "baseline_label": "phase4g_scene_200_step_smoke",
+    "baseline_phase4g_summary": "results/phase4g/scene_play/core_plus_bottleneck_budget192_H5__repair_all_budget192_H5/phase4g_direct_repair_policy_summary.json",
+    "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+    "candidate_phase4g_summary": "results/phase4h/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_10000_seed0/direct_repair_policy/scene_play/core_plus_bottleneck_budget192_H5__repair_all_budget192_H5/phase4g_direct_repair_policy_summary.json",
+    "config_path": "configs/phase4h_scene_repair_validation_uniform_transition_H5_B192_10000.yaml",
+    "cuda_visible_devices": "6",
+    "direct_repair_config": "configs/phase4h_direct_repair_policy_scene_uniform_transition_H5_B192_10000.yaml",
+    "model_path": "results/phase4h/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_10000_seed0/gcbc/model.pt",
+    "output_dir": "results/phase4h/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_10000_seed0",
+    "run_direct_repair": true,
+    "run_training": true,
+    "skip_direct_if_summary_exists": true,
+    "skip_training_if_model_exists": true,
+    "train_config": "configs/phase4h_scene_gcbc_uniform_transition_H5_B192_10000.yaml"
+  },
+  "diagnostic_deltas": [
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.038237718896338785,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.011463576496073543,
+      "delta_candidate_minus_baseline": -0.026774142400265242,
+      "metric": "mean_direct_edge_action_mse"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.023924724622206253,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.005752590353949927,
+      "delta_candidate_minus_baseline": -0.018172134268256326,
+      "metric": "median_direct_edge_action_mse"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.5613987912850971,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.8332988952585879,
+      "delta_candidate_minus_baseline": 0.27190010397349085,
+      "metric": "mean_direct_policy_support_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.6190438053660963,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.8911249055165809,
+      "delta_candidate_minus_baseline": 0.2720811001504846,
+      "metric": "median_direct_policy_support_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.87,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.894,
+      "delta_candidate_minus_baseline": 0.02400000000000002,
+      "metric": "direct_certified_rate"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.794,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.794,
+      "delta_candidate_minus_baseline": 0.0,
+      "metric": "transfer_certified_rate"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.21998491071931187,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.4918850146928027,
+      "delta_candidate_minus_baseline": 0.27190010397349085,
+      "metric": "mean_policy_score_delta_direct_minus_transfer"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.5467250685239224,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.49820359303897216,
+      "delta_candidate_minus_baseline": -0.04852147548495028,
+      "metric": "spearman_transfer_vs_direct_policy_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.3665760088594466,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.40188976399671994,
+      "delta_candidate_minus_baseline": 0.03531375513727336,
+      "metric": "mean_direct_reliability"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.3200390060463293,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.3200390060463293,
+      "delta_candidate_minus_baseline": 0.0,
+      "metric": "mean_transfer_reliability"
+    }
+  ],
+  "method_deltas": [
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.51,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.51,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "calibrated_compat_penalized",
+      "metric": "path_coverage"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.17300133454025365,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.18206866864991042,
+      "delta_candidate_minus_baseline": 0.009067334109656766,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_min_edge_proxy_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.1964052287581699,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.1849673202614379,
+      "delta_candidate_minus_baseline": -0.011437908496732013,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_uncertified_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.707516339869281,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.7009803921568627,
+      "delta_candidate_minus_baseline": -0.006535947712418277,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_pair_incompatible_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.3251633986928104,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.3349673202614379,
+      "delta_candidate_minus_baseline": 0.009803921568627472,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_repair_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.9560185185185185,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.990990990990991,
+      "delta_candidate_minus_baseline": 0.03497247247247248,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_repair_certified_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 13.15910838568809,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 13.158273660618795,
+      "delta_candidate_minus_baseline": -0.0008347250692946062,
+      "method": "calibrated_compat_penalized",
+      "metric": "mean_base_path_cost"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.48,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.48,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "calibrated_compat_threshold",
+      "metric": "path_coverage"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.24361123623951766,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.24757374342760316,
+      "delta_candidate_minus_baseline": 0.003962507188085496,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_min_edge_proxy_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.03733540764790765,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.033168740981240986,
+      "delta_candidate_minus_baseline": -0.004166666666666666,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_uncertified_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.0,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.0,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_pair_incompatible_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.40100484006734005,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.42290839947089953,
+      "delta_candidate_minus_baseline": 0.02190355940355948,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_repair_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.973170731707317,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 1.0,
+      "delta_candidate_minus_baseline": 0.02682926829268295,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_repair_certified_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 25.71148769458902,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 25.832040154798204,
+      "delta_candidate_minus_baseline": 0.12055246020918275,
+      "method": "calibrated_compat_threshold",
+      "metric": "mean_base_path_cost"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.48,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.48,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "compat_threshold",
+      "metric": "path_coverage"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.14841365797825998,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.14935070662291722,
+      "delta_candidate_minus_baseline": 0.0009370486446572401,
+      "method": "compat_threshold",
+      "metric": "mean_min_edge_proxy_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.16448412698412698,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.159796626984127,
+      "delta_candidate_minus_baseline": -0.004687499999999983,
+      "method": "compat_threshold",
+      "metric": "mean_uncertified_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.0,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.0,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "compat_threshold",
+      "metric": "mean_pair_incompatible_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.2517729377104377,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.2517729377104377,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "compat_threshold",
+      "metric": "mean_repair_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.9768518518518517,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 1.0,
+      "delta_candidate_minus_baseline": 0.02314814814814825,
+      "method": "compat_threshold",
+      "metric": "mean_repair_certified_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 23.53210792535327,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 23.53210792535327,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "compat_threshold",
+      "metric": "mean_base_path_cost"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.51,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.51,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "support_shortest_path",
+      "metric": "path_coverage"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.11847457942373496,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.1269506396619673,
+      "delta_candidate_minus_baseline": 0.00847606023823233,
+      "method": "support_shortest_path",
+      "metric": "mean_min_edge_proxy_score"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.3568627450980392,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.34542483660130713,
+      "delta_candidate_minus_baseline": -0.011437908496732097,
+      "method": "support_shortest_path",
+      "metric": "mean_uncertified_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.9084967320261437,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.9084967320261437,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "support_shortest_path",
+      "metric": "mean_pair_incompatible_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.30196078431372547,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.30196078431372547,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "support_shortest_path",
+      "metric": "mean_repair_edge_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 0.9547619047619047,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 0.9904761904761904,
+      "delta_candidate_minus_baseline": 0.0357142857142857,
+      "method": "support_shortest_path",
+      "metric": "mean_repair_certified_fraction"
+    },
+    {
+      "baseline_label": "phase4g_scene_200_step_smoke",
+      "baseline_value": 12.242883552647953,
+      "candidate_label": "phase4h_scene_10000_step_uniform_transition",
+      "candidate_value": 12.242883552647953,
+      "delta_candidate_minus_baseline": 0.0,
+      "method": "support_shortest_path",
+      "metric": "mean_base_path_cost"
+    }
+  ],
+  "note": "This is reset-free offline supervised evidence. It is not rollout success.",
+  "phase": "Phase 4H",
+  "related_work_reviewed": [
+    {
+      "name": "Learning to Reach Goals via Iterated Supervised Learning / GCSL",
+      "role": "Goal-conditioned supervised learning baseline and hindsight goal relabeling motivation.",
+      "url": "https://arxiv.org/abs/1912.06088"
+    },
+    {
+      "name": "RvS: What is Essential for Offline RL via Supervised Learning?",
+      "role": "Offline RL via supervised learning motivation; does not make action MSE an execution metric.",
+      "url": "https://arxiv.org/abs/2112.10751"
+    },
+    {
+      "name": "Goal-Conditioned Supervised Learning reference implementation",
+      "role": "Open-source reference for simple goal-conditioned supervised policy training.",
+      "url": "https://github.com/dibyaghosh/gcsl"
+    }
+  ],
+  "title": "Stronger Scene GCBC Direct Repair Validation",
+  "training_summary": {
+    "best_val_action_mse": 0.0051270271651446,
+    "final_bottleneck_edge_val_mse": 0.0053861346115354,
+    "final_high_support_edge_val_mse": 0.0049113447204543,
+    "final_long_horizon_edge_val_mse": 0.0055457504731193,
+    "final_low_support_edge_val_mse": 0.0059085364125828,
+    "final_non_bottleneck_edge_val_mse": 0.0054126168206053,
+    "final_short_horizon_edge_val_mse": 0.0053852033675155,
+    "final_step": 10000,
+    "final_val_action_mse": 0.0051270271651446,
+    "last_step": 10000,
+    "num_train_segments": 132995,
+    "run_dir": "results/phase4h/scene_play/core_plus_bottleneck_budget192_H5/uniform_transition_10000_seed0/gcbc"
+  }
+}

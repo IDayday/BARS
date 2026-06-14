@@ -623,9 +623,61 @@ scores.
 Remaining gap:
 
 Direct action MSE is not closed-loop execution. Scene's direct evidence is also
-limited by the short 200-step smoke model. The next step should train stronger
-Scene GCBC models and/or unblock environment dependencies for closed-loop edge
-execution.
+limited by the short 200-step smoke model. Phase 4H addresses this for one
+stronger Scene model; closed-loop edge execution still requires environment
+dependencies to be unblocked.
+
+### Phase 4H: Stronger Scene GCBC Direct Repair Validation
+
+Question:
+
+Does Scene's Phase 4G direct repair-edge evidence survive a GCBC model trained
+substantially longer than the 200-step smoke run?
+
+Reviewed before implementation:
+
+- Goal-Conditioned Supervised Learning (GCSL) and its reference implementation.
+- RvS-style offline reinforcement learning via supervised learning.
+- Phase 3 GCBC training and Phase 4G direct repair-edge policy-evidence code.
+- The Phase 4G Scene limitation that the available direct evidence came from a
+  200-step smoke model.
+
+Implemented:
+
+- A 10000-step `uniform_transition` Scene GCBC config for
+  `core_plus_bottleneck_budget192_H5`.
+- A Phase 4H driver script that trains GCBC, reruns Phase 4G direct repair-edge
+  evidence, and writes candidate-minus-baseline deltas against the 200-step
+  Scene baseline.
+- A summary module and synthetic tests for diagnostic and planner-delta
+  reporting.
+
+Evidence:
+
+- The 10000-step Scene GCBC reaches final validation action MSE `0.005127`,
+  compared with `0.024553` for the previous 200-step smoke run.
+- Mean direct repair-edge action MSE improves from `0.038238` to `0.011464`.
+- Mean direct policy support score improves from `0.561399` to `0.833299`.
+- Direct repair-edge certified rate improves from `0.870` to `0.894`.
+- `calibrated_compat_threshold` coverage remains `0.480`, pair incompatible
+  fraction remains `0.000`, and uncertified edge fraction improves from
+  `0.037335` to `0.033169`.
+
+Analysis:
+
+Phase 4H addresses the main weakness in the Scene Phase 4G evidence. The Scene
+repair-edge direct policy proxy remains positive under a much stronger
+supervised model, and planner risk metrics improve slightly without changing
+coverage. This supports the offline conclusion that the repaired Scene graph is
+not merely relying on repair edges that the GCBC cannot fit in the supervised
+sense.
+
+Remaining gap:
+
+This is still reset-free offline supervised evidence. It is not rollout success,
+and it is single-seed/single-sampling-mode. Stronger sampling studies and
+closed-loop evaluation remain separate requirements before making execution or
+benchmark-improvement claims.
 
 ## Lessons So Far
 
@@ -697,30 +749,6 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4H Stronger Scene GCBC and Direct Repair Validation
-
-Hypothesis:
-
-Training stronger Scene GCBC policies and re-running Phase 4G will determine
-whether Scene's repair-edge direct policy evidence survives non-smoke training.
-
-Required review before implementation:
-
-- Goal-conditioned BC validation on long-horizon edge segments.
-- Offline policy-likelihood / behavior-cloning confidence estimation.
-- Imbalanced edge sampling for rare repair/bottleneck edges.
-- Prior hierarchical offline RL implementations using subgoal-conditioned BC.
-
-Evidence required:
-
-- Train Scene GCBC longer than smoke scale, ideally multiple sampling modes.
-- Re-run Phase 4G with the stronger Scene model.
-- Compare direct repair-edge MSE, certification rate, and planner metrics.
-- Report seed/model-training limitations clearly.
-- Keep offline proxy language unless closed-loop rollout is available.
-- Explicitly label the result as reset-free offline planning, not execution
-  success.
-
 ### Stronger GCBC Sampling Study
 
 Hypothesis:
@@ -778,6 +806,14 @@ Evidence required:
 - Phase 4C calibrated edge reliability improves heldout-support pseudo-label
   Brier and sharply reduces original uncertified path-edge exposure in
   recommended support-only paths.
+- Phase 4D compatibility-aware planning reduces adjacent-edge composability risk
+  without adding unsupported edges.
+- Phase 4E support-bank graph repair recovers compatibility-safe Scene coverage
+  using only support-certified edges.
+- Phase 4F repair-edge certification restores planner-facing reliability on the
+  repaired graph using conservative offline evidence.
+- Phase 4G/4H direct repair-edge GCBC fitting supports the repaired Scene graph
+  under both smoke and 10000-step supervised models.
 
 ## Claims Not Yet Supported
 
@@ -792,3 +828,5 @@ Evidence required:
   success.
 - Phase 4C calibrated reliability is a true probability of edge execution
   success.
+- Phase 4H single-seed Scene supervised evidence is sufficient to choose a final
+  GCBC sampling strategy.
