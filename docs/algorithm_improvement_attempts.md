@@ -256,6 +256,54 @@ Remaining gap:
 Needs env availability, task definitions, and robust runtime planning before it
 can support claims.
 
+### Phase 4A: Risk-Aware Offline Support Planner
+
+Question:
+
+Can Phase 3E edge certification improve path selection inside the Phase 2
+support graph without adding unsupported kNN/proximity/random edges?
+
+Reviewed before implementation:
+
+- GAS paper and official code path for keygraph construction and shortest-path
+  planning.
+- Search on the Replay Buffer and Google Research SoRB code.
+- Test-Time Graph Search paper and code.
+- The local Phase 3E graph audit and offline certification outputs.
+
+Implemented:
+
+- `support_shortest_path` baseline over Phase 2 support edges.
+- `certified_only` hard filter.
+- `proxy_threshold` hard proxy/support lower-bound filter.
+- `proxy_penalized` scalarized risk-aware cost over all support edges.
+- Synthetic tests for low-proxy shortcut avoidance, hard-filter coverage loss,
+  and reachable-path risk metrics.
+
+Evidence:
+
+- AntMaze `core_plus_bottleneck_budget120_H10`: `proxy_penalized` preserves
+  baseline coverage 0.566 while improving mean minimum edge proxy from 0.060 to
+  0.128 and reducing uncertified edge fraction from 0.924 to 0.874.
+- Scene `core_plus_bottleneck_budget192_H5`: `proxy_penalized` preserves
+  baseline coverage 0.160 while improving mean minimum edge proxy from 0.065 to
+  0.104 and reducing uncertified edge fraction from 0.984 to 0.855.
+- Hard certification is too sparse for AntMaze at the current threshold and
+  collapses coverage to 0.000.
+
+Analysis:
+
+This supports soft risk-penalized planning as the next default offline planner.
+Hard filtering is useful as a diagnostic but can destroy connectivity. The
+planner should continue to use Phase 2 support as a hard provenance boundary,
+then use Phase 3E risk scores to choose safer paths among supported edges.
+
+Remaining gap:
+
+The result is still reset-free offline path selection. It does not prove that
+the GCBC policy can execute the selected path, and the edge proxy score is not
+calibrated to rollout success probability.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -326,26 +374,26 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Risk-Aware Offline Planner
+### Phase 4B Calibrated Risk-Aware Planner Sweep
 
 Hypothesis:
 
-Using Phase 3E edge proxy scores inside graph planning can trade some raw path
-coverage for lower path risk, fewer uncertified edges, and higher heldout
-support along planned paths.
+Sweeping risk weights and adding a mild hard floor on extreme low-proxy or
+zero-heldout-support edges can improve the coverage/risk trade-off beyond the
+first Phase 4A scalarized planner.
 
 Required review before implementation:
 
 - Risk-sensitive shortest path and constrained shortest path formulations.
 - Reliability-aware planning in graph abstraction methods.
-- Any available GAS/TDR code paths that assign edge costs or prune graph edges.
+- GAS/TDR code paths that assign edge costs or prune graph edges.
 
 Evidence required:
 
-- Compare support shortest path, certified-only planning, and proxy-penalized
-  planning on the same Phase 2 query set.
-- Report coverage, cost, min/mean edge proxy score, uncertified edge fraction,
-  OOD score, and heldout support along paths.
+- Sweep risk weights, proxy floors, and support-LCB floors on the same Phase 2
+  query sets.
+- Report Pareto fronts for coverage, cost, minimum edge proxy score,
+  uncertified edge fraction, OOD score, and heldout support along paths.
 - Explicitly label the result as reset-free offline planning, not execution
   success.
 
@@ -398,6 +446,8 @@ Evidence required:
   alone hides.
 - GCBC can fit heldout edge BC samples in the offline supervised sense.
 - Reset-free offline edge certification can rank support edges by proxy risk.
+- Risk-penalized planning can preserve support-graph coverage while reducing
+  offline path risk on the tested AntMaze and Scene runs.
 
 ## Claims Not Yet Supported
 
@@ -407,3 +457,4 @@ Evidence required:
 - AntMaze or Scene lacks reset-to-state support.
 - Sampling ablation results are statistically strong enough to choose a final
   training strategy.
+- Phase 4A risk-aware paths are executable by the current GCBC policy.

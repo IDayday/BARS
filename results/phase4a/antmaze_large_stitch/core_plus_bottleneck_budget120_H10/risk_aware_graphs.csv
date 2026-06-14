@@ -1,0 +1,5 @@
+method,num_graph_nodes,num_graph_edges
+support_shortest_path,120,582
+certified_only,56,40
+proxy_threshold,120,337
+proxy_penalized,120,582
