@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 from phase1.data import load_ogbench_dataset  # noqa: E402
 from phase3.edge_bc_dataset import SUPPORTED_SAMPLING_MODES  # noqa: E402
 from phase3.evaluation import default_phase3_output_dir  # noqa: E402
-from phase3.train_gcbc import train_gcbc  # noqa: E402
+from phase3.train_gcbc import LOSS_WEIGHT_MODES, train_gcbc  # noqa: E402
 
 
 def _load_config(path: str | None) -> dict[str, Any]:
@@ -60,6 +60,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log_interval", type=int, default=None)
     parser.add_argument("--device", default=None)
     parser.add_argument("--edge_embedding_dim", type=int, default=None)
+    parser.add_argument("--loss_weight_mode", default=None, choices=sorted(LOSS_WEIGHT_MODES))
+    parser.add_argument("--loss_weight_strength", type=float, default=None)
+    parser.add_argument("--loss_weight_min", type=float, default=None)
+    parser.add_argument("--loss_weight_max", type=float, default=None)
     args = parser.parse_args()
     config = _load_config(args.config)
     merged = vars(args).copy()
@@ -79,6 +83,10 @@ def parse_args() -> argparse.Namespace:
         "val_examples": 8192,
         "log_interval": None,
         "edge_embedding_dim": 0,
+        "loss_weight_mode": "none",
+        "loss_weight_strength": 1.0,
+        "loss_weight_min": 0.25,
+        "loss_weight_max": 3.0,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -118,6 +126,10 @@ def main() -> None:
         log_interval=args.log_interval,
         device=args.device,
         edge_embedding_dim=args.edge_embedding_dim,
+        loss_weight_mode=args.loss_weight_mode,
+        loss_weight_strength=args.loss_weight_strength,
+        loss_weight_min=args.loss_weight_min,
+        loss_weight_max=args.loss_weight_max,
         config=vars(args),
     )
     print(f"[phase3] wrote GCBC training outputs under {args.output_dir}")

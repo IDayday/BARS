@@ -1,0 +1,40 @@
+dataset_name: scene-play-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+max_transitions: 200000
+phase2_run_dir: results/phase2/scene_play/core_plus_bottleneck_budget192_H5
+output_dir: results/phase4j_weighted
+summary_output_dir: results/phase4j/scene_play/core_plus_bottleneck_budget192_H5_3000
+baseline_reference_csv: results/phase4i_sampling/scene_play/core_plus_bottleneck_budget192_H5/per_seed_metrics.csv
+baseline_sampling_mode: uniform_transition
+baseline_method: uniform_transition_none
+experiments:
+  - method: loss_support_s03
+    sampling_mode: uniform_transition
+    loss_weight_mode: support
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+  - method: loss_bottleneck_s03
+    sampling_mode: uniform_transition
+    loss_weight_mode: bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+  - method: loss_support_bottleneck_s03
+    sampling_mode: uniform_transition
+    loss_weight_mode: support_bottleneck
+    loss_weight_strength: 0.3
+    loss_weight_min: 0.7
+    loss_weight_max: 1.8
+seeds: [0, 1]
+num_steps: 3000
+batch_size: 1024
+lr: 3e-4
+hidden_dims: [512, 512, 512]
+val_fraction: 0.05
+val_examples: 8192
+log_interval: 1000
+device: cuda
+edge_embedding_dim: 0
+max_overall_regret: 0.05
+cuda_visible_devices: "7"

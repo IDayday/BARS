@@ -13,6 +13,8 @@ from phase3.edge_bc_dataset import EdgeBCDataset, build_edge_bc_examples
 from phase3.models import GCBCMLP, action_mse
 from phase3.plotting import plot_training_curves
 
+LOSS_WEIGHT_MODES = {"none", "support", "bottleneck", "support_bottleneck"}
+
 
 def _json_safe(value: Any) -> Any:
     if isinstance(value, dict):
@@ -147,6 +149,89 @@ def summarize_edge_val_metrics(edge_metrics: pd.DataFrame, option_edges: pd.Data
     }
 
 
+def edge_loss_weight_values(
+    option_edges: pd.DataFrame,
+    mode: str = "none",
+    strength: float = 1.0,
+    min_weight: float = 0.25,
+    max_weight: float = 3.0,
+) -> pd.DataFrame:
+    """Build per-edge supervised loss weights from Phase 2 metadata."""
+
+    mode = str(mode or "none")
+    if mode not in LOSS_WEIGHT_MODES:
+        raise ValueError(f"loss_weight_mode must be one of {sorted(LOSS_WEIGHT_MODES)}")
+    if option_edges.empty:
+        return pd.DataFrame(columns=["edge_id", "loss_weight"])
+    out = option_edges[["edge_id"]].copy()
+    if mode == "none":
+        out["loss_weight"] = 1.0
+        return out
+
+    def _support_component() -> np.ndarray:
+        support_col = "num_unique_starts" if "num_unique_starts" in option_edges.columns else "num_segments"
+        support = pd.to_numeric(option_edges.get(support_col, 1.0), errors="coerce").fillna(1.0).clip(lower=1.0)
+        return 1.0 / np.sqrt(support.to_numpy(dtype=np.float64))
+
+    def _bottleneck_component() -> np.ndarray:
+        if "edge_bottleneck_score" not in option_edges.columns:
+            return np.ones(option_edges.shape[0], dtype=np.float64)
+        values = pd.to_numeric(option_edges["edge_bottleneck_score"], errors="coerce").fillna(0.0).clip(lower=0.0)
+        arr = values.to_numpy(dtype=np.float64)
+        if arr.size == 0:
+            return np.ones(option_edges.shape[0], dtype=np.float64)
+        lo = float(np.min(arr))
+        hi = float(np.max(arr))
+        if hi <= lo:
+            return np.ones_like(arr, dtype=np.float64)
+        return 0.5 + (arr - lo) / (hi - lo)
+
+    raw = np.ones(option_edges.shape[0], dtype=np.float64)
+    if mode in {"support", "support_bottleneck"}:
+        raw *= _support_component()
+    if mode in {"bottleneck", "support_bottleneck"}:
+        raw *= _bottleneck_component()
+    if raw.size == 0 or not np.isfinite(raw).all() or float(raw.mean()) <= 0.0:
+        normalized = np.ones(option_edges.shape[0], dtype=np.float64)
+    else:
+        normalized = raw / float(raw.mean())
+    weights = 1.0 + float(strength) * (normalized - 1.0)
+    lo = min(float(min_weight), float(max_weight))
+    hi = max(float(min_weight), float(max_weight))
+    out["loss_weight"] = np.clip(weights, lo, hi)
+    return out
+
+
+def make_edge_loss_weight_tensor(
+    option_edges: pd.DataFrame,
+    num_edges: int,
+    device: torch.device,
+    mode: str = "none",
+    strength: float = 1.0,
+    min_weight: float = 0.25,
+    max_weight: float = 3.0,
+) -> torch.Tensor:
+    values = edge_loss_weight_values(
+        option_edges,
+        mode=mode,
+        strength=strength,
+        min_weight=min_weight,
+        max_weight=max_weight,
+    )
+    weights = np.ones(max(1, int(num_edges)), dtype=np.float32)
+    for row in values.itertuples(index=False):
+        edge_id = int(row.edge_id)
+        if 0 <= edge_id < weights.shape[0]:
+            weights[edge_id] = float(row.loss_weight)
+    return torch.as_tensor(weights, dtype=torch.float32, device=device)
+
+
+def weighted_action_mse(pred: torch.Tensor, target: torch.Tensor, sample_weight: torch.Tensor) -> torch.Tensor:
+    per_sample = torch.mean((pred - target.float()) ** 2, dim=1)
+    weights = sample_weight.to(device=per_sample.device, dtype=per_sample.dtype).clamp(min=1e-8)
+    return torch.sum(per_sample * weights) / torch.sum(weights)
+
+
 def train_gcbc(
     dataset: dict[str, Any],
     option_edges_csv: str | Path | pd.DataFrame,
@@ -164,6 +249,10 @@ def train_gcbc(
     device: str | None = None,
     use_remaining_h: bool = True,
     edge_embedding_dim: int = 0,
+    loss_weight_mode: str = "none",
+    loss_weight_strength: float = 1.0,
+    loss_weight_min: float = 0.25,
+    loss_weight_max: float = 3.0,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
@@ -195,6 +284,15 @@ def train_gcbc(
     optimizer = torch.optim.Adam(model.parameters(), lr=float(lr))
     loader = _cycle(_make_loader(train_ds, batch_size=batch_size, shuffle=True, seed=seed))
     log_interval = int(log_interval or max(1, min(1000, int(num_steps) // 10 if int(num_steps) > 0 else 1)))
+    edge_loss_weights = make_edge_loss_weight_tensor(
+        option_edges,
+        num_edges=max(1, num_edges),
+        device=dev,
+        mode=loss_weight_mode,
+        strength=float(loss_weight_strength),
+        min_weight=float(loss_weight_min),
+        max_weight=float(loss_weight_max),
+    )
 
     train_rows: list[dict[str, Any]] = []
     val_rows: list[dict[str, Any]] = []
@@ -203,12 +301,20 @@ def train_gcbc(
         model.train()
         batch = _batch_to_device(next(loader), dev)
         pred = model(batch["obs"], batch["goal"], batch["remaining_h"], batch["edge_id"])
-        loss = action_mse(pred, batch["action"])
+        unweighted_loss = action_mse(pred, batch["action"])
+        edge_ids = batch["edge_id"].long().clamp(min=0, max=edge_loss_weights.shape[0] - 1)
+        loss = weighted_action_mse(pred, batch["action"], edge_loss_weights[edge_ids])
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
         if step == 1 or step % log_interval == 0 or step == int(num_steps):
-            train_rows.append({"step": int(step), "train_action_mse": float(loss.detach().cpu().item())})
+            train_rows.append(
+                {
+                    "step": int(step),
+                    "train_action_mse": float(unweighted_loss.detach().cpu().item()),
+                    "train_weighted_action_mse": float(loss.detach().cpu().item()),
+                }
+            )
             val_mse, last_edge_metrics = evaluate_policy_mse(
                 model,
                 val_ds,
@@ -219,7 +325,8 @@ def train_gcbc(
             edge_summary = summarize_edge_val_metrics(last_edge_metrics, option_edges)
             val_rows.append({"step": int(step), "val_action_mse": float(val_mse), **edge_summary})
             print(
-                f"[phase3] step={step} train_action_mse={float(loss.detach().cpu().item()):.6g} "
+                f"[phase3] step={step} train_action_mse={float(unweighted_loss.detach().cpu().item()):.6g} "
+                f"train_weighted_action_mse={float(loss.detach().cpu().item()):.6g} "
                 f"val_action_mse={val_mse:.6g}"
             )
 
@@ -244,6 +351,10 @@ def train_gcbc(
         "action_dim": int(full.action_dim),
         "num_edges": int(num_edges),
         "device": str(dev),
+        "loss_weight_mode": str(loss_weight_mode),
+        "loss_weight_strength": float(loss_weight_strength),
+        "loss_weight_min": float(loss_weight_min),
+        "loss_weight_max": float(loss_weight_max),
     }
     try:
         import yaml

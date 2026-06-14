@@ -15,6 +15,7 @@ from phase1.clustering import assign_clusters, fit_state_clusters
 from phase3.edge_bc_dataset import build_edge_bc_examples
 from phase3.edge_rollout import dst_cluster_success
 from phase3.models import GCBCMLP
+from phase3.train_gcbc import edge_loss_weight_values, weighted_action_mse
 from phase3.reset_utils import (
     RESET_STATUS_ENV_UNAVAILABLE,
     env_unavailable_probe_result,
@@ -150,6 +151,33 @@ def test_bottleneck_support_balanced_combines_support_and_bottleneck():
     sampled = ds.sample_edge_ids(3000, seed=7)
     assert float(np.mean(sampled == 2)) > float(np.mean(sampled == 1))
     assert float(np.mean(sampled == 2)) > 0.7
+
+
+def test_support_bottleneck_loss_weights_prioritize_rare_bottleneck_edges():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "num_unique_starts": [100, 1, 1],
+            "edge_bottleneck_score": [0.0, 0.0, 10.0],
+        }
+    )
+    weights = edge_loss_weight_values(
+        edges,
+        mode="support_bottleneck",
+        strength=1.0,
+        min_weight=0.25,
+        max_weight=4.0,
+    ).set_index("edge_id")
+    assert weights.loc[2, "loss_weight"] > weights.loc[1, "loss_weight"]
+    assert weights.loc[1, "loss_weight"] > weights.loc[0, "loss_weight"]
+
+
+def test_weighted_action_mse_increases_high_weight_error_contribution():
+    pred = torch.tensor([[0.0], [0.0]])
+    target = torch.tensor([[1.0], [3.0]])
+    unweighted = torch.mean((pred - target) ** 2)
+    weighted = weighted_action_mse(pred, target, torch.tensor([1.0, 3.0]))
+    assert weighted.item() > unweighted.item()
 
 
 def test_gcbc_mlp_forward_action_shape():

@@ -732,6 +732,59 @@ does not prove rollout success, and it does not settle AntMaze or H10/H25
 sampling choices. The next training-side attempt should test mixture/loss
 weighting rather than repeating naive edge oversampling.
 
+### Phase 4J: Mixed/Loss-Weighted GCBC Training
+
+Question:
+
+Can small, clipped per-edge loss weights improve rare-edge GCBC fitting while
+preserving transition-uniform coverage and avoiding the overall MSE regression
+seen under hard oversampling?
+
+Reviewed before implementation:
+
+- GCSL and RvS supervised offline RL framing.
+- Class-balanced and focal-loss long-tail learning motivation.
+- Phase 4I evidence that naive hard edge-level oversampling improves rare-edge
+  MSE only by damaging overall heldout action fitting.
+
+Implemented:
+
+- Added per-edge supervised loss weighting to Phase 3 GCBC training.
+- Supported `support`, `bottleneck`, and `support_bottleneck` loss-weight modes.
+- Kept validation unweighted, so metrics remain comparable to previous GCBC
+  runs.
+- Ran Scene H5 `core_plus_bottleneck_budget192_H5` for 3000 steps, seeds
+  `[0, 1]`, using Phase 4I `uniform_transition` as the baseline reference.
+
+Evidence:
+
+- `uniform_transition_none`: final validation MSE `0.008046`, rare-edge mean
+  MSE `0.009620`.
+- `loss_support_s03`: final validation MSE `0.008233` (1.023x baseline),
+  rare-edge mean MSE `0.009315` (0.968x baseline).
+- `loss_bottleneck_s03`: final validation MSE `0.008322` (1.034x baseline),
+  rare-edge mean MSE `0.009200` (0.956x baseline).
+- `loss_support_bottleneck_s03`: final validation MSE `0.008177` (1.016x
+  baseline), rare-edge mean MSE `0.009038` (0.940x baseline).
+- The combined support+bottleneck weighting also improves low-support-edge MSE
+  to 0.928x baseline and long-horizon-edge MSE to 0.918x baseline.
+
+Analysis:
+
+Phase 4J gives the first clean training-side improvement after Phase 4H. The
+result matches the pattern from Phase 4I: hard oversampling is too disruptive,
+but soft loss weighting can improve rare-edge fitting while keeping overall
+validation loss within a small regret budget. This makes
+`loss_support_bottleneck_s03` the current preferred Scene H5 supervised
+training variant for downstream direct repair-edge evidence.
+
+Remaining gap:
+
+This is still offline supervised evidence. It needs Phase 4G/4H-style direct
+repair-edge re-evaluation and, eventually, closed-loop execution once
+environment dependencies are available. It also needs AntMaze and Scene H10
+replication before becoming a general default.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -802,27 +855,38 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Mixed or Loss-Weighted GCBC Training
+### Phase 4K Direct Evidence for Loss-Weighted GCBC
 
 Hypothesis:
 
-Soft mixture sampling or per-sample loss weighting can improve rare,
-bottleneck, or low-support edge fitting without the overall MSE degradation
-observed under hard edge-level oversampling.
+The Phase 4J `loss_support_bottleneck_s03` model improves direct repair-edge
+policy evidence relative to the 10000-step uniform-transition Scene model,
+especially on repair edges with low support or high bottleneck score.
 
 Required review before implementation:
 
-- Goal-conditioned behavioral cloning sampling schemes.
-- Imbalanced supervised learning and per-group risk minimization.
-- Prior hierarchical offline RL implementations using subgoal-conditioned BC.
+- Phase 4G direct repair-edge policy evidence.
+- Phase 4H stronger Scene GCBC validation.
+- Direct repair-edge grouped diagnostics by support, bottleneck, and horizon.
 
 Evidence required:
 
-- Multiple seeds and longer training than the current smoke run.
-- Same validation split across sampling modes.
-- Edge-wise metrics with confidence intervals or seed variance.
-- Direct repair-edge policy evidence if the trained model is intended for
-  Phase 4G/4H-style certification.
+- Train a longer loss-weighted Scene model or reuse a matched-step comparison.
+- Re-run direct repair-edge policy evidence.
+- Compare direct repair-edge MSE, certification rate, and planner risk metrics.
+- Keep offline proxy language unless closed-loop rollout is available.
+
+### Mixed/Loss-Weighted Replication
+
+Hypothesis:
+
+The Phase 4J loss-weighting gain generalizes to AntMaze and Scene H10/H25.
+
+Evidence required:
+
+- Same weighting scheme across multiple graphs and seeds.
+- Compare rare-edge gains and overall validation regret.
+- Report cases where weighting hurts.
 
 ### Closed-Loop Edge Execution
 
@@ -873,6 +937,8 @@ Evidence required:
 - Phase 4I shows naive hard edge-level rebalancing is not a clean default:
   rare-edge MSE can improve, but overall validation MSE regresses too much on
   the tested Scene H5 setup.
+- Phase 4J shows clipped support+bottleneck loss weighting improves Scene H5
+  rare-edge supervised fitting with only small overall validation regret.
 
 ## Claims Not Yet Supported
 
@@ -891,3 +957,5 @@ Evidence required:
   GCBC sampling strategy.
 - Naive support-balanced or bottleneck-support-balanced sampling is a better
   default than `uniform_transition`.
+- Phase 4J loss weighting improves direct repair-edge evidence or online
+  execution; that still needs the next validation step.

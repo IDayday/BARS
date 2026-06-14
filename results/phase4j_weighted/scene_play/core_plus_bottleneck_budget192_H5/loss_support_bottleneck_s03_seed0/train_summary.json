@@ -1,0 +1,13 @@
+{
+  "final": {
+    "bottleneck_edge_val_mse": 0.009524165840770307,
+    "high_support_edge_val_mse": 0.007387266757317878,
+    "long_horizon_edge_val_mse": 0.007897897893147215,
+    "low_support_edge_val_mse": 0.009996970566114195,
+    "non_bottleneck_edge_val_mse": 0.007828761816751049,
+    "short_horizon_edge_val_mse": 0.00876591317072026,
+    "step": 3000,
+    "val_action_mse": 0.008156097785104066
+  },
+  "num_train_segments": 132995
+}
