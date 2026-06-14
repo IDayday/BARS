@@ -14,6 +14,8 @@ actually used by the compatibility-aware repaired planner?
 | method | final_val_action_mse | direct_repair_edge_mse | planner_used_repair_edge_mse | final_val_action_mse_ratio_vs_baseline | planner_used_repair_edge_mse_ratio_vs_baseline |
 | --- | --- | --- | --- | --- | --- |
 | augmented_loss_support_bottleneck_s03 | 0.0115252 | 0.0153686 | 0.0167671 | 1 | 1 |
+| planner_relevant_repair_s01 | 0.0116026 | 0.0153784 | 0.0166809 | 1.00671 | 0.994857 |
+| planner_relevant_repair_s02 | 0.011592 | 0.0151892 | 0.0161045 | 1.00579 | 0.960478 |
 | planner_relevant_repair_s04 | 0.0116261 | 0.0152683 | 0.0161378 | 1.00875 | 0.962466 |
 
 ## Related Work Checked

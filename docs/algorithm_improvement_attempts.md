@@ -964,6 +964,58 @@ This is still reset-free offline supervised evidence. It is not rollout success.
 It still needs Scene H25 and longer-training replication before becoming a
 general default.
 
+### Phase 4N: Planner-Relevance Regret Guard
+
+Question:
+
+Can the Scene H10 overall validation-MSE regression from Phase 4M be reduced by
+using a weaker planner-relevant loss-weight strength, while preserving the
+planner-used repair-edge MSE gain?
+
+Reviewed before implementation:
+
+- Phase 4M Scene H10 result, where aggressive `s04` planner-relevant weighting
+  improved planner-used repair-edge MSE but regressed final validation MSE.
+- Phase 4J/4K/4L evidence that hard oversampling is too disruptive and clipped
+  supervised loss weighting is safer.
+- The same GCSL/RvS supervised offline RL framing, long-tail loss weighting
+  motivation, and priority-signal caveats already reviewed for Phase 4M.
+
+Implemented:
+
+- Added a Scene H10 regret sweep config over `planner_relevant_repair_s04`,
+  `planner_relevant_repair_s02`, and `planner_relevant_repair_s01`.
+- Kept the repaired support-certified graph, dataset, seeds, model, planner
+  method, validation split size, and direct repair-edge scoring fixed.
+- Reused existing baseline and `s04` checkpoints, then trained only the weaker
+  `s02/s01` settings.
+
+Evidence:
+
+- Scene H10 `s04`: final validation MSE ratio `1.008751`, direct repair-edge
+  MSE ratio `0.993475`, planner-used repair-edge MSE ratio `0.962466`.
+- Scene H10 `s02`: final validation MSE ratio `1.005790`, direct repair-edge
+  MSE ratio `0.988326`, planner-used repair-edge MSE ratio `0.960478`, and
+  policy support score ratio `1.002015`.
+- Scene H10 `s01`: final validation MSE ratio `1.006709`, direct repair-edge
+  MSE ratio `1.000639`, and planner-used repair-edge MSE ratio `0.994857`.
+
+Analysis:
+
+`planner_relevant_repair_s02` is the best guarded Scene H10 setting from this
+sweep. It keeps the planner-used repair-edge gain, improves direct repair-edge
+MSE more than `s04`, and reduces overall validation-MSE regret from about
+`0.875%` to about `0.579%`. The very weak `s01` setting is too weak for the
+targeted repair-edge objective. Planner relevance should therefore be used with
+an explicit regret guard or strength schedule rather than as an aggressive
+default.
+
+Remaining gap:
+
+The Scene H10 trade-off is controlled but not eliminated. This is still
+reset-free offline supervised evidence, not rollout success. Scene H25,
+longer-training replication, and eventual env-available execution remain open.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -1061,8 +1113,9 @@ Evidence required:
 
 Status:
 
-Completed as Phase 4M on Scene H5, Scene H10, and AntMaze H10. The remaining
-work is Scene H25 plus longer training.
+Completed as Phase 4M on Scene H5, Scene H10, and AntMaze H10, with Phase 4N
+adding a Scene H10 regret guard. The remaining work is Scene H25 plus longer
+training.
 
 ### Closed-Loop Edge Execution
 
@@ -1125,6 +1178,10 @@ Evidence required:
   direct repair-edge MSE and planner-used repair-edge MSE on Scene H5, Scene
   H10, and AntMaze H10, while Scene H10 exposes a small overall validation-MSE
   trade-off.
+- Phase 4N shows that a weaker Scene H10 planner-relevant strength
+  (`planner_relevant_repair_s02`) preserves the planner-used repair-edge gain
+  while reducing overall validation-MSE regret relative to the more aggressive
+  Phase 4M `s04` setting.
 
 ## Claims Not Yet Supported
 
@@ -1149,3 +1206,5 @@ Evidence required:
 - Phase 4M planner-relevant loss weighting improves closed-loop repair-edge
   execution or online task success.
 - The Phase 4M result generalizes to Scene H25 or longer training.
+- The Phase 4N guarded strength fully eliminates Scene H10 validation-MSE regret
+  or generalizes to Scene H25/longer training.
