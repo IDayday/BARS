@@ -573,6 +573,60 @@ GCBC likelihood and not rollout success. The next step should compute direct
 policy-likelihood / action-fitting evidence for selected repair edges and then
 run closed-loop evaluation once environment dependencies are available.
 
+### Phase 4G: Direct Repair-Edge Policy Evidence
+
+Question:
+
+Does direct GCBC action fitting on selected repair-bank segments support or
+contradict Phase 4F's transfer-proxy repair-edge certification?
+
+Reviewed before implementation:
+
+- BCQ/CQL-style offline RL behavior-support and pessimism motivation.
+- Replay-buffer graph search methods such as SoRB and TTGS.
+- Phase 3 GCBC edge fitting and Phase 3E policy-likelihood utilities.
+- Phase 4F repair-transfer certification outputs.
+
+Implemented:
+
+- Mapping from Phase 4E augmented repair edge ids back to support-bank edge ids.
+- Direct GCBC action-MSE evaluation on all selected repair-bank edge segments.
+- Conversion of direct MSE to policy support scores.
+- Replacement of repair-edge transfer policy scores with direct policy scores.
+- Recalibration and repaired-graph planner re-evaluation.
+- Synthetic tests for segment selection, direct-score replacement,
+  transfer-vs-direct diagnostics, and repair-edge path usage.
+
+Evidence:
+
+- AntMaze uses the 100000-step `core_plus_bottleneck` GCBC model. All 200
+  repair edges are direct-scored. Mean direct repair-edge MSE is 0.0554, direct
+  certified rate is 0.905, and `calibrated_compat_threshold` keeps coverage at
+  0.620 with pair incompatible fraction 0.000 and uncertified fraction 0.014.
+- AntMaze transfer-to-direct policy score delta is -0.134 and Spearman
+  transfer-vs-direct policy score is only 0.055, showing that the transfer proxy
+  is not a precise repair-edge ranker when direct policy evidence is available.
+- Scene uses the available 200-step smoke GCBC model. All 500 repair edges are
+  direct-scored. Mean direct repair-edge MSE is 0.0382, direct certified rate is
+  0.870, and `calibrated_compat_threshold` keeps coverage at 0.480 with pair
+  incompatible fraction 0.000 and uncertified fraction 0.037.
+
+Analysis:
+
+Phase 4G strengthens the repair pipeline by adding direct supervised policy
+evidence. The main algorithmic finding survives: support-only graph repair plus
+compatibility-aware planning recovers much higher compatibility-safe coverage,
+especially on Scene. Direct policy evidence also shows that repair-transfer
+scores should be treated as coarse fallback estimates, not precise ranking
+scores.
+
+Remaining gap:
+
+Direct action MSE is not closed-loop execution. Scene's direct evidence is also
+limited by the short 200-step smoke model. The next step should train stronger
+Scene GCBC models and/or unblock environment dependencies for closed-loop edge
+execution.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -643,29 +697,26 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4G Direct Repair-Edge Policy Likelihood
+### Phase 4H Stronger Scene GCBC and Direct Repair Validation
 
 Hypothesis:
 
-Direct GCBC action-likelihood evaluation on selected repair edges will validate
-which transfer-certified repair edges are actually behavior-policy fit and
-should be used by the planner.
+Training stronger Scene GCBC policies and re-running Phase 4G will determine
+whether Scene's repair-edge direct policy evidence survives non-smoke training.
 
 Required review before implementation:
 
 - Goal-conditioned BC validation on long-horizon edge segments.
 - Offline policy-likelihood / behavior-cloning confidence estimation.
-- Calibration of transfer proxy scores against direct heldout action MSE.
-- Option-graph construction methods that optimize initiation/termination overlap.
-- Graph sparsification and repair methods with edge provenance constraints.
+- Imbalanced edge sampling for rare repair/bottleneck edges.
+- Prior hierarchical offline RL implementations using subgoal-conditioned BC.
 
 Evidence required:
 
-- Compute direct GCBC action MSE or likelihood for repair edge heldout samples.
-- Compare transfer proxy against direct repair-edge policy evidence.
-- Re-run Phase 4F planning with direct repair-edge policy scores.
-- Report coverage, calibrated reliability, original uncertified edge fraction,
-  and path-level compatibility.
+- Train Scene GCBC longer than smoke scale, ideally multiple sampling modes.
+- Re-run Phase 4G with the stronger Scene model.
+- Compare direct repair-edge MSE, certification rate, and planner metrics.
+- Report seed/model-training limitations clearly.
 - Keep offline proxy language unless closed-loop rollout is available.
 - Explicitly label the result as reset-free offline planning, not execution
   success.
