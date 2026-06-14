@@ -1,0 +1,28 @@
+dataset_name: antmaze-large-stitch-v0
+phase2_run_dir: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10
+edge_certification_csv: results/phase3e/antmaze_large_stitch/core_plus_bottleneck_budget120_H10/offline_edge_certification.csv
+path_queries_csv: results/phase2/antmaze_large_stitch/path_queries.csv
+output_dir: results/phase4c
+seed: 0
+max_queries: 500
+support_weight: 0.30
+policy_weight: 0.20
+behavior_weight: 0.20
+compatibility_weight: 0.20
+diversity_weight: 0.10
+min_component_score: 0.02
+certification_threshold: 0.25
+min_support_lcb: 0.01
+min_compatibility: 0.0
+planner_methods:
+  - floor_proxy_penalized
+risk_weights: [0.0, 1.0, 2.0, 4.0, 8.0]
+ood_weights: [0.0, 1.0]
+incompat_weights: [0.0, 1.0]
+uncertified_weights: [0.0, 1.0]
+proxy_floors: [0.0, 0.05, 0.1, 0.2]
+heldout_support_lcb_floors: [0.0, 0.01, 0.05]
+high_ood_threshold: 0.5
+high_incompat_threshold: 0.5
+min_coverage_ratio: 0.95
+max_base_cost_increase: 0.2

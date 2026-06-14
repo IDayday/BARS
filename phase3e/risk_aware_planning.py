@@ -218,6 +218,7 @@ def _path_metric_row(
         "mean_outgoing_incompatible_fraction": np.nan,
         "mean_outgoing_termination_bridge_coverage": np.nan,
         "uncertified_edge_fraction": np.nan,
+        "original_uncertified_edge_fraction": np.nan,
         "low_proxy_edge_fraction": np.nan,
         "low_support_lcb_edge_fraction": np.nan,
         "high_ood_edge_fraction": np.nan,
@@ -238,6 +239,10 @@ def _path_metric_row(
     incompat = [_clip01(rec.get("outgoing_incompatible_fraction", 1.0)) for rec in edge_records]
     bridge = [_clip01(rec.get("outgoing_mean_termination_bridge_coverage", 0.0)) for rec in edge_records]
     certified = [_as_bool(rec.get("certified_offline_binary", False)) for rec in edge_records]
+    original_certified = [
+        _as_bool(rec.get("certified_offline_binary_original", rec.get("certified_offline_binary", False)))
+        for rec in edge_records
+    ]
     bottleneck_scores = [_as_float(rec.get("edge_bottleneck_score", np.nan), np.nan) for rec in edge_records]
     bottleneck_thr = float(bottleneck_threshold) if np.isfinite(float(bottleneck_threshold)) else np.inf
 
@@ -256,6 +261,7 @@ def _path_metric_row(
             "mean_outgoing_incompatible_fraction": _mean(incompat),
             "mean_outgoing_termination_bridge_coverage": _mean(bridge),
             "uncertified_edge_fraction": _fraction([not x for x in certified]),
+            "original_uncertified_edge_fraction": _fraction([not x for x in original_certified]),
             "low_proxy_edge_fraction": _fraction([v < float(config.min_proxy_score) for v in proxies]),
             "low_support_lcb_edge_fraction": _fraction(
                 [v < float(config.min_heldout_support_lcb) for v in support_lcbs]
@@ -358,6 +364,11 @@ def summarize_planning_results(path_metrics: pd.DataFrame, graph_metrics: pd.Dat
             else np.nan,
             "mean_uncertified_edge_fraction": float(reachable["uncertified_edge_fraction"].mean())
             if not reachable.empty
+            else np.nan,
+            "mean_original_uncertified_edge_fraction": float(
+                reachable["original_uncertified_edge_fraction"].mean()
+            )
+            if not reachable.empty and "original_uncertified_edge_fraction" in reachable.columns
             else np.nan,
             "mean_low_proxy_edge_fraction": float(reachable["low_proxy_edge_fraction"].mean())
             if not reachable.empty

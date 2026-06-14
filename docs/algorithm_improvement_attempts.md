@@ -354,6 +354,58 @@ This remains offline path selection. The next algorithmic bottleneck is edge
 risk calibration, especially compatibility/certification reliability on Scene,
 not another blind planner-weight sweep.
 
+### Phase 4C: Edge Risk Calibration
+
+Question:
+
+Can separating heldout support, policy fit, OOD, compatibility, and diversity
+signals produce a better planner-facing edge reliability score than the Phase 3E
+aggregate proxy?
+
+Reviewed before implementation:
+
+- Reliability calibration for confidence scores.
+- Offline RL behavior-support and pessimism motivation.
+- GAS, SoRB, and TTGS graph-search code paths where local edge confidence drives
+  global path quality.
+
+Implemented:
+
+- Component-wise reliability scores for support, policy, behavior, compatibility,
+  and diversity.
+- Conservative weighted geometric aggregation into
+  `calibrated_edge_reliability_score`.
+- Planner-compatible calibrated certification table preserving original
+  certification columns.
+- Phase 4B-style sweep over calibrated scores for AntMaze and Scene.
+- Synthetic tests for conservative component aggregation, planner input
+  replacement, and pseudo-label diagnostics.
+
+Evidence:
+
+- AntMaze Brier score against heldout-support pseudo-label improves from 0.490
+  to 0.388. Recommended calibrated planning restores coverage to 0.566 and
+  lowers original uncertified path-edge fraction from Phase 4B's 0.826 to 0.013.
+- Scene Brier score improves from 0.404 to 0.350. Recommended calibrated
+  planning keeps coverage at 0.160 and lowers original uncertified path-edge
+  fraction from 0.733 to 0.156.
+- Scene high-incompatibility exposure remains high, so compatibility is still a
+  separate bottleneck.
+
+Analysis:
+
+Phase 4C is the strongest offline graph-layer improvement so far. The calibrated
+score does not prove executability, but it makes support-only planner paths much
+cleaner under original Phase 3E certification evidence. The remaining failure
+mode is path composability: independent edge reliability does not fully handle
+adjacent-edge mismatch, especially in Scene.
+
+Remaining gap:
+
+The calibrated score is not an execution probability. The next offline
+algorithmic target should be compatibility-aware path planning that models
+adjacent edge pairs, not only independent edge scores.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -424,25 +476,27 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4C Edge Risk Calibration
+### Phase 4D Compatibility-Aware Planning
 
 Hypothesis:
 
-Separating and calibrating heldout support, OOD, compatibility, and GCBC
-action-fit signals will produce a more reliable edge-risk score than the current
-aggregate Phase 3E proxy.
+Adding adjacent-edge compatibility penalties or constraints to calibrated
+support-only planning will reduce path composability risk, especially on Scene.
 
 Required review before implementation:
 
-- Reliability calibration for supervised predictors.
-- Offline RL uncertainty and behavior-support estimation.
-- Goal-conditioned BC validation protocols for subgoal execution proxies.
+- Constrained shortest path with transition-dependent costs.
+- Hierarchical planning methods that score option composability.
+- Existing GAS/CAGE code paths for path drift, subgoal switching, and contract
+  ranking.
 
 Evidence required:
 
-- Recompute per-edge risk components with fixed, comparable thresholds.
-- Show that calibrated scores improve Phase 4B Pareto fronts on both AntMaze and
-  Scene.
+- Use Phase 2.2 edge-pair compatibility or termination bridge coverage as an
+  adjacent-edge path cost.
+- Compare against Phase 4C calibrated planner on identical queries.
+- Report coverage, calibrated reliability, original uncertified edge fraction,
+  and path-level compatibility.
 - Keep offline proxy language unless closed-loop rollout is available.
 - Explicitly label the result as reset-free offline planning, not execution
   success.
@@ -501,6 +555,9 @@ Evidence required:
 - Phase 4B sweeps identify support-only Pareto planner configs and show that
   decomposed OOD/uncertified penalties are more stable than blindly increasing
   aggregate proxy risk weight.
+- Phase 4C calibrated edge reliability improves heldout-support pseudo-label
+  Brier and sharply reduces original uncertified path-edge exposure in
+  recommended support-only paths.
 
 ## Claims Not Yet Supported
 
@@ -512,4 +569,6 @@ Evidence required:
   training strategy.
 - Phase 4A risk-aware paths are executable by the current GCBC policy.
 - Phase 4B recommended configs are online-optimal or calibrated to execution
+  success.
+- Phase 4C calibrated reliability is a true probability of edge execution
   success.
