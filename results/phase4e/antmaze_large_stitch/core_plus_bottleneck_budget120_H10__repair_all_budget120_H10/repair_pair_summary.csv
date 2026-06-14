@@ -1,0 +1,3 @@
+num_adjacent_edge_pairs,cluster_compatible_rate,strict_compatible_rate,incompatible_rate,mean_num_bridge_segments,median_num_bridge_segments,mean_bridge_matches_per_first_segment,mean_termination_bridge_coverage,median_termination_bridge_coverage,mean_compatibility_support_rate,lcb_compatible_rate,graph_variant
+3191,1.0,0.6609213412723284,0.3390786587276716,5188.880288310875,146.0,5.668084605328953,0.23606080832813847,0.0911062906724512,5.668084605328953,0.6444958720299986,base
+5084,1.0,0.6439811172305271,0.3560188827694729,4040.229937057435,98.5,4.965089574203346,0.21673957790135065,0.08060070822660946,4.965089574203346,0.630818980939653,repaired

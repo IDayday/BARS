@@ -464,6 +464,61 @@ This is still offline graph-layer evidence. It does not prove GCBC execution,
 and Scene likely needs structural graph repair or compatibility-aware node/edge
 selection before closed-loop evaluation would be meaningful.
 
+### Phase 4E: Compatibility Graph Repair
+
+Question:
+
+Can a compressed support graph recover compatibility-safe coverage by adding
+only support-certified repair edges from a broader Phase 2 support bank?
+
+Reviewed before implementation:
+
+- GAS-style graph planning and local `external_src/GAS` graph-search code.
+- Replay-buffer graph search methods such as SoRB and TTGS.
+- Phase 2.2 termination bridge coverage and Phase 4D line-graph planning.
+- Phase 4D evidence that Scene's strict compatibility threshold sharply reduced
+  coverage.
+
+Implemented:
+
+- Support-only repair edge selection from an `all` Phase 2 edge bank.
+- Bad-junction scoring from low `termination_bridge_coverage` adjacent pairs.
+- Repair edge scoring using bad-junction incidence, base-graph connectivity,
+  support scale, start/episode diversity, and short horizon.
+- Segment-level merge and edge-id remapping for selected repair edges.
+- Recomputed augmented pair compatibility and reran Phase 4D planners on the
+  same queries.
+- Synthetic tests for duplicate avoidance, edge-id/segment remapping, and
+  threshold coverage restoration.
+
+Evidence:
+
+- AntMaze repair adds 200 support-bank edges and improves strict
+  `compat_threshold` coverage from 0.544 to 0.620 while keeping pair
+  incompatible fraction at 0.000.
+- AntMaze repaired support shortest-path coverage improves from 0.566 to 0.642.
+- Scene repair adds 500 support-bank edges and improves strict
+  `compat_threshold` coverage from 0.150 to 0.480 while keeping pair
+  incompatible fraction at 0.000.
+- Scene repaired support shortest-path coverage improves from 0.160 to 0.510,
+  showing that the broader support bank contains useful connectivity omitted by
+  the compressed graph.
+
+Analysis:
+
+This is the strongest structural graph-layer result so far. Scene's poor
+compatibility-safe coverage was not simply absence of data support; it was a
+compression/selection problem. Adding only support-certified repair edges
+recovers many compatible paths without proximity shortcuts. However, the added
+edges are not yet Phase 3E/4C certified, so repaired paths have lower edge proxy
+scores and higher original uncertified fractions.
+
+Remaining gap:
+
+Repair-bank edges need offline certification and calibration before they can be
+used as planner-default edges. Phase 4E improves graph structure, but it does
+not prove policy execution or online benchmark gains.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -534,17 +589,18 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4E Compatibility-Aware Graph Repair
+### Phase 4F Repair-Edge Certification and Joint Selection
 
 Hypothesis:
 
-Using pair compatibility during node/edge selection or graph augmentation will
-repair Scene's sparse composability without introducing unsupported shortcuts.
+Certifying selected repair-bank edges and jointly selecting compressed nodes,
+repair edges, and compatibility-safe paths will retain Phase 4E's coverage gain
+while restoring Phase 4C's edge reliability metrics.
 
 Required review before implementation:
 
-- Option-graph construction methods that optimize initiation/termination
-  overlap.
+- Offline edge certification for newly selected repair-bank edges.
+- Option-graph construction methods that optimize initiation/termination overlap.
 - Graph sparsification and repair methods with edge provenance constraints.
 - Hierarchical planning methods that score option composability.
 - Existing GAS/CAGE code paths for path drift, subgoal switching, and contract
@@ -552,8 +608,10 @@ Required review before implementation:
 
 Evidence required:
 
-- Improve Scene compatibility without using kNN/proximity unsupported edges.
-- Compare against Phase 4D compatibility-aware planner on identical queries.
+- Recompute Phase 3E/4C certification for repair-bank edges, not only base
+  graph edges.
+- Compare Phase 4E repaired graph before and after certification on identical
+  queries.
 - Report coverage, calibrated reliability, original uncertified edge fraction,
   and path-level compatibility.
 - Keep offline proxy language unless closed-loop rollout is available.
