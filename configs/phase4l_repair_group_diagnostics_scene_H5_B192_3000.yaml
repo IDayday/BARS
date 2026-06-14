@@ -1,0 +1,5 @@
+phase4k_per_seed_csv: results/phase4k/scene_play/core_plus_bottleneck_budget192_H5_3000/phase4k_loss_weighted_repair_per_seed.csv
+output_dir: results/phase4l/scene_play/core_plus_bottleneck_budget192_H5_3000
+baseline_method: uniform_transition_none
+planner_method: calibrated_compat_threshold
+num_top_findings: 16

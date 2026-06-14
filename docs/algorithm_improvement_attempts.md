@@ -841,6 +841,58 @@ This is still reset-free offline supervised evidence. It does not prove
 closed-loop repair-edge execution. The result also needs AntMaze and longer
 Scene-H10/H25 replication before becoming a general cross-environment default.
 
+### Phase 4L: Direct Repair-Edge Group Diagnostics
+
+Question:
+
+Where does the Phase 4K `loss_support_bottleneck_s03` repair-edge gain come
+from, and are those improved edges actually used by the repaired planner?
+
+Reviewed before implementation:
+
+- Phase 4K per-edge direct repair scores and planner paths.
+- Phase 4J/4K loss-weighting evidence.
+- GCSL and RvS supervised offline RL framing.
+- Class-balanced and focal-loss long-tail learning motivation.
+
+Implemented:
+
+- Matched every loss-weighted checkpoint against the same-seed
+  `uniform_transition_none` baseline on identical repair edge ids.
+- Computed per-edge MSE deltas and policy-support deltas.
+- Grouped deltas by support, bottleneck score, horizon, compatibility context,
+  planner usage, and repair reason.
+- Reported both unweighted and sample-weighted group MSE deltas.
+
+Evidence:
+
+- Method-level `loss_support_bottleneck_s03` direct repair-edge MSE delta is
+  `-0.000211`, while `loss_support_s03` is roughly flat at `+0.000023` and
+  `loss_bottleneck_s03` worsens by `+0.000152`.
+- The combined loss helps the intended hard groups:
+  - low support: MSE delta `-0.000421`, sample-weighted delta `-0.000251`;
+  - long horizon: MSE delta `-0.000417`, sample-weighted delta `-0.000126`;
+  - high bottleneck: MSE delta `-0.000309`, sample-weighted delta `-0.000082`.
+- The planner-used repair-edge group has only a small unweighted improvement
+  (`-0.000067`) and a slightly worse sample-weighted delta (`+0.000060`).
+
+Analysis:
+
+Phase 4L explains the Phase 4K gain. Combined support+bottleneck weighting is
+doing what it was intended to do: it shifts supervised fitting toward sparse,
+longer-horizon, high-bottleneck repair edges. However, the current
+compatibility-threshold planner does not use many of those improved repair
+edges. This creates a training/planning mismatch: training improves plausible
+hard repair edges, but planner risk constraints still route through a smaller
+subset where the gain is weaker.
+
+Remaining gap:
+
+The result is still offline supervised diagnostics. The next algorithmic step
+should either replicate combined weighting across AntMaze and Scene H10/H25 or
+make the weighting planner-aware, so the low-support/high-bottleneck edges that
+matter to selected paths get targeted directly.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -911,18 +963,19 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4L Loss-Weighted Replication
+### Phase 4M Loss-Weighted Replication
 
 Hypothesis:
 
-The Phase 4J/4K `loss_support_bottleneck_s03` gain generalizes beyond Scene H5
-3000-step checkpoints to AntMaze and Scene H10/H25, and remains stable under
+The Phase 4J/4K/4L `loss_support_bottleneck_s03` gain generalizes beyond Scene
+H5 3000-step checkpoints to AntMaze and Scene H10/H25, and remains stable under
 longer training.
 
 Required review before implementation:
 
 - Phase 4J loss-weighting aggregate metrics.
 - Phase 4K direct repair-edge validation metrics.
+- Phase 4L group diagnostics, especially the planner-used mismatch.
 - Related loss reweighting and goal-conditioned supervised policy references.
 
 Evidence required:
@@ -933,20 +986,21 @@ Evidence required:
   and planner risk metrics.
 - Keep offline proxy language unless closed-loop rollout is available.
 
-### Direct Repair-Edge Group Diagnostics
+### Planner-Relevant Loss Weighting
 
 Hypothesis:
 
-The combined loss-weighting gain is concentrated on low-support,
-long-horizon, or high-bottleneck repair edges, rather than uniformly improving
-all repair edges.
+Loss weighting should target repair edges that are both hard and planner
+relevant, instead of weighting all rare/high-bottleneck edges equally.
 
 Evidence required:
 
-- Group Phase 4K direct repair-edge scores by support, bottleneck, horizon, and
-  compatibility context.
-- Report where the method helps, where it hurts, and whether the planner uses
-  the improved groups.
+- Use Phase 4L planner-used/path-frequency diagnostics to define an additional
+  planner relevance term.
+- Compare against `loss_support_bottleneck_s03` rather than only against
+  `uniform_transition_none`.
+- Report whether planner-used repair-edge MSE improves without damaging overall
+  validation MSE.
 
 ### Closed-Loop Edge Execution
 
@@ -1002,6 +1056,9 @@ Evidence required:
 - Phase 4K shows the same clipped support+bottleneck weighting also improves
   Scene H5 direct repair-edge supervised MSE slightly under matched two-seed
   3000-step checkpoints.
+- Phase 4L shows that the Phase 4K gain is concentrated on low-support,
+  long-horizon, and high-bottleneck repair edges, while planner-used repair
+  edges improve much less.
 
 ## Claims Not Yet Supported
 
@@ -1023,3 +1080,5 @@ Evidence required:
 - Phase 4K loss weighting improves closed-loop repair-edge execution or online
   task success.
 - The Phase 4K Scene H5 result generalizes to AntMaze or Scene H10/H25.
+- The current loss-weighting scheme is already optimally aligned with the
+  repair edges selected by the planner.
