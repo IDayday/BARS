@@ -1,0 +1,24 @@
+{
+  "config": {
+    "baseline_method": "augmented_loss_support_bottleneck_s03",
+    "max_direct_repair_ratio": 1.0,
+    "max_final_val_ratio": 1.01,
+    "max_planner_used_ratio": 0.99,
+    "min_policy_support_ratio": 1.0
+  },
+  "mean_nonbaseline_selected_final_val_ratio": 0.9933174106399508,
+  "mean_selected_direct_repair_ratio": 0.9843471938413818,
+  "mean_selected_final_val_ratio": 0.9933174106399508,
+  "mean_selected_planner_used_repair_ratio": 0.9759366257134178,
+  "note": "Offline supervised selector; not rollout success.",
+  "num_runs": 3,
+  "num_runs_fallback_baseline": 0,
+  "num_runs_with_guard_pass": 3,
+  "phase": "Phase 4O",
+  "selected_methods": [
+    "planner_relevant_repair_s04",
+    "planner_relevant_repair_s02",
+    "planner_relevant_repair_s04"
+  ],
+  "title": "Planner-Relevance Regret-Guard Selection"
+}

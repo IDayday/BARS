@@ -1016,6 +1016,64 @@ The Scene H10 trade-off is controlled but not eliminated. This is still
 reset-free offline supervised evidence, not rollout success. Scene H25,
 longer-training replication, and eventual env-available execution remain open.
 
+### Phase 4O: Regret-Guard Selector
+
+Question:
+
+Can the Phase 4N manual choice be turned into a reusable candidate-selection
+rule so later H25 and longer-training runs do not rely on ad hoc table reading?
+
+Reviewed before implementation:
+
+- Phase 4M/4N planner-relevant loss-weighting results and their explicit
+  offline-supervised evidence boundary.
+- Phase 4J/4I lesson that rare-edge fitting should improve without excessive
+  overall validation-MSE regret.
+- The required evidence standard in this document: offline supervised policy
+  results require heldout MSE, grouped edge metrics, and explicit
+  non-rollout-success language.
+
+Implemented:
+
+- Added a Phase 4O selector that reads existing `phase4m_vs_baseline.csv`
+  tables.
+- Annotates each candidate with final-validation, direct-repair,
+  planner-used-repair, and policy-support guards.
+- Recommends a non-baseline candidate only when every guard passes.
+- Falls back to the same augmented-graph support+bottleneck baseline when no
+  planner-relevant candidate passes.
+- Added synthetic tests for Scene H10 `s02` selection, fallback behavior, and
+  violation reason reporting.
+
+Evidence:
+
+- AntMaze H10 B120 selects `planner_relevant_repair_s04`: final validation MSE
+  ratio `0.995124`, direct repair-edge MSE ratio `0.995081`, planner-used
+  repair-edge MSE ratio `0.986447`, policy support score ratio `1.003763`.
+- Scene H10 B192 selects `planner_relevant_repair_s02`: final validation MSE
+  ratio `1.005790`, direct repair-edge MSE ratio `0.988326`, planner-used
+  repair-edge MSE ratio `0.960478`, policy support score ratio `1.002015`.
+- Scene H5 B192 selects `planner_relevant_repair_s04`: final validation MSE
+  ratio `0.979038`, direct repair-edge MSE ratio `0.969635`, planner-used
+  repair-edge MSE ratio `0.980885`, policy support score ratio `1.005549`.
+- Across selected candidates, mean final validation MSE ratio is `0.993317`,
+  mean direct repair-edge MSE ratio is `0.984347`, and mean planner-used
+  repair-edge MSE ratio is `0.975937`.
+
+Analysis:
+
+Phase 4O makes the training-side selection rule more mature. It preserves the
+targeted planner-used repair-edge improvement, but refuses candidates that
+damage direct repair-edge fitting, policy-support score, or overall validation
+MSE beyond the configured regret budget. This reduces manual cherry-picking
+risk before expanding to Scene H25 or longer training.
+
+Remaining gap:
+
+The selector is only as good as the offline supervised metrics it reads. It is
+not a rollout-success validator, and the guard thresholds are evidence-based
+engineering defaults rather than calibrated execution probabilities.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -1114,8 +1172,8 @@ Evidence required:
 Status:
 
 Completed as Phase 4M on Scene H5, Scene H10, and AntMaze H10, with Phase 4N
-adding a Scene H10 regret guard. The remaining work is Scene H25 plus longer
-training.
+adding a Scene H10 regret guard and Phase 4O turning that guard into a reusable
+selector. The remaining work is Scene H25 plus longer training.
 
 ### Closed-Loop Edge Execution
 
@@ -1182,6 +1240,9 @@ Evidence required:
   (`planner_relevant_repair_s02`) preserves the planner-used repair-edge gain
   while reducing overall validation-MSE regret relative to the more aggressive
   Phase 4M `s04` setting.
+- Phase 4O provides a reusable offline supervised guard selector that chooses
+  AntMaze H10 `s04`, Scene H10 `s02`, and Scene H5 `s04` under fixed regret and
+  repair-edge improvement constraints.
 
 ## Claims Not Yet Supported
 
@@ -1208,3 +1269,5 @@ Evidence required:
 - The Phase 4M result generalizes to Scene H25 or longer training.
 - The Phase 4N guarded strength fully eliminates Scene H10 validation-MSE regret
   or generalizes to Scene H25/longer training.
+- Phase 4O guard thresholds are calibrated to closed-loop execution success or
+  should be treated as final hyperparameter-selection rules.
