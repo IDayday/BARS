@@ -142,12 +142,20 @@ def build_planning_graph(
             continue
         if method == "proxy_threshold" and not _edge_passes_proxy_threshold(row, config):
             continue
-        if method not in {"support_shortest_path", "certified_only", "proxy_threshold", "proxy_penalized"}:
+        if method == "floor_proxy_penalized" and not _edge_passes_proxy_threshold(row, config):
+            continue
+        if method not in {
+            "support_shortest_path",
+            "certified_only",
+            "proxy_threshold",
+            "proxy_penalized",
+            "floor_proxy_penalized",
+        }:
             raise ValueError(f"Unsupported risk-aware planning method: {method}")
 
         planning_cost = (
             risk_penalized_cost(row, config)
-            if method == "proxy_penalized"
+            if method in {"proxy_penalized", "floor_proxy_penalized"}
             else max(EPS, _as_float(getattr(row, "base_cost", getattr(row, "cost", 1.0)), 1.0))
         )
         attrs = row._asdict()

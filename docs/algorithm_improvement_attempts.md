@@ -304,6 +304,56 @@ The result is still reset-free offline path selection. It does not prove that
 the GCBC policy can execute the selected path, and the edge proxy score is not
 calibrated to rollout success probability.
 
+### Phase 4B: Calibrated Risk-Aware Planner Sweep
+
+Question:
+
+Can sweeping risk weights and mild edge floors find a better coverage/risk/cost
+trade-off than the fixed Phase 4A planner?
+
+Reviewed before implementation:
+
+- GAS graph construction and shortest-path code.
+- Replay-buffer graph search methods such as SoRB and TTGS.
+- Constrained and multi-objective shortest-path framing, motivating Pareto
+  reporting rather than a single unqualified scalar metric.
+
+Implemented:
+
+- `floor_proxy_penalized`: support-only planning with optional proxy/support-LCB
+  floors plus risk-aware edge cost.
+- 480-config sweeps for AntMaze and Scene.
+- Pareto-front extraction over coverage, minimum edge proxy, uncertified edge
+  fraction, and base path cost.
+- Recommendation heuristic constrained against support-shortest-path coverage
+  and base cost.
+
+Evidence:
+
+- AntMaze recommended config keeps coverage at 0.544 versus baseline 0.566,
+  raises mean minimum edge proxy from 0.060 to 0.217, and lowers uncertified
+  edge fraction from 0.924 to 0.826.
+- Scene recommended config keeps coverage at 0.160, raises mean minimum edge
+  proxy from 0.065 to 0.092, and lowers uncertified edge fraction from 0.984 to
+  0.733.
+- AntMaze has many strong Pareto choices, including full-coverage configs with
+  mean minimum edge proxy around 0.19. Scene has a harsher compatibility and
+  certification bottleneck.
+
+Analysis:
+
+The useful planner pattern is not simply increasing aggregate `risk_weight`.
+The recommended configs emphasize decomposed OOD and uncertified penalties, and
+AntMaze also benefits from a mild proxy floor. This suggests the aggregate
+Phase 3E proxy score is useful for ranking but is not yet calibrated enough to
+serve directly as an execution probability.
+
+Remaining gap:
+
+This remains offline path selection. The next algorithmic bottleneck is edge
+risk calibration, especially compatibility/certification reliability on Scene,
+not another blind planner-weight sweep.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -374,26 +424,26 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4B Calibrated Risk-Aware Planner Sweep
+### Phase 4C Edge Risk Calibration
 
 Hypothesis:
 
-Sweeping risk weights and adding a mild hard floor on extreme low-proxy or
-zero-heldout-support edges can improve the coverage/risk trade-off beyond the
-first Phase 4A scalarized planner.
+Separating and calibrating heldout support, OOD, compatibility, and GCBC
+action-fit signals will produce a more reliable edge-risk score than the current
+aggregate Phase 3E proxy.
 
 Required review before implementation:
 
-- Risk-sensitive shortest path and constrained shortest path formulations.
-- Reliability-aware planning in graph abstraction methods.
-- GAS/TDR code paths that assign edge costs or prune graph edges.
+- Reliability calibration for supervised predictors.
+- Offline RL uncertainty and behavior-support estimation.
+- Goal-conditioned BC validation protocols for subgoal execution proxies.
 
 Evidence required:
 
-- Sweep risk weights, proxy floors, and support-LCB floors on the same Phase 2
-  query sets.
-- Report Pareto fronts for coverage, cost, minimum edge proxy score,
-  uncertified edge fraction, OOD score, and heldout support along paths.
+- Recompute per-edge risk components with fixed, comparable thresholds.
+- Show that calibrated scores improve Phase 4B Pareto fronts on both AntMaze and
+  Scene.
+- Keep offline proxy language unless closed-loop rollout is available.
 - Explicitly label the result as reset-free offline planning, not execution
   success.
 
@@ -448,6 +498,9 @@ Evidence required:
 - Reset-free offline edge certification can rank support edges by proxy risk.
 - Risk-penalized planning can preserve support-graph coverage while reducing
   offline path risk on the tested AntMaze and Scene runs.
+- Phase 4B sweeps identify support-only Pareto planner configs and show that
+  decomposed OOD/uncertified penalties are more stable than blindly increasing
+  aggregate proxy risk weight.
 
 ## Claims Not Yet Supported
 
@@ -458,3 +511,5 @@ Evidence required:
 - Sampling ablation results are statistically strong enough to choose a final
   training strategy.
 - Phase 4A risk-aware paths are executable by the current GCBC policy.
+- Phase 4B recommended configs are online-optimal or calibrated to execution
+  success.
