@@ -519,6 +519,60 @@ Repair-bank edges need offline certification and calibration before they can be
 used as planner-default edges. Phase 4E improves graph structure, but it does
 not prove policy execution or online benchmark gains.
 
+### Phase 4F: Repair-Edge Certification and Joint Planning
+
+Question:
+
+Can conservative offline certification for selected repair-bank edges preserve
+Phase 4E's coverage gains while restoring planner-facing edge reliability?
+
+Reviewed before implementation:
+
+- Offline RL behavior-support and pessimism motivation such as BCQ/CQL.
+- Replay-buffer graph search methods such as SoRB and TTGS.
+- Phase 4C component-wise edge calibration.
+- Phase 4E support-only repair graph outputs.
+
+Implemented:
+
+- Base edges retain Phase 4C certification.
+- Repair edges receive `repair_transfer_proxy` certification from support
+  scale, endpoint-neighbor policy-score transfer, behavior support,
+  compatibility context, and conservative geometric aggregation.
+- Combined base+repair planner certification table.
+- Re-evaluation of Phase 4E augmented graphs with repair-edge-aware
+  compatibility planners.
+- Path metrics for repair edge fraction and repair certified fraction.
+- Synthetic tests for certification provenance, score ordering, and repair-edge
+  path usage.
+
+Evidence:
+
+- AntMaze: 182 / 200 repair edges are transfer-certified. On the repaired graph,
+  `calibrated_compat_threshold` keeps coverage at 0.620, keeps pair
+  incompatible fraction at 0.000, improves mean minimum edge proxy from Phase
+  4E's 0.229 to 0.277, and lowers current uncertified edge fraction from 0.059
+  to 0.014.
+- Scene: 397 / 500 repair edges are transfer-certified. On the repaired graph,
+  `calibrated_compat_threshold` keeps coverage at 0.480, keeps pair
+  incompatible fraction at 0.000, improves mean minimum edge proxy from 0.072 to
+  0.230, and lowers current uncertified edge fraction from 0.250 to 0.044.
+
+Analysis:
+
+Phase 4F closes the immediate Phase 4E reliability gap. The repaired graph no
+longer needs to choose between compatibility-safe coverage and planner-facing
+edge reliability. Scene remains the most important result: compatibility-safe
+coverage stays far above the compressed base graph while uncertified exposure is
+much lower under transfer certification.
+
+Remaining gap:
+
+Repair-edge certification is still a transfer proxy. It is not direct heldout
+GCBC likelihood and not rollout success. The next step should compute direct
+policy-likelihood / action-fitting evidence for selected repair edges and then
+run closed-loop evaluation once environment dependencies are available.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -589,29 +643,27 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4F Repair-Edge Certification and Joint Selection
+### Phase 4G Direct Repair-Edge Policy Likelihood
 
 Hypothesis:
 
-Certifying selected repair-bank edges and jointly selecting compressed nodes,
-repair edges, and compatibility-safe paths will retain Phase 4E's coverage gain
-while restoring Phase 4C's edge reliability metrics.
+Direct GCBC action-likelihood evaluation on selected repair edges will validate
+which transfer-certified repair edges are actually behavior-policy fit and
+should be used by the planner.
 
 Required review before implementation:
 
-- Offline edge certification for newly selected repair-bank edges.
+- Goal-conditioned BC validation on long-horizon edge segments.
+- Offline policy-likelihood / behavior-cloning confidence estimation.
+- Calibration of transfer proxy scores against direct heldout action MSE.
 - Option-graph construction methods that optimize initiation/termination overlap.
 - Graph sparsification and repair methods with edge provenance constraints.
-- Hierarchical planning methods that score option composability.
-- Existing GAS/CAGE code paths for path drift, subgoal switching, and contract
-  ranking.
 
 Evidence required:
 
-- Recompute Phase 3E/4C certification for repair-bank edges, not only base
-  graph edges.
-- Compare Phase 4E repaired graph before and after certification on identical
-  queries.
+- Compute direct GCBC action MSE or likelihood for repair edge heldout samples.
+- Compare transfer proxy against direct repair-edge policy evidence.
+- Re-run Phase 4F planning with direct repair-edge policy scores.
 - Report coverage, calibrated reliability, original uncertified edge fraction,
   and path-level compatibility.
 - Keep offline proxy language unless closed-loop rollout is available.
