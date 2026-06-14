@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase1.data import load_ogbench_dataset  # noqa: E402
+from phase3.edge_bc_dataset import SUPPORTED_SAMPLING_MODES  # noqa: E402
 from phase3.evaluation import default_phase3_output_dir  # noqa: E402
 from phase3.train_gcbc import train_gcbc  # noqa: E402
 
@@ -48,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--phase2_run_dir", default=None)
     parser.add_argument("--output_dir", default=None)
     parser.add_argument("--max_transitions", type=int, default=None)
-    parser.add_argument("--sampling_mode", default=None, choices=["uniform_edge", "uniform_transition", "bottleneck_weighted"])
+    parser.add_argument("--sampling_mode", default=None, choices=sorted(SUPPORTED_SAMPLING_MODES))
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--num_steps", type=int, default=None)
     parser.add_argument("--lr", type=float, default=None)

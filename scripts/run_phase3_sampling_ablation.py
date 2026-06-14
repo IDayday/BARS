@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase1.data import load_ogbench_dataset  # noqa: E402
+from phase3.edge_bc_dataset import SUPPORTED_SAMPLING_MODES  # noqa: E402
 from phase3.train_gcbc import train_gcbc, write_json  # noqa: E402
 
 
@@ -299,7 +300,7 @@ def main() -> None:
 
         run_rows: list[dict[str, Any]] = []
         for sampling_mode in args.sampling_modes:
-            if sampling_mode not in {"uniform_transition", "uniform_edge", "bottleneck_weighted"}:
+            if sampling_mode not in SUPPORTED_SAMPLING_MODES:
                 raise ValueError(f"Unsupported sampling_mode={sampling_mode!r}")
             for seed in args.seeds:
                 train_dir = run_dir / f"{sampling_mode}_seed{int(seed)}"

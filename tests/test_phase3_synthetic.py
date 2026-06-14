@@ -101,6 +101,57 @@ def test_bottleneck_weighted_sampling_prefers_high_bottleneck_edge():
     assert float(np.mean(sampled == 1)) > 0.9
 
 
+def test_support_balanced_sampling_prefers_low_support_edge():
+    segments = {
+        "edge_id": np.asarray([0, 1], dtype=np.int64),
+        "ep_id": np.asarray([0, 0], dtype=np.int64),
+        "t": np.asarray([0, 10], dtype=np.int64),
+        "h": np.asarray([2, 2], dtype=np.int64),
+        "global_i": np.asarray([0, 10], dtype=np.int64),
+        "global_j": np.asarray([2, 12], dtype=np.int64),
+    }
+    edges = _edges().copy()
+    edges["num_unique_starts"] = [100, 1]
+    ds = build_edge_bc_examples(_dataset(32), edges, segments, sampling_mode="support_balanced", seed=4)
+    sampled = ds.sample_edge_ids(2000, seed=5)
+    assert float(np.mean(sampled == 1)) > 0.85
+
+
+def test_bottleneck_support_balanced_combines_support_and_bottleneck():
+    segments = {
+        "edge_id": np.asarray([0, 1, 2], dtype=np.int64),
+        "ep_id": np.asarray([0, 0, 0], dtype=np.int64),
+        "t": np.asarray([0, 10, 20], dtype=np.int64),
+        "h": np.asarray([2, 2, 2], dtype=np.int64),
+        "global_i": np.asarray([0, 10, 20], dtype=np.int64),
+        "global_j": np.asarray([2, 12, 22], dtype=np.int64),
+    }
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 1, 2],
+            "dst": [1, 2, 3],
+            "num_segments": [100, 1, 1],
+            "num_episodes": [5, 1, 1],
+            "num_unique_starts": [100, 1, 1],
+            "num_unique_episodes": [5, 1, 1],
+            "median_h": [2.0, 2.0, 2.0],
+            "max_h": [2.0, 2.0, 2.0],
+            "edge_bottleneck_score": [0.0, 0.0, 10.0],
+        }
+    )
+    ds = build_edge_bc_examples(
+        _dataset(32),
+        edges,
+        segments,
+        sampling_mode="bottleneck_support_balanced",
+        seed=6,
+    )
+    sampled = ds.sample_edge_ids(3000, seed=7)
+    assert float(np.mean(sampled == 2)) > float(np.mean(sampled == 1))
+    assert float(np.mean(sampled == 2)) > 0.7
+
+
 def test_gcbc_mlp_forward_action_shape():
     model = GCBCMLP(obs_dim=3, action_dim=2, hidden_dims=[16, 16], use_remaining_h=True)
     obs = torch.zeros(5, 3)

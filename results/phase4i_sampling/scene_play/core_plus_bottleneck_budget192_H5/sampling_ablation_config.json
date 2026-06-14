@@ -1,0 +1,23 @@
+{
+  "batch_size": 1024,
+  "dataset_name": "scene-play-v0",
+  "hidden_dims": [
+    512,
+    512,
+    512
+  ],
+  "lr": "3e-4",
+  "num_steps": 3000,
+  "phase2_run_dir": "results/phase2/scene_play/core_plus_bottleneck_budget192_H5",
+  "sampling_modes": [
+    "uniform_transition",
+    "uniform_edge",
+    "bottleneck_weighted",
+    "support_balanced",
+    "bottleneck_support_balanced"
+  ],
+  "seeds": [
+    0,
+    1
+  ]
+}

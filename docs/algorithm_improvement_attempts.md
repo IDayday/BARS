@@ -679,6 +679,59 @@ and it is single-seed/single-sampling-mode. Stronger sampling studies and
 closed-loop evaluation remain separate requirements before making execution or
 benchmark-improvement claims.
 
+### Phase 4I: Stronger GCBC Sampling Study
+
+Question:
+
+Can edge-balanced or bottleneck/support-balanced sampling improve rare-edge
+GCBC fitting without unacceptable overall validation loss?
+
+Reviewed before implementation:
+
+- Goal-Conditioned Supervised Learning and RvS-style supervised offline RL.
+- Class-balanced and focal-loss long-tail learning motivation.
+- Existing Phase 3D smoke ablation and Phase 4H stronger Scene GCBC results.
+
+Implemented:
+
+- Added `support_balanced` sampling with edge probability proportional to
+  `1 / sqrt(num_unique_starts)`.
+- Added `bottleneck_support_balanced`, combining inverse-sqrt support with a
+  normalized bottleneck multiplier.
+- Replaced per-sample NumPy `Generator` construction in the hot sampling path
+  with deterministic integer-hash sampling, speeding edge-level samplers while
+  preserving reproducibility.
+- Ran Scene H5 `core_plus_bottleneck_budget192_H5` for 3000 steps across five
+  sampling modes and two seeds.
+
+Evidence:
+
+- `uniform_transition`: final validation MSE `0.008046`, rare-edge mean MSE
+  `0.009620`.
+- `uniform_edge`: rare-edge mean MSE improves to `0.008850` but final validation
+  MSE worsens to `0.009178` (1.141x baseline).
+- `support_balanced`: rare-edge mean MSE improves to `0.009088`, but final
+  validation MSE worsens to `0.010109` (1.256x baseline).
+- `bottleneck_support_balanced`: final validation MSE worsens to `0.010770` and
+  rare-edge mean MSE is essentially unchanged at `0.009654`.
+
+Analysis:
+
+The simple edge-level rebalancing hypothesis is not supported as a default
+training strategy. It can improve rare-edge metrics, especially `uniform_edge`,
+but it gives up too much overall heldout action fitting under a 5% regret
+tolerance. This suggests the next sampling direction should not be hard
+oversampling. A softer mixture, curriculum, or loss-weighted objective may be
+better because it can preserve transition coverage while giving controlled
+extra weight to rare/bottleneck edges.
+
+Remaining gap:
+
+Phase 4I is still offline supervised evidence on Scene H5 with two seeds. It
+does not prove rollout success, and it does not settle AntMaze or H10/H25
+sampling choices. The next training-side attempt should test mixture/loss
+weighting rather than repeating naive edge oversampling.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -749,12 +802,13 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Stronger GCBC Sampling Study
+### Mixed or Loss-Weighted GCBC Training
 
 Hypothesis:
 
-Edge-balanced or bottleneck-weighted sampling improves fitting on rare,
-bottleneck, or low-support edges without unacceptable overall MSE degradation.
+Soft mixture sampling or per-sample loss weighting can improve rare,
+bottleneck, or low-support edge fitting without the overall MSE degradation
+observed under hard edge-level oversampling.
 
 Required review before implementation:
 
@@ -767,6 +821,8 @@ Evidence required:
 - Multiple seeds and longer training than the current smoke run.
 - Same validation split across sampling modes.
 - Edge-wise metrics with confidence intervals or seed variance.
+- Direct repair-edge policy evidence if the trained model is intended for
+  Phase 4G/4H-style certification.
 
 ### Closed-Loop Edge Execution
 
@@ -814,6 +870,9 @@ Evidence required:
   repaired graph using conservative offline evidence.
 - Phase 4G/4H direct repair-edge GCBC fitting supports the repaired Scene graph
   under both smoke and 10000-step supervised models.
+- Phase 4I shows naive hard edge-level rebalancing is not a clean default:
+  rare-edge MSE can improve, but overall validation MSE regresses too much on
+  the tested Scene H5 setup.
 
 ## Claims Not Yet Supported
 
@@ -830,3 +889,5 @@ Evidence required:
   success.
 - Phase 4H single-seed Scene supervised evidence is sufficient to choose a final
   GCBC sampling strategy.
+- Naive support-balanced or bottleneck-support-balanced sampling is a better
+  default than `uniform_transition`.

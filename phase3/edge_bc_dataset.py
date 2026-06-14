@@ -15,7 +15,20 @@ except ModuleNotFoundError:  # pragma: no cover - handled by callers in minimal 
     Dataset = object  # type: ignore[misc,assignment]
 
 
-SamplingMode = Literal["uniform_edge", "uniform_transition", "bottleneck_weighted"]
+SamplingMode = Literal[
+    "uniform_edge",
+    "uniform_transition",
+    "bottleneck_weighted",
+    "support_balanced",
+    "bottleneck_support_balanced",
+]
+SUPPORTED_SAMPLING_MODES = {
+    "uniform_edge",
+    "uniform_transition",
+    "bottleneck_weighted",
+    "support_balanced",
+    "bottleneck_support_balanced",
+}
 
 
 def _load_edges(option_edges_csv: str | Path | pd.DataFrame) -> pd.DataFrame:
@@ -59,8 +72,8 @@ class EdgeBCDataset(Dataset):
         if torch is None:  # pragma: no cover
             raise ImportError("Phase 3 GCBC dataset requires PyTorch")
         sampling_mode = str(sampling_mode)
-        if sampling_mode not in {"uniform_edge", "uniform_transition", "bottleneck_weighted"}:
-            raise ValueError("sampling_mode must be uniform_edge, uniform_transition, or bottleneck_weighted")
+        if sampling_mode not in SUPPORTED_SAMPLING_MODES:
+            raise ValueError(f"sampling_mode must be one of {sorted(SUPPORTED_SAMPLING_MODES)}")
 
         self.observations = np.asarray(dataset["observations"], dtype=np.float32)
         self.actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -127,6 +140,9 @@ class EdgeBCDataset(Dataset):
             for edge_id in self.unique_edge_ids
         }
         self.edge_sampling_probabilities = self._make_edge_probabilities()
+        self.edge_sampling_cdf = np.cumsum(self.edge_sampling_probabilities, dtype=np.float64)
+        if self.edge_sampling_cdf.size:
+            self.edge_sampling_cdf[-1] = 1.0
         self.obs_dim = int(self.observations.shape[1])
         self.action_dim = int(self.actions.shape[1])
         self.max_h = int(max(1, np.max(self.h))) if self.h.size else 1
@@ -142,9 +158,49 @@ class EdgeBCDataset(Dataset):
             )
             if float(weights.sum()) <= 0.0:
                 weights = np.ones_like(weights)
+        elif self.sampling_mode == "support_balanced":
+            weights = self._support_balanced_weights()
+        elif self.sampling_mode == "bottleneck_support_balanced":
+            weights = self._support_balanced_weights() * self._normalized_bottleneck_multiplier()
         else:
             weights = np.ones(self.unique_edge_ids.size, dtype=np.float64)
+        if float(np.sum(weights)) <= 0.0 or not np.all(np.isfinite(weights)):
+            weights = np.ones(self.unique_edge_ids.size, dtype=np.float64)
         return weights / float(weights.sum())
+
+    def _edge_support_values(self) -> np.ndarray:
+        support = _edge_lookup(self.option_edges, "num_unique_starts", default=0.0)
+        values = np.asarray(
+            [max(0.0, float(support.get(int(edge_id), 0.0))) for edge_id in self.unique_edge_ids],
+            dtype=np.float64,
+        )
+        if float(values.sum()) <= 0.0:
+            support = _edge_lookup(self.option_edges, "num_segments", default=1.0)
+            values = np.asarray(
+                [max(1.0, float(support.get(int(edge_id), 1.0))) for edge_id in self.unique_edge_ids],
+                dtype=np.float64,
+            )
+        return np.maximum(values, 1.0)
+
+    def _support_balanced_weights(self) -> np.ndarray:
+        # Inverse-sqrt support is a conservative long-tail correction: it lifts
+        # rare edges without letting one-segment edges dominate the whole loader.
+        support = self._edge_support_values()
+        weights = 1.0 / np.sqrt(support)
+        return np.clip(weights, 1e-6, np.inf)
+
+    def _normalized_bottleneck_multiplier(self) -> np.ndarray:
+        bottleneck = _edge_lookup(self.option_edges, "edge_bottleneck_score", default=0.0)
+        values = np.asarray(
+            [max(0.0, float(bottleneck.get(int(edge_id), 0.0))) for edge_id in self.unique_edge_ids],
+            dtype=np.float64,
+        )
+        if float(values.max(initial=0.0)) <= 0.0:
+            return np.ones(self.unique_edge_ids.size, dtype=np.float64)
+        lo = float(values.min())
+        hi = float(values.max())
+        normalized = np.zeros_like(values) if hi <= lo else (values - lo) / (hi - lo)
+        return 0.25 + normalized
 
     def __len__(self) -> int:
         if self.max_examples is not None:
@@ -153,6 +209,16 @@ class EdgeBCDataset(Dataset):
 
     def _rng_for_index(self, index: int) -> np.random.Generator:
         return np.random.default_rng(self.seed + int(index) * 1000003)
+
+    def _rand01(self, index: int, salt: int) -> float:
+        mask = (1 << 64) - 1
+        x = (int(self.seed) + (int(index) + 1) * 0x9E3779B97F4A7C15 + (int(salt) + 1) * 0xBF58476D1CE4E5B9) & mask
+        x ^= x >> 30
+        x = (x * 0xBF58476D1CE4E5B9) & mask
+        x ^= x >> 27
+        x = (x * 0x94D049BB133111EB) & mask
+        x ^= x >> 31
+        return float((x >> 11) & ((1 << 53) - 1)) / float(1 << 53)
 
     def _flat_to_segment_offset(self, flat_index: int) -> EdgeBCSampleIndex:
         if self.total_transition_examples <= 0:
@@ -171,14 +237,25 @@ class EdgeBCDataset(Dataset):
         offset = int(rng.integers(0, int(self.segment_lengths[segment_index])))
         return EdgeBCSampleIndex(segment_index=segment_index, offset=offset)
 
+    def _random_segment_offset_for_index(self, index: int) -> EdgeBCSampleIndex:
+        if self.unique_edge_ids.size == 0:
+            raise IndexError("empty EdgeBCDataset")
+        edge_pos = int(np.searchsorted(self.edge_sampling_cdf, self._rand01(index, 0), side="right"))
+        edge_pos = min(max(edge_pos, 0), int(self.unique_edge_ids.size) - 1)
+        edge_id = int(self.unique_edge_ids[edge_pos])
+        candidates = self._segments_by_edge[edge_id]
+        segment_index = int(candidates[min(int(self._rand01(index, 1) * candidates.size), candidates.size - 1)])
+        length = int(self.segment_lengths[segment_index])
+        offset = int(min(int(self._rand01(index, 2) * length), max(0, length - 1)))
+        return EdgeBCSampleIndex(segment_index=segment_index, offset=offset)
+
     def sample_index(self, index: int) -> EdgeBCSampleIndex:
         if self.sampling_mode == "uniform_transition" and self.max_examples is None:
             return self._flat_to_segment_offset(index)
-        rng = self._rng_for_index(index)
         if self.sampling_mode == "uniform_transition":
-            flat = int(rng.integers(0, max(1, self.total_transition_examples)))
+            flat = int(self._rand01(index, 3) * max(1, self.total_transition_examples))
             return self._flat_to_segment_offset(flat)
-        return self._random_segment_offset(rng)
+        return self._random_segment_offset_for_index(index)
 
     def sample_edge_ids(self, n: int, seed: int | None = None) -> np.ndarray:
         rng = np.random.default_rng(self.seed if seed is None else int(seed))
