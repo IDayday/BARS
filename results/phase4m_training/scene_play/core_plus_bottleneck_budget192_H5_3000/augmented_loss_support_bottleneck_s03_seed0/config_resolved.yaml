@@ -1,0 +1,72 @@
+action_dim: 5
+base_phase2_run_dir: results/phase2/scene_play/core_plus_bottleneck_budget192_H5
+baseline_method: augmented_loss_support_bottleneck_s03
+batch_size: 1024
+config_path: configs/phase4m_planner_relevant_loss_weighting_scene_H5_B192_3000.yaml
+cuda_visible_devices: '7'
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+dataset_name: scene-play-v0
+device: cuda
+direct_batch_size: 2048
+direct_max_examples: 50000
+direct_temperature: 0.05
+edge_embedding_dim: 0
+experiment:
+  loss_weight_max: 1.8
+  loss_weight_min: 0.7
+  loss_weight_mode: support_bottleneck
+  loss_weight_strength: 0.3
+  method: augmented_loss_support_bottleneck_s03
+  sampling_mode: uniform_transition
+experiments:
+- loss_weight_max: 1.8
+  loss_weight_min: 0.7
+  loss_weight_mode: support_bottleneck
+  loss_weight_strength: 0.3
+  method: augmented_loss_support_bottleneck_s03
+  sampling_mode: uniform_transition
+- base_loss_weight_max: 1.8
+  base_loss_weight_min: 0.7
+  base_loss_weight_mode: support_bottleneck
+  base_loss_weight_strength: 0.3
+  hard_repair_strength: 0.2
+  loss_weight_max: 2.2
+  loss_weight_min: 0.7
+  loss_weight_mode: planner_relevant
+  method: planner_relevant_repair_s04
+  planner_relevance_strength: 0.4
+  repair_only_planner_relevance: true
+  sampling_mode: uniform_transition
+external_loss_weight_column: loss_weight
+external_loss_weight_combine: replace
+external_loss_weights: null
+graph_variant: repaired
+hidden_dims:
+- 512
+- 512
+- 512
+log_interval: 1000
+loss_weight_max: 1.8
+loss_weight_min: 0.7
+loss_weight_mode: support_bottleneck
+loss_weight_strength: 0.3
+lr: 0.0003
+max_transitions: 200000
+num_edges: 2397
+num_steps: 3000
+obs_dim: 40
+output_dir: results/phase4m_training/scene_play/core_plus_bottleneck_budget192_H5_3000/augmented_loss_support_bottleneck_s03_seed0
+path_metrics_csv: results/phase4e/scene_play/core_plus_bottleneck_budget192_H5__repair_all_budget192_H5/repair_planning_paths.csv
+phase2_run: core_plus_bottleneck_budget192_H5
+phase4e_run_dir: results/phase4e/scene_play/core_plus_bottleneck_budget192_H5__repair_all_budget192_H5
+planner_method: calibrated_compat_threshold
+repair_bank_phase2_run_dir: results/phase2/scene_play/all_budget192_H5
+run_name: core_plus_bottleneck_budget192_H5_3000
+sampling_mode: uniform_transition
+seed: 0
+seeds:
+- 0
+- 1
+summary_output_dir: results/phase4m
+val_examples: 8192
+val_fraction: 0.05

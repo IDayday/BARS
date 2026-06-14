@@ -13,7 +13,7 @@ from phase3.edge_bc_dataset import EdgeBCDataset, build_edge_bc_examples
 from phase3.models import GCBCMLP, action_mse
 from phase3.plotting import plot_training_curves
 
-LOSS_WEIGHT_MODES = {"none", "support", "bottleneck", "support_bottleneck"}
+LOSS_WEIGHT_MODES = {"none", "support", "bottleneck", "support_bottleneck", "external"}
 
 
 def _json_safe(value: Any) -> Any:
@@ -164,7 +164,7 @@ def edge_loss_weight_values(
     if option_edges.empty:
         return pd.DataFrame(columns=["edge_id", "loss_weight"])
     out = option_edges[["edge_id"]].copy()
-    if mode == "none":
+    if mode in {"none", "external"}:
         out["loss_weight"] = 1.0
         return out
 
@@ -202,6 +202,53 @@ def edge_loss_weight_values(
     return out
 
 
+def _load_external_loss_weights(external_loss_weights: str | Path | pd.DataFrame | None) -> pd.DataFrame | None:
+    if external_loss_weights is None:
+        return None
+    if isinstance(external_loss_weights, pd.DataFrame):
+        return external_loss_weights.copy()
+    return pd.read_csv(Path(external_loss_weights).expanduser())
+
+
+def combine_external_loss_weights(
+    base_weights: pd.DataFrame,
+    option_edges: pd.DataFrame,
+    external_loss_weights: str | Path | pd.DataFrame | None,
+    weight_column: str = "loss_weight",
+    combine: str = "multiply",
+    min_weight: float = 0.25,
+    max_weight: float = 3.0,
+) -> pd.DataFrame:
+    """Merge optional externally computed edge weights with built-in weights."""
+
+    external = _load_external_loss_weights(external_loss_weights)
+    if external is None:
+        return base_weights.copy()
+    if "edge_id" not in external.columns:
+        raise ValueError("external_loss_weights must contain an edge_id column")
+    if weight_column not in external.columns:
+        raise ValueError(f"external_loss_weights missing requested column: {weight_column}")
+    combine = str(combine or "multiply")
+    if combine not in {"multiply", "replace"}:
+        raise ValueError("external_loss_weight_combine must be 'multiply' or 'replace'")
+
+    merged = option_edges[["edge_id"]].copy() if "edge_id" in option_edges.columns else base_weights[["edge_id"]].copy()
+    merged = merged.merge(base_weights[["edge_id", "loss_weight"]], on="edge_id", how="left")
+    external_small = external[["edge_id", weight_column]].copy()
+    external_small = external_small.rename(columns={weight_column: "external_loss_weight"})
+    merged = merged.merge(external_small, on="edge_id", how="left")
+    base = pd.to_numeric(merged["loss_weight"], errors="coerce").fillna(1.0).to_numpy(dtype=np.float64)
+    ext = pd.to_numeric(merged["external_loss_weight"], errors="coerce").fillna(1.0).to_numpy(dtype=np.float64)
+    ext = np.where(np.isfinite(ext) & (ext > 0.0), ext, 1.0)
+    weights = ext if combine == "replace" else base * ext
+    if weights.size and np.isfinite(weights).all() and float(weights.mean()) > 0.0:
+        weights = weights / float(weights.mean())
+    lo = min(float(min_weight), float(max_weight))
+    hi = max(float(min_weight), float(max_weight))
+    merged["loss_weight"] = np.clip(weights, lo, hi)
+    return merged[["edge_id", "loss_weight"]]
+
+
 def make_edge_loss_weight_tensor(
     option_edges: pd.DataFrame,
     num_edges: int,
@@ -210,11 +257,23 @@ def make_edge_loss_weight_tensor(
     strength: float = 1.0,
     min_weight: float = 0.25,
     max_weight: float = 3.0,
+    external_loss_weights: str | Path | pd.DataFrame | None = None,
+    external_loss_weight_column: str = "loss_weight",
+    external_loss_weight_combine: str = "multiply",
 ) -> torch.Tensor:
     values = edge_loss_weight_values(
         option_edges,
         mode=mode,
         strength=strength,
+        min_weight=min_weight,
+        max_weight=max_weight,
+    )
+    values = combine_external_loss_weights(
+        values,
+        option_edges,
+        external_loss_weights=external_loss_weights,
+        weight_column=external_loss_weight_column,
+        combine=external_loss_weight_combine,
         min_weight=min_weight,
         max_weight=max_weight,
     )
@@ -253,6 +312,9 @@ def train_gcbc(
     loss_weight_strength: float = 1.0,
     loss_weight_min: float = 0.25,
     loss_weight_max: float = 3.0,
+    external_loss_weights: str | Path | pd.DataFrame | None = None,
+    external_loss_weight_column: str = "loss_weight",
+    external_loss_weight_combine: str = "multiply",
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
@@ -292,6 +354,9 @@ def train_gcbc(
         strength=float(loss_weight_strength),
         min_weight=float(loss_weight_min),
         max_weight=float(loss_weight_max),
+        external_loss_weights=external_loss_weights,
+        external_loss_weight_column=str(external_loss_weight_column),
+        external_loss_weight_combine=str(external_loss_weight_combine),
     )
 
     train_rows: list[dict[str, Any]] = []
@@ -355,6 +420,9 @@ def train_gcbc(
         "loss_weight_strength": float(loss_weight_strength),
         "loss_weight_min": float(loss_weight_min),
         "loss_weight_max": float(loss_weight_max),
+        "external_loss_weight_column": str(external_loss_weight_column),
+        "external_loss_weight_combine": str(external_loss_weight_combine),
+        "external_loss_weights": str(external_loss_weights) if isinstance(external_loss_weights, (str, Path)) else None,
     }
     try:
         import yaml

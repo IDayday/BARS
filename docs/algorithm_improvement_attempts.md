@@ -893,6 +893,59 @@ should either replicate combined weighting across AntMaze and Scene H10/H25 or
 make the weighting planner-aware, so the low-support/high-bottleneck edges that
 matter to selected paths get targeted directly.
 
+### Phase 4M: Planner-Relevant Repair Loss Weighting
+
+Question:
+
+Can supervised loss weighting target repair edges that are both hard and
+actually used by the compatibility-aware repaired planner, instead of weighting
+all rare/high-bottleneck edges equally?
+
+Reviewed before implementation:
+
+- Phase 4L per-edge repair diagnostics and planner-used mismatch.
+- GCSL and RvS supervised offline RL framing.
+- Prioritized Experience Replay as priority-signal inspiration, while keeping
+  Phase 4M distinct from TD-error replay.
+- Class-balanced long-tail loss weighting.
+
+Implemented:
+
+- Added an external per-edge loss-weight path to Phase 3 GCBC training.
+- Reconstructed Phase 4E augmented support-certified edge segments for training.
+- Built clipped planner-relevant repair loss weights from Phase 4E repaired
+  planner path usage plus hard repair-edge signals.
+- Compared against the same augmented graph with ordinary
+  `support_bottleneck` loss weighting.
+- Reported final validation MSE, direct repair-edge MSE, planner-used
+  repair-edge MSE, and repair policy support score.
+
+Evidence:
+
+- Scene H5 `core_plus_bottleneck_budget192_H5`, two seeds, 3000 steps.
+- `planner_relevant_repair_s04` improves final validation MSE from `0.008423`
+  to `0.008247` (0.979x baseline).
+- Direct repair-edge MSE improves from `0.011174` to `0.010834` (0.970x).
+- Planner-used repair-edge MSE improves from `0.011188` to `0.010975`
+  (0.981x).
+- Direct repair policy support score improves from `0.816947` to `0.821480`.
+- The 48 planner-used repair edges receive the highest mean loss weight
+  (`1.217`) while weights remain clipped below `2.1`.
+
+Analysis:
+
+This is the cleanest training-side response to the Phase 4L mismatch so far.
+The result suggests planner relevance can be added as a mild supervised
+weighting signal without harming overall heldout action fitting. It also avoids
+the Phase 4I failure mode of hard oversampling because transition coverage is
+unchanged and only the loss is reweighted.
+
+Remaining gap:
+
+This is still reset-free offline supervised evidence on one Scene H5 setting.
+It is not rollout success. It should be replicated across AntMaze, Scene H10/H25,
+and longer training before becoming a general default.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -988,19 +1041,10 @@ Evidence required:
 
 ### Planner-Relevant Loss Weighting
 
-Hypothesis:
+Status:
 
-Loss weighting should target repair edges that are both hard and planner
-relevant, instead of weighting all rare/high-bottleneck edges equally.
-
-Evidence required:
-
-- Use Phase 4L planner-used/path-frequency diagnostics to define an additional
-  planner relevance term.
-- Compare against `loss_support_bottleneck_s03` rather than only against
-  `uniform_transition_none`.
-- Report whether planner-used repair-edge MSE improves without damaging overall
-  validation MSE.
+Completed as Phase 4M on Scene H5. The remaining work is replication, especially
+AntMaze and Scene H10/H25, plus longer training.
 
 ### Closed-Loop Edge Execution
 
@@ -1059,6 +1103,10 @@ Evidence required:
 - Phase 4L shows that the Phase 4K gain is concentrated on low-support,
   long-horizon, and high-bottleneck repair edges, while planner-used repair
   edges improve much less.
+- Phase 4M shows that mild planner-relevant repair loss weighting improves
+  Scene H5 final validation MSE, direct repair-edge MSE, and planner-used
+  repair-edge MSE relative to ordinary support+bottleneck loss on the same
+  augmented support graph.
 
 ## Claims Not Yet Supported
 
@@ -1080,5 +1128,6 @@ Evidence required:
 - Phase 4K loss weighting improves closed-loop repair-edge execution or online
   task success.
 - The Phase 4K Scene H5 result generalizes to AntMaze or Scene H10/H25.
-- The current loss-weighting scheme is already optimally aligned with the
-  repair edges selected by the planner.
+- Phase 4M planner-relevant loss weighting improves closed-loop repair-edge
+  execution or online task success.
+- The Phase 4M Scene H5 result generalizes to AntMaze or Scene H10/H25.
