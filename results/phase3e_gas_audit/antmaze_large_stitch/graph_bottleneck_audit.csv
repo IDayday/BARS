@@ -1,0 +1,5 @@
+graph_type,high_bottleneck_nodes_retained_rate,bottleneck_edge_fraction,bottleneck_removal_delta_coverage,bottleneck_removal_delta_cost
+support_graph,1.0,0.5051546391752577,-0.46599999999999997,-0.24644563823794385
+kNN_graph,0.875,0.44501718213058417,-0.272,1.1318625499313768
+random_graph,1.0,0.013745704467353952,-0.286,2.834102641010233
+GAS_style_threshold_graph,1.0,0.45532646048109965,-0.44400000000000006,-1.3375560805938207

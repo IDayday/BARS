@@ -1,0 +1,14 @@
+dataset_name: scene-play-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+max_transitions: 200000
+phase2_run_dir: results/phase2/scene_play/core_plus_bottleneck_budget192_H5
+edge_certification_csv: results/phase3e/scene_play/core_plus_bottleneck_budget192_H5/offline_edge_certification.csv
+output_dir: results/phase3e_gas_audit
+cluster_method: kmeans
+state_dims:
+n_clusters: 512
+knn_k: 10
+seed: 0
+compat_H_intra: 10
+max_queries: 100
+bottleneck_top_q: 0.1

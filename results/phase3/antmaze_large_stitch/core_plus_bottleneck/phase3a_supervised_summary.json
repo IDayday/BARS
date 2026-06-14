@@ -1,0 +1,12 @@
+{
+  "best_val_action_mse": 0.0426389253698289,
+  "bottleneck_edge_val_mse": 0.030216149878916874,
+  "final_train_action_mse": 0.0201683081686496,
+  "final_val_action_mse": 0.0426389253698289,
+  "high_support_edge_val_mse": 0.0397428051436786,
+  "long_horizon_edge_val_mse": 0.02039045928104645,
+  "low_support_edge_val_mse": 0.018979653781273805,
+  "non_bottleneck_edge_val_mse": 0.02852695286183891,
+  "note": "Offline action MSE is not edge execution success.",
+  "short_horizon_edge_val_mse": 0.03537017106658601
+}

@@ -10,6 +10,9 @@ from phase1.diagnostics import build_knn_edges
 from phase3.edge_rollout import evaluate_edge_rollouts
 
 
+OFFLINE_MSE_NOTE = "Offline action MSE is not edge execution success."
+
+
 def _dataset_key(dataset_name: str) -> str:
     return dataset_name.replace("-v0", "").replace("-", "_")
 
@@ -32,6 +35,210 @@ def load_phase2_artifacts(phase2_run_dir: str | Path) -> tuple[pd.DataFrame, dic
     with np.load(run_dir / "edge_segments.npz") as data:
         edge_segments = {key: np.asarray(data[key]) for key in data.files}
     return option_edges, edge_segments, selected_nodes
+
+
+def _final_metric(df: pd.DataFrame, column: str) -> float:
+    if df.empty or column not in df.columns:
+        return float("nan")
+    return float(df.iloc[-1][column])
+
+
+def _best_metric(df: pd.DataFrame, column: str) -> float:
+    if df.empty or column not in df.columns:
+        return float("nan")
+    values = pd.to_numeric(df[column], errors="coerce").dropna()
+    return float(values.min()) if not values.empty else float("nan")
+
+
+def _edge_metric_mean(df: pd.DataFrame) -> float:
+    if df.empty or "val_action_mse" not in df.columns:
+        return float("nan")
+    return float(pd.to_numeric(df["val_action_mse"], errors="coerce").mean())
+
+
+def _edge_sample_sum(df: pd.DataFrame) -> int:
+    if df.empty or "num_val_samples" not in df.columns:
+        return 0
+    return int(pd.to_numeric(df["num_val_samples"], errors="coerce").fillna(0).sum())
+
+
+def _median_threshold(df: pd.DataFrame, column: str) -> float | None:
+    if df.empty or column not in df.columns:
+        return None
+    values = pd.to_numeric(df[column], errors="coerce").dropna()
+    return float(values.median()) if not values.empty else None
+
+
+def _group_row(name: str, edge_metrics: pd.DataFrame, mask: pd.Series | np.ndarray) -> dict[str, Any]:
+    sub = edge_metrics.loc[np.asarray(mask, dtype=bool)].copy()
+    return {
+        "group": name,
+        "num_edges": int(sub.shape[0]),
+        "num_val_samples": _edge_sample_sum(sub),
+        "val_action_mse": _edge_metric_mean(sub),
+    }
+
+
+def attach_edge_compatibility_context(
+    edge_metrics: pd.DataFrame,
+    pair_compatibility: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """Attach edge-level compatibility context derived from adjacent edge pairs."""
+
+    out = edge_metrics.copy()
+    if pair_compatibility is None or pair_compatibility.empty:
+        return out
+    compat_col = (
+        "termination_bridge_coverage"
+        if "termination_bridge_coverage" in pair_compatibility.columns
+        else "strict_compatible"
+    )
+    outgoing = (
+        pair_compatibility.groupby("edge_id_first", sort=False)[compat_col]
+        .mean()
+        .rename("outgoing_mean_termination_bridge_coverage")
+        .reset_index()
+        .rename(columns={"edge_id_first": "edge_id"})
+    )
+    incoming = (
+        pair_compatibility.groupby("edge_id_second", sort=False)[compat_col]
+        .mean()
+        .rename("incoming_mean_termination_bridge_coverage")
+        .reset_index()
+        .rename(columns={"edge_id_second": "edge_id"})
+    )
+    out = out.merge(outgoing, on="edge_id", how="left")
+    out = out.merge(incoming, on="edge_id", how="left")
+    out["strict_compatible_context"] = out[
+        ["outgoing_mean_termination_bridge_coverage", "incoming_mean_termination_bridge_coverage"]
+    ].mean(axis=1, skipna=True)
+    return out
+
+
+def normalize_edge_val_metrics(
+    edge_metrics: pd.DataFrame,
+    option_edges: pd.DataFrame,
+    pair_compatibility: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Return edge validation metrics with stable Phase 3A column names."""
+
+    metrics = edge_metrics.copy()
+    if "num_val_samples" not in metrics.columns and "num_examples" in metrics.columns:
+        metrics = metrics.rename(columns={"num_examples": "num_val_samples"})
+    if "num_val_samples" not in metrics.columns:
+        metrics["num_val_samples"] = 0
+    option_cols = [
+        "edge_id",
+        "src",
+        "dst",
+        "edge_bottleneck_score",
+        "num_unique_starts",
+        "num_unique_episodes",
+        "num_episodes",
+        "median_h",
+        "num_segments",
+    ]
+    existing = [col for col in option_cols if col in option_edges.columns]
+    metadata = option_edges[existing].copy()
+    duplicate_meta = [col for col in existing if col != "edge_id" and col in metrics.columns]
+    if duplicate_meta:
+        metrics = metrics.drop(columns=duplicate_meta)
+    merged = metrics.merge(metadata, on="edge_id", how="left") if "edge_id" in metrics.columns else metrics
+    if "num_unique_episodes" not in merged.columns and "num_episodes" in merged.columns:
+        merged["num_unique_episodes"] = merged["num_episodes"]
+    merged = attach_edge_compatibility_context(merged, pair_compatibility)
+    ordered = [
+        "edge_id",
+        "src",
+        "dst",
+        "val_action_mse",
+        "num_val_samples",
+        "edge_bottleneck_score",
+        "num_unique_starts",
+        "num_unique_episodes",
+        "median_h",
+        "num_segments",
+        "strict_compatible_context",
+    ]
+    extras = [col for col in merged.columns if col not in ordered]
+    return merged[[col for col in ordered if col in merged.columns] + extras].sort_values(
+        "edge_id", kind="mergesort"
+    )
+
+
+def compute_grouped_edge_val_metrics(edge_metrics: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float]]:
+    """Summarize held-out action MSE by Phase 2 edge metadata groups."""
+
+    if edge_metrics.empty:
+        empty = pd.DataFrame(columns=["group", "num_edges", "num_val_samples", "val_action_mse"])
+        return empty, {
+            "bottleneck_edge_val_mse": float("nan"),
+            "non_bottleneck_edge_val_mse": float("nan"),
+            "high_support_edge_val_mse": float("nan"),
+            "low_support_edge_val_mse": float("nan"),
+            "short_horizon_edge_val_mse": float("nan"),
+            "long_horizon_edge_val_mse": float("nan"),
+        }
+
+    support_col = "num_unique_starts" if "num_unique_starts" in edge_metrics.columns else "num_segments"
+    bottleneck_thr = _median_threshold(edge_metrics, "edge_bottleneck_score")
+    support_thr = _median_threshold(edge_metrics, support_col)
+    horizon_thr = _median_threshold(edge_metrics, "median_h")
+    compat_col = (
+        "strict_compatible_context"
+        if "strict_compatible_context" in edge_metrics.columns
+        else (
+            "outgoing_mean_termination_bridge_coverage"
+            if "outgoing_mean_termination_bridge_coverage" in edge_metrics.columns
+            else None
+        )
+    )
+    compat_thr = _median_threshold(edge_metrics, compat_col) if compat_col is not None else None
+
+    rows: list[dict[str, Any]] = [
+        _group_row("all_edges", edge_metrics, np.ones(edge_metrics.shape[0], dtype=bool))
+    ]
+    if bottleneck_thr is not None:
+        rows.append(_group_row("high_bottleneck_edges", edge_metrics, edge_metrics["edge_bottleneck_score"] >= bottleneck_thr))
+        rows.append(_group_row("low_bottleneck_edges", edge_metrics, edge_metrics["edge_bottleneck_score"] < bottleneck_thr))
+    if support_thr is not None:
+        rows.append(_group_row("high_support_edges", edge_metrics, edge_metrics[support_col] >= support_thr))
+        rows.append(_group_row("low_support_edges", edge_metrics, edge_metrics[support_col] < support_thr))
+    if horizon_thr is not None:
+        rows.append(_group_row("short_horizon_edges", edge_metrics, edge_metrics["median_h"] <= horizon_thr))
+        rows.append(_group_row("long_horizon_edges", edge_metrics, edge_metrics["median_h"] > horizon_thr))
+    if compat_col is not None and compat_thr is not None:
+        values = pd.to_numeric(edge_metrics[compat_col], errors="coerce").fillna(-np.inf)
+        rows.append(_group_row("high_compatibility_edges", edge_metrics, values >= compat_thr))
+        rows.append(_group_row("low_compatibility_edges", edge_metrics, values < compat_thr))
+
+    grouped = pd.DataFrame(rows)
+    lookup = grouped.set_index("group")["val_action_mse"].to_dict() if not grouped.empty else {}
+    summary = {
+        "bottleneck_edge_val_mse": float(lookup.get("high_bottleneck_edges", np.nan)),
+        "non_bottleneck_edge_val_mse": float(lookup.get("low_bottleneck_edges", np.nan)),
+        "high_support_edge_val_mse": float(lookup.get("high_support_edges", np.nan)),
+        "low_support_edge_val_mse": float(lookup.get("low_support_edges", np.nan)),
+        "short_horizon_edge_val_mse": float(lookup.get("short_horizon_edges", np.nan)),
+        "long_horizon_edge_val_mse": float(lookup.get("long_horizon_edges", np.nan)),
+    }
+    return grouped, summary
+
+
+def summarize_supervised_metrics(
+    train_metrics: pd.DataFrame,
+    val_metrics: pd.DataFrame,
+    edge_metrics: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    grouped, grouped_summary = compute_grouped_edge_val_metrics(edge_metrics)
+    summary = {
+        "final_train_action_mse": _final_metric(train_metrics, "train_action_mse"),
+        "final_val_action_mse": _final_metric(val_metrics, "val_action_mse"),
+        "best_val_action_mse": _best_metric(val_metrics, "val_action_mse"),
+        **grouped_summary,
+        "note": OFFLINE_MSE_NOTE,
+    }
+    return grouped, summary
 
 
 def synthetic_edge_segments_for_cluster_edges(
