@@ -406,6 +406,64 @@ The calibrated score is not an execution probability. The next offline
 algorithmic target should be compatibility-aware path planning that models
 adjacent edge pairs, not only independent edge scores.
 
+### Phase 4D: Compatibility-Aware Planning
+
+Question:
+
+Can transition-dependent adjacent-edge compatibility costs reduce option-path
+composability risk beyond independent calibrated edge reliability?
+
+Reviewed before implementation:
+
+- GAS-style graph planning and the local `external_src/GAS` graph-search code.
+- Replay-buffer graph search methods such as SoRB and TTGS.
+- Phase 2.2 compatibility metric semantics, especially
+  `termination_bridge_coverage` as the probability-like bridge metric.
+- Phase 4C calibrated edge certification outputs.
+
+Implemented:
+
+- Line-graph Dijkstra where search states are option edges.
+- Pair-penalized planning with cost
+  `edge_cost + pair_weight * (1 - termination_bridge_coverage)`.
+- Pair-threshold planning that rejects adjacent option transitions below a
+  bridge coverage floor.
+- Comparisons against support shortest path and Phase 4C calibrated edge
+  penalty on identical path queries.
+- Synthetic tests for pair-penalty route selection, pair-threshold blocking, and
+  recomputing pair compatibility from `edge_segments.npz`.
+
+Evidence:
+
+- AntMaze `core_plus_bottleneck_budget120_H10`: `calibrated_compat_penalized`
+  preserves coverage at 0.566 while reducing pair incompatible fraction from
+  0.161 to 0.033 and improving mean minimum pair bridge coverage from 0.043 to
+  0.113.
+- AntMaze `calibrated_compat_threshold` removes incompatible adjacent pairs
+  under the configured bridge floor, with coverage 0.544 and mean minimum pair
+  bridge coverage 0.146.
+- Scene `core_plus_bottleneck_budget192_H5`: support shortest paths have pair
+  incompatible fraction 0.906. Threshold methods reduce that to 0.000, but
+  coverage drops from 0.160 to 0.150 and base cost roughly doubles.
+- Scene pair diagnostics show a strict-compatible rate of only 0.337 and median
+  termination bridge coverage 0.000, explaining why compatibility-aware
+  planning is costly there.
+
+Analysis:
+
+Phase 4D confirms that independent edge reliability is not enough. Path
+composition must account for adjacent-edge bridge evidence. AntMaze has enough
+alternative supported routes for soft compatibility penalties to improve path
+risk without losing coverage. Scene has a structural composability problem:
+clean paths exist for some queries, but enforcing compatibility sharply
+increases path length and cost.
+
+Remaining gap:
+
+This is still offline graph-layer evidence. It does not prove GCBC execution,
+and Scene likely needs structural graph repair or compatibility-aware node/edge
+selection before closed-loop evaluation would be meaningful.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -476,25 +534,26 @@ short design note or in this document.
 
 ## Candidate Next Attempts
 
-### Phase 4D Compatibility-Aware Planning
+### Phase 4E Compatibility-Aware Graph Repair
 
 Hypothesis:
 
-Adding adjacent-edge compatibility penalties or constraints to calibrated
-support-only planning will reduce path composability risk, especially on Scene.
+Using pair compatibility during node/edge selection or graph augmentation will
+repair Scene's sparse composability without introducing unsupported shortcuts.
 
 Required review before implementation:
 
-- Constrained shortest path with transition-dependent costs.
+- Option-graph construction methods that optimize initiation/termination
+  overlap.
+- Graph sparsification and repair methods with edge provenance constraints.
 - Hierarchical planning methods that score option composability.
 - Existing GAS/CAGE code paths for path drift, subgoal switching, and contract
   ranking.
 
 Evidence required:
 
-- Use Phase 2.2 edge-pair compatibility or termination bridge coverage as an
-  adjacent-edge path cost.
-- Compare against Phase 4C calibrated planner on identical queries.
+- Improve Scene compatibility without using kNN/proximity unsupported edges.
+- Compare against Phase 4D compatibility-aware planner on identical queries.
 - Report coverage, calibrated reliability, original uncertified edge fraction,
   and path-level compatibility.
 - Keep offline proxy language unless closed-loop rollout is available.
