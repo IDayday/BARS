@@ -1,0 +1,6 @@
+{
+  "gas_dataset_embeddings_path": "artifacts/gas_ogbench_offline_full_20260522_165138/antmaze-large-stitch-v0/seed44/features/dataset_embeddings.npy",
+  "note": "Cannot assess GAS-policy target compatibility without GAS TDR dataset embeddings or live GAS get_phi.",
+  "num_bars_target_samples": 50000,
+  "status": "blocked_missing_gas_dataset_embeddings"
+}

@@ -1,0 +1,9 @@
+{
+  "dataset_key": "antmaze_large_stitch",
+  "env_name": "antmaze-large-stitch-v0",
+  "note": "Cross-policy reuse is diagnostic only. Final BARS evidence requires joint graph construction, policy training, goal/skill representation, and execution under one algorithm.",
+  "num_live_ready_gas_backbones": 0,
+  "num_ready_gas_backbones": 3,
+  "official_gas_success_rate": 0.952,
+  "recommended_next_experiment": "bars_vs_gas_target_distribution_audit"
+}

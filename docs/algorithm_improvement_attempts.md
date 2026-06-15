@@ -1683,6 +1683,64 @@ Graph coverage, offline proxy risk, and edge compatibility remain useful
 diagnostics, but they are no longer sufficient evidence of algorithmic progress
 unless tied to final-policy execution.
 
+## Phase 5M: Policy Backbone Audit
+
+### Improvement Attempt
+
+Phase 5M audits whether we can cheaply validate BARS graph targets with a
+strong existing policy, especially official GAS. The motivation is pragmatic:
+current BARS+GCBC natural-start success is `0.0`, while local Stage31 records
+show official GAS reaches `0.9520` success on `antmaze-large-stitch-v0`.
+
+### Result
+
+- Historical inventory reports `3` ready official GAS backbones for
+  `antmaze-large-stitch-v0`.
+- Live path verification on the current machine finds `0` ready GAS backbones
+  at the recorded artifact paths.
+- Target-distribution audit samples `50000` BARS option termination targets but
+  is blocked by missing GAS `dataset_embeddings.npy`.
+
+### Analysis
+
+The important conclusion is conceptual, not just infrastructural. A low-level
+policy is not a detachable module. GAS actor inputs are tied to GAS TDR phi,
+GAS keygraph nodes, GAS skill normalization, and the GAS policy-training target
+distribution. BARS graph nodes are raw-observation clusters and support-edge
+terminations. Mapping a BARS target through GAS `get_phi` may put it in the same
+coordinate system, but it does not prove it is in the GAS actor's executable
+target distribution.
+
+So `BARS graph + GAS actor` is only a diagnostic ablation, and only after a
+target-distribution compatibility audit. It cannot be the final BARS algorithm
+or SOTA claim.
+
+## Phase 5N: BARS-Native Low-Level Policy Training Plan
+
+### Algorithm Direction
+
+The main route is now a complete graph-policy loop:
+
+```text
+offline trajectories
+  -> support-certified BARS graph
+  -> BARS planner/subgoal selector
+  -> planner-issued target distribution
+  -> BARS low-level policy trained on the same target distribution
+  -> natural-start hierarchical evaluation
+```
+
+The new low-level policy should be trained on a mixture of final-goal hindsight,
+support-edge local goals, planner-issued subgoals, and recovery/negative
+progress cases where available. The validation split must report MSE by target
+family, but the primary metric is natural-start task success.
+
+### Rule
+
+Borrowed GAS/SOTA policies can shorten diagnosis, but the final algorithm must
+jointly define graph construction, goal/skill representation, policy training
+data, loss, and execution protocol.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1765,6 +1823,10 @@ unless tied to final-policy execution.
   small AntMaze smoke without adding unsupported graph edges.
 - Phase 5L shows edge-local progress signals can detect online drift, and the
   local `gcrlo` natural-start evaluator exposes a real OGBench success field.
+- Phase 5M shows the policy bottleneck must be handled as a graph-policy
+  coupling problem: official GAS success is high in historical records, but GAS
+  actor reuse is not valid without live artifacts and target-distribution
+  compatibility.
 
 ## Claims Not Yet Supported
 
@@ -1823,3 +1885,6 @@ unless tied to final-policy execution.
   edge aborts alone are not a complete recovery mechanism.
 - Graph-only improvements are no longer sufficient research evidence unless
   they are explicitly connected to final-policy training or closed-loop success.
+- GAS or other SOTA low-level policies cannot be treated as plug-and-play BARS
+  components; their goal/skill distributions are coupled to their own graph
+  construction and training protocol.

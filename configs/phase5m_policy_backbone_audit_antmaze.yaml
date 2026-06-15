@@ -1,0 +1,9 @@
+env_name: antmaze-large-stitch-v0
+dataset_key: antmaze_large_stitch
+gas_inventory_csv: runs_stage31_official_gas/wide_artifact_inventory_active/official_gas_ready_matrix.csv
+gas_success_csv: runs_stage31_official_gas/wide_atlas_active/global/stage31_success_by_env.csv
+phase3f_root: results/phase3f
+phase2_run_dir: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10
+bars_model_path: results/phase3/antmaze_large_stitch/core_plus_bottleneck/model.pt
+output_dir: results/phase5m/policy_backbone_audit/antmaze_large_stitch
+
