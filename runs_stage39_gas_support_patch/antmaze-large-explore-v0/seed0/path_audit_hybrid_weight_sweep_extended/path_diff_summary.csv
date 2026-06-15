@@ -1,0 +1,6 @@
+reference_method,method,num_common_paths,num_changed_paths,path_change_rate
+original,hybrid_w0p05_forward,12545,517,0.041211638102829816
+original,hybrid_w0p10_forward,12545,1143,0.09111199681147868
+original,hybrid_w0p15_forward,12545,1610,0.12833798326026305
+original,hybrid_w0p25_forward,12545,2554,0.2035870864886409
+original,hybrid_w0p50_forward,12545,6138,0.48927859705061777

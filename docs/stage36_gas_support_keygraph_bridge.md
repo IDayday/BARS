@@ -334,3 +334,52 @@ Result files:
 - `runs_stage36_gas_support_patch/stage38_low_baseline_candidates/antmaze_giant_navigate_candidate_scores_summary.json`
 - `runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/stage38_giant_navigate_hybrid_weight_sweep_summary.csv`
 - `runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/stage38_giant_navigate_hybrid_weight_sweep_summary.json`
+
+## Stage39 Large-Explore Replication
+
+Stage39 repeats the calibrated support-risk bridge on official
+`antmaze-large-explore-v0`, seed `0`. The official GAS actor and GAS node
+semantics are unchanged. The only intervention is a BARS-derived
+`risk_hybrid_support` edge-cost prior in the GAS keygraph, with forward-cost
+cached path recomputation.
+
+This graph is much sparser than giant-navigate under the same support target:
+non-goal supported edge rate is only `0.1599`, and calibrated hybrid risk has
+median and 90th percentile `1.0`. That means support risk is close to
+saturated, so the useful question is whether a stronger weight can still help
+or whether it over-regularizes execution.
+
+Closed-loop results:
+
+| dataset | episodes | method | success | mean length | unsupported path-edge fraction | mean same-traj support | path change rate |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| large explore | 20/task | original | `0.940` | `419.690` | `0.852` | `1.287` | `0.000` |
+| large explore | 20/task | hybrid risk `w=0.10` | `0.960` | `405.840` | `0.850` | `1.326` | `0.091` |
+| large explore | 20/task | hybrid risk `w=0.25` | `0.970` | `399.350` | `0.846` | `1.369` | `0.204` |
+| large explore | 20/task | hybrid risk `w=0.50` | `0.980` | `394.020` | `0.834` | `1.485` | `0.489` |
+| large explore | 50/task | original | `0.944` | `415.884` | `0.852` | `1.287` | `0.000` |
+| large explore | 50/task | hybrid risk `w=0.10` | `0.952` | `409.168` | `0.850` | `1.326` | `0.091` |
+| large explore | 50/task | hybrid risk `w=0.25` | `0.964` | `403.524` | `0.846` | `1.369` | `0.204` |
+| large explore | 50/task | hybrid risk `w=0.50` | `0.976` | `400.676` | `0.834` | `1.485` | `0.489` |
+
+The ep50 result is the important one: `w=0.50` improves success by `+0.032`
+and shortens mean episode length by `15.208` steps over the unchanged official
+GAS baseline. This is now a second official AntMaze artifact where BARS
+support-risk evidence improves final closed-loop GAS success without retraining
+the actor.
+
+The interpretation differs from giant-navigate. On giant-navigate, `w=0.25`
+over-regularized and `w=0.10` was best. On large-explore, stronger support
+pressure continues to help up to `w=0.50`, despite only modest graph-layer
+support improvement. The current rule is therefore not a fixed global weight.
+Support-risk strength must be calibrated to the environment's support density,
+baseline policy behavior, and closed-loop validation.
+
+Result files:
+
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/stage39_large_explore_hybrid_weight_sweep_summary.csv`
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/stage39_large_explore_hybrid_weight_sweep_summary.json`
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/support_only_edge_scores/support_only_metrics.json`
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8_summary.json`
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_summary.csv`
+- `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_diff_summary.csv`

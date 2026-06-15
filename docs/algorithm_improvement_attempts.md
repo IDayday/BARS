@@ -1363,6 +1363,69 @@ calibration on `antmaze-large-explore-v0` and `scene-play-v0`, and then move the
 same risk signal into BARS-native graph construction plus policy target
 sampling.
 
+### Stage39: Large-Explore GAS Support-Risk Replication
+
+Question:
+
+Does the GAS-compatible calibrated support-risk bridge replicate on another
+official AntMaze artifact with different graph support density?
+
+Implemented:
+
+- Prepared the official `antmaze-large-explore-v0`, seed `0`, GAS keygraph and
+  policy artifact.
+- Exported GAS dataset embeddings and scored same-trajectory support for
+  official GAS keygraph edges.
+- Built calibrated `risk_hybrid_support` scores with target support `8`.
+- Patched GAS keygraph costs for `w=0.10`, `w=0.25`, and `w=0.50`, keeping the
+  official GAS actor unchanged and recomputing cached paths under directional
+  forward costs.
+- Ran closed-loop evaluation at 20 episodes/task and 50 episodes/task.
+
+Evidence:
+
+- The large-explore GAS graph is very sparse under this support audit:
+  non-goal supported edge rate `0.1599`, calibrated hybrid risk median `1.0`,
+  and p90 `1.0`.
+- 20 episodes/task:
+  original success `0.940`, length `419.690`;
+  `w=0.10` success `0.960`, length `405.840`;
+  `w=0.25` success `0.970`, length `399.350`;
+  `w=0.50` success `0.980`, length `394.020`.
+- 50 episodes/task:
+  original success `0.944`, length `415.884`;
+  `w=0.10` success `0.952`, length `409.168`;
+  `w=0.25` success `0.964`, length `403.524`;
+  `w=0.50` success `0.976`, length `400.676`.
+- Path audit shows monotonic support-risk changes with weight:
+  unsupported path-edge fraction decreases from `0.8519` to `0.8336`, mean
+  same-trajectory support increases from `1.287` to `1.485`, and path change
+  rate reaches `0.489` at `w=0.50`.
+
+Analysis:
+
+This is the second official AntMaze artifact where BARS support-risk evidence
+improves final closed-loop GAS success without retraining the actor. It is also
+the clearest answer to the question of whether current graph improvements can
+matter for final success: yes, when they are applied through a planner interface
+that matches a mature low-level policy's target distribution.
+
+The large-explore result does not support a fixed global support-risk weight.
+Giant-navigate preferred `w=0.10` and degraded at `w=0.25`, while large-explore
+continues improving through `w=0.50`. The common pattern is not "stronger
+support always wins"; it is that calibrated support-risk can remove harmful
+shortcut bias, but the useful pressure depends on graph support density,
+baseline policy behavior, and closed-loop validation.
+
+Remaining gap:
+
+This remains a GAS bridge experiment, not a complete BARS-native algorithm.
+It is one seed, one official artifact, and it uses the official GAS actor. The
+next mature algorithm step is to turn this into an integrated method: construct
+support-aware graph costs and train the low-level policy on targets generated
+from that same graph/planner distribution, rather than treating graph and policy
+training as separate pieces.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -2164,13 +2227,19 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   SCC-only penalty `8` drops success to `0.86`. The emerging algorithmic rule
   is mild calibrated support risk over GAS-compatible edges, with directional
   forward-cost path recomputation.
-- Stage37 is the strongest final-success result so far: calibrated hybrid
-  support risk with weight `0.25` improves official GAS giant-stitch success
-  from `0.90` to `0.96` over 10 episodes/task and from `0.91` to `0.94` over
-  20 episodes/task, while shortening the 20-episode mean trajectory length from
-  `687.01` to `677.69`. This is still one seed / one environment, but it shows
-  that BARS support evidence can improve final closed-loop success when applied
-  through a GAS-compatible planner interface.
+- Stage37 established calibrated hybrid support risk as the first substantial
+  GAS bridge gain: official GAS giant-stitch success improves from `0.90` to
+  `0.96` over 10 episodes/task and from `0.91` to `0.94` over 20 episodes/task,
+  while shortening the 20-episode mean trajectory length from `687.01` to
+  `677.69`.
+- Stage38 shows the effect is real but non-monotonic on a lower-baseline
+  artifact: official `antmaze-giant-navigate-v0` improves from `0.76` to
+  `0.83` at hybrid risk `w=0.10`, while the stronger `w=0.25` drops back to
+  `0.75` despite better path support metrics.
+- Stage39 provides a second official AntMaze artifact with a positive
+  closed-loop success gain: `antmaze-large-explore-v0` improves from `0.944` to
+  `0.976` over 50 episodes/task at hybrid risk `w=0.50`, while mean length
+  improves from `415.884` to `400.676`.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2249,9 +2318,9 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   `0.5` gives a small success gain, but it is not yet strong evidence of SOTA
   improvement; the decisive next test needs calibrated risk and broader
   multi-seed/multi-env evaluation.
-- Stage37 gives a larger one-seed GAS success gain with calibrated support
-  risk, but it is not yet SOTA evidence until replicated across seeds and at
-  least one additional environment/artifact.
+- Stage37/38/39 give repeated one-seed GAS success gains with calibrated
+  support risk, but this is not yet SOTA evidence until replicated across
+  seeds, datasets, and official artifacts under a fixed selection protocol.
 - Fixed all-edge unsupported-support penalties are not a mature algorithm.
   Giant-stitch shows mild penalty can help, while stronger penalty mainly
   changes paths and does not monotonically improve success under a strong

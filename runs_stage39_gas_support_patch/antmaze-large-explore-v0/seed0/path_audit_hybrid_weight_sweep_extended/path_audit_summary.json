@@ -1,0 +1,118 @@
+{
+  "base_node_count": 2509,
+  "diff": [
+    {
+      "method": "hybrid_w0p05_forward",
+      "num_changed_paths": 517,
+      "num_common_paths": 12545,
+      "path_change_rate": 0.041211638102829816,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p10_forward",
+      "num_changed_paths": 1143,
+      "num_common_paths": 12545,
+      "path_change_rate": 0.09111199681147868,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p15_forward",
+      "num_changed_paths": 1610,
+      "num_common_paths": 12545,
+      "path_change_rate": 0.12833798326026305,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p25_forward",
+      "num_changed_paths": 2554,
+      "num_common_paths": 12545,
+      "path_change_rate": 0.2035870864886409,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p50_forward",
+      "num_changed_paths": 6138,
+      "num_common_paths": 12545,
+      "path_change_rate": 0.48927859705061777,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/support_only_edge_scores/edge_scores.csv",
+  "methods": [
+    "original",
+    "hybrid_w0p05_forward",
+    "hybrid_w0p10_forward",
+    "hybrid_w0p15_forward",
+    "hybrid_w0p25_forward",
+    "hybrid_w0p50_forward"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 161.02756681058094,
+      "mean_path_edges": 26.938062973296134,
+      "mean_same_traj_support": 1.3092248385981071,
+      "mean_unsupported_edge_fraction": 0.8513095917912009,
+      "mean_unsupported_scc_edge_fraction": 0.0004375376310130285,
+      "method": "hybrid_w0p05_forward",
+      "num_paths": 12545
+    },
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 162.22651885139115,
+      "mean_path_edges": 26.9244320446393,
+      "mean_same_traj_support": 1.3263603829825172,
+      "mean_unsupported_edge_fraction": 0.8495941188589499,
+      "mean_unsupported_scc_edge_fraction": 0.0004375376310130285,
+      "method": "hybrid_w0p10_forward",
+      "num_paths": 12545
+    },
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 163.4242191575123,
+      "mean_path_edges": 26.89732961339179,
+      "mean_same_traj_support": 1.3365303870745022,
+      "mean_unsupported_edge_fraction": 0.8483937998398192,
+      "mean_unsupported_scc_edge_fraction": 0.0004377063897787156,
+      "method": "hybrid_w0p15_forward",
+      "num_paths": 12545
+    },
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 165.81258114408215,
+      "mean_path_edges": 26.864328417696292,
+      "mean_same_traj_support": 1.3689716909624918,
+      "mean_unsupported_edge_fraction": 0.8455769210357601,
+      "mean_unsupported_scc_edge_fraction": 0.00043811360833851586,
+      "method": "hybrid_w0p25_forward",
+      "num_paths": 12545
+    },
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 171.7418195747122,
+      "mean_path_edges": 26.714388202471103,
+      "mean_same_traj_support": 1.4851710894126073,
+      "mean_unsupported_edge_fraction": 0.8335682486894752,
+      "mean_unsupported_scc_edge_fraction": 0.00044045256883338993,
+      "method": "hybrid_w0p50_forward",
+      "num_paths": 12545
+    },
+    {
+      "mean_num_scc_edges": 0.009166998804304504,
+      "mean_num_unsupported_scc_edges": 0.00876843363889996,
+      "mean_path_cost": 159.8282295805565,
+      "mean_path_edges": 26.96229573535273,
+      "mean_same_traj_support": 1.2872592659018822,
+      "mean_unsupported_edge_fraction": 0.8518797545893934,
+      "mean_unsupported_scc_edge_fraction": 0.0004372103634285321,
+      "method": "original",
+      "num_paths": 12545
+    }
+  ]
+}
