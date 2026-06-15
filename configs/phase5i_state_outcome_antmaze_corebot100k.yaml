@@ -1,0 +1,69 @@
+dataset_name: antmaze-large-stitch-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+preflight_root: results/phase3/env_preflight_gcrlo
+method: state_outcome_w0p5_3ep_corebot100k_H10_B120
+model_path: results/phase3/antmaze_large_stitch/core_plus_bottleneck/model.pt
+output_dir: results/phase3f
+action_mode: hierarchical_support
+num_episodes: 3
+max_steps: 120
+task_ids: [1]
+seed: 0
+device: auto
+max_transitions: 200000
+cluster_method: grid_xy
+state_dims: [0, 1]
+n_clusters: 400
+cluster_cache_dir: results/phase3f/cluster_cache
+graph_edges_csv: results/phase4e/antmaze_large_stitch/core_plus_bottleneck_budget120_H10__repair_all_budget120_H10/augmented_option_edges.csv
+graph_segments_npz: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10/edge_segments.npz
+bank_edges_csv: results/phase2/antmaze_large_stitch/all_budget120_H10/option_edges.csv
+bank_segments_npz: results/phase2/antmaze_large_stitch/all_budget120_H10/edge_segments.npz
+edge_horizon_multiplier: 2.0
+max_edge_horizon: 25
+max_replans: 8
+subgoal_max_candidates: 128
+allow_full_bank_fallback: true
+initiation_weight: 1.0
+downstream_weight: 0.25
+policy_mse_weight: 2.0
+policy_mse_scale: 0.05
+failure_penalty: 10.0
+edge_memory_csv: results/phase3f/edge_memory/antmaze_corebot100k_H10_B120.csv
+use_edge_memory: false
+update_edge_memory: false
+memory_penalty_mode: failure_excess
+use_edge_outcome_model: true
+outcome_penalty_weight: 8.0
+outcome_min_attempts: 1
+outcome_alpha: 1.0
+outcome_beta: 1.0
+outcome_uncertainty_weight: 0.25
+outcome_policy_mse_weight: 0.0
+outcome_policy_mse_scale: 0.05
+outcome_subgoal_l2_weight: 0.0
+outcome_subgoal_l2_scale: auto
+use_offline_edge_prior: true
+offline_certification_csv: results/phase4g/antmaze_large_stitch/core_plus_bottleneck_budget120_H10__repair_all_budget120_H10/planner_direct_repair_edge_certification.csv
+offline_prior_penalty_weight: 1.0
+offline_prior_certification_weight: 0.45
+offline_prior_support_weight: 0.20
+offline_prior_diversity_weight: 0.15
+offline_prior_horizon_weight: 0.10
+offline_prior_policy_weight: 0.05
+offline_prior_compatibility_weight: 0.05
+use_state_conditioned_risk: true
+state_risk_penalty_weight: 0.25
+state_risk_distance_scale: auto
+state_risk_max_candidates: 128
+state_risk_distance_dims: [0, 1]
+use_state_conditioned_outcome_model: true
+state_outcome_trace_dirs:
+  - results/phase3f/antmaze_large_stitch/edge_outcome_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/offline_prior_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_conditioned_3ep_corebot100k_H10_B120
+state_outcome_penalty_weight: 0.5
+state_outcome_min_examples: 8
+state_outcome_l2: 1.0
+state_outcome_learning_rate: 0.05
+state_outcome_num_steps: 800

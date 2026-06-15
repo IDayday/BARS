@@ -1,0 +1,2 @@
+dataset_name,method,num_episodes,success_rate,mean_steps,mean_total_reward,mean_final_goal_l2,skipped,skipped_reason
+antmaze-large-stitch-v0,state_outcome_smoke_1ep_corebot100k_H10_B120,1,0.0,60.0,0.0,44.263832092285156,False,

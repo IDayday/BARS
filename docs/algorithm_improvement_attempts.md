@@ -1488,6 +1488,52 @@ Lessons:
   initiation distance, support/certification features, GCBC action-fit
   evidence, compatibility context, and online attempt outcomes.
 
+### State-Conditioned Outcome Model
+
+Status:
+
+Implemented as Phase 5I. Prior natural-start hierarchical rollout traces are
+converted into attempt-level supervised examples. A small L2 logistic model
+predicts edge-attempt failure from planner-side features available at replan
+time: static risk, state-conditioned initiation risk, within-episode failure
+count, base planning cost, and selected/initiation distance. The model only
+adds a learned penalty to existing support edges; it does not create unsupported
+edges.
+
+Results:
+
+- The model trained on 80 historical AntMaze attempt examples, with 69
+  failures and 11 completions.
+- AntMaze task id 1, seeds 0/1/2, 3 episodes x 120-step cap:
+  - Phase 5F outcome-only: success `0.0`, mean final goal L2 `43.0624`, mean
+    L2 improvement `0.9920`, mean completed edges `1.667`.
+  - Phase 5G offline prior + outcome: success `0.0`, mean final goal L2
+    `42.0333`, mean L2 improvement `1.7897`, mean completed edges `0.333`.
+  - Phase 5H state-conditioned risk: success `0.0`, mean final goal L2
+    `42.1237`, mean L2 improvement `1.7527`, mean completed edges `1.667`.
+  - Phase 5I learned outcome penalty, weight `0.5`: success `0.0`, mean final
+    goal L2 `39.7197`, mean L2 improvement `4.1465`, mean completed edges
+    `2.333`.
+  - Phase 5I weight `1.0`: mean final goal L2 `42.3117`, mean completed edges
+    `2.000`.
+  - Phase 5I weight `2.0`: mean final goal L2 `40.8721`, mean completed edges
+    `1.333`.
+
+Lessons:
+
+- A mild learned state-conditioned outcome penalty is the strongest Phase 5
+  partial-progress result so far on this AntMaze smoke: it improves both final
+  goal distance and completed-edge count relative to Phase 5F/5G/5H.
+- The fitted coefficient pattern supports the repeated empirical finding that
+  current-state distance to offline initiation support is a key edge-risk
+  feature.
+- The model is not yet mature. The dataset is small and failure-heavy, no
+  heldout online-attempt calibration has been run, and task success remains
+  zero.
+- Larger risk weights can become over-conservative. Future configs should
+  select penalty weight by heldout attempt completion or paired online sweeps,
+  not by a single smoke.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1559,6 +1605,9 @@ Lessons:
   useful support-edge planning signal in a small AntMaze natural-start smoke,
   improving the trade-off between goal-distance progress and completed-edge
   progress relative to Phase 5G.
+- Phase 5I shows a mild learned state-conditioned outcome penalty can improve
+  AntMaze natural-start partial progress over Phase 5F/5G/5H in a matched
+  3-episode smoke, while preserving support-only graph semantics.
 
 ## Claims Not Yet Supported
 
@@ -1604,3 +1653,6 @@ Lessons:
 - Phase 5H state-conditioned initiation risk is not a complete algorithm, is
   not calibrated as an edge success probability, and still gives zero task
   success in the current AntMaze smoke.
+- Phase 5I state-conditioned outcome modeling is not a completed algorithm,
+  is not yet calibrated on heldout online attempts, and still does not achieve
+  AntMaze task success or beat GAS.

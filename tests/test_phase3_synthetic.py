@@ -40,6 +40,13 @@ from phase3f.state_conditioned_risk import (
     compute_state_conditioned_initiation_scores,
     state_conditioned_penalty_map,
 )
+from phase3f.state_conditioned_outcome_model import (
+    build_state_conditioned_outcome_candidate_features,
+    extract_state_conditioned_attempt_examples_from_traces,
+    fit_state_conditioned_outcome_model,
+    score_state_conditioned_outcome_candidates,
+    state_conditioned_outcome_penalty_map,
+)
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -885,3 +892,132 @@ def test_state_conditioned_penalty_changes_support_planning_route():
     )
     assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
     assert list(__import__("networkx").shortest_path(state_penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_state_conditioned_outcome_examples_split_restarted_attempts():
+    traces = [
+        {
+            "episode_id": 0,
+            "steps": [
+                {
+                    "segment_source": "graph",
+                    "segment_edge_id": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "edge_step": 1,
+                    "cluster": 0,
+                    "edge_static_risk_penalty": 0.1,
+                    "edge_state_risk_penalty": 0.2,
+                    "edge_failure_count": 0,
+                    "edge_failure_cost": 0.0,
+                    "edge_risk_penalty": 0.3,
+                    "edge_planning_cost": 2.3,
+                    "selected_init_distance": 1.0,
+                    "selected_policy_action_mse": 0.01,
+                    "subgoal_l2": 2.0,
+                },
+                {
+                    "segment_source": "graph",
+                    "segment_edge_id": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "edge_step": 1,
+                    "cluster": 1,
+                    "edge_static_risk_penalty": 0.1,
+                    "edge_state_risk_penalty": 0.2,
+                    "edge_failure_count": 1,
+                    "edge_failure_cost": 10.0,
+                    "edge_risk_penalty": 0.3,
+                    "edge_planning_cost": 12.3,
+                    "selected_init_distance": 0.5,
+                    "selected_policy_action_mse": 0.02,
+                    "subgoal_l2": 0.2,
+                },
+            ],
+        }
+    ]
+    examples = extract_state_conditioned_attempt_examples_from_traces(traces)
+    assert len(examples) == 2
+    assert examples["completed"].tolist() == [0, 1]
+    assert np.isclose(float(examples.iloc[0]["base_planning_cost"]), 2.0)
+    assert np.isclose(float(examples.iloc[1]["base_planning_cost"]), 2.0)
+
+
+def test_state_conditioned_outcome_model_scores_high_risk_failures_higher():
+    examples = pd.DataFrame(
+        {
+            "timeout": [0, 0, 0, 1, 1, 1],
+            "edge_static_risk_penalty": [0.1, 0.2, 0.1, 4.0, 4.5, 5.0],
+            "edge_state_risk_penalty": [0.1, 0.1, 0.2, 2.0, 2.5, 3.0],
+            "edge_failure_count": [0, 0, 0, 1, 2, 2],
+            "base_planning_cost": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+            "selected_init_distance": [0.1, 0.2, 0.1, 8.0, 9.0, 10.0],
+        }
+    )
+    model = fit_state_conditioned_outcome_model(
+        examples,
+        min_examples=4,
+        l2=0.1,
+        learning_rate=0.1,
+        num_steps=500,
+    )
+    scored = model.predict_failure_proba(
+        pd.DataFrame(
+            {
+                "edge_static_risk_penalty": [0.1, 5.0],
+                "edge_state_risk_penalty": [0.1, 3.0],
+                "edge_failure_count": [0, 2],
+                "base_planning_cost": [1.0, 2.0],
+                "selected_init_distance": [0.1, 10.0],
+            }
+        )
+    )
+    assert model.is_fitted
+    assert scored[1] > scored[0]
+
+
+def test_state_conditioned_outcome_penalty_changes_support_planning_route():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 0, 2],
+            "dst": [1, 2, 1],
+            "median_h": [1.0, 2.0, 2.0],
+            "cost": [1.0, 2.0, 2.0],
+        }
+    )
+    state_scores = pd.DataFrame(
+        {
+            "segment_source": ["graph", "graph"],
+            "segment_edge_id": [0, 1],
+            "planner_edge_id": [0, 1],
+            "src": [0, 0],
+            "dst": [1, 2],
+            "min_initiation_distance": [10.0, 0.1],
+            "state_conditioned_risk_penalty": [2.0, 0.0],
+        }
+    )
+    examples = pd.DataFrame(
+        {
+            "timeout": [0, 0, 0, 1, 1, 1],
+            "edge_static_risk_penalty": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "edge_state_risk_penalty": [0.0, 0.0, 0.0, 2.0, 2.0, 2.0],
+            "edge_failure_count": [0, 0, 0, 0, 0, 0],
+            "base_planning_cost": [2.0, 2.0, 2.0, 1.0, 1.0, 1.0],
+            "selected_init_distance": [0.1, 0.2, 0.3, 10.0, 11.0, 12.0],
+        }
+    )
+    model = fit_state_conditioned_outcome_model(examples, min_examples=4, l2=0.1, num_steps=500)
+    features = build_state_conditioned_outcome_candidate_features(
+        state_scores,
+        graph_edges=edges,
+        bank_edges=None,
+    )
+    outcome_scores = score_state_conditioned_outcome_candidates(model, features, penalty_weight=10.0)
+    base = build_support_planning_graph(edges)
+    learned_penalized = build_support_planning_graph(
+        edges,
+        edge_learned_state_risk_penalties=state_conditioned_outcome_penalty_map(outcome_scores),
+    )
+    assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
+    assert list(__import__("networkx").shortest_path(learned_penalized, 0, 1, weight="cost")) == [0, 2, 1]

@@ -41,6 +41,10 @@ from phase3f.offline_edge_prior import (  # noqa: E402
     build_offline_edge_prior_scores,
     offline_edge_prior_penalty_map,
 )
+from phase3f.state_conditioned_outcome_model import (  # noqa: E402
+    fit_state_conditioned_outcome_model,
+    load_state_conditioned_attempt_examples,
+)
 from phase3f.task_eval import load_preflight_status, write_env_unavailable_skip  # noqa: E402
 from phase1.data import load_ogbench_dataset  # noqa: E402
 
@@ -68,6 +72,17 @@ def _parse_list(value: Any, cast=int) -> list[Any]:
     if not text:
         return []
     return [cast(x.strip()) for x in text.split(",") if x.strip()]
+
+
+def _parse_str_list(value: Any) -> list[str]:
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return [str(x) for x in value]
+    text = str(value).strip()
+    if not text:
+        return []
+    return [x.strip() for x in text.split(",") if x.strip()]
 
 
 def _json_safe(value: Any) -> Any:
@@ -147,6 +162,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state_risk_distance_scale", default=None)
     parser.add_argument("--state_risk_max_candidates", type=int, default=None)
     parser.add_argument("--state_risk_distance_dims", default=None)
+    parser.add_argument("--use_state_conditioned_outcome_model", action="store_true")
+    parser.add_argument("--state_outcome_trace_dirs", default=None)
+    parser.add_argument("--state_outcome_penalty_weight", type=float, default=None)
+    parser.add_argument("--state_outcome_min_examples", type=int, default=None)
+    parser.add_argument("--state_outcome_l2", type=float, default=None)
+    parser.add_argument("--state_outcome_learning_rate", type=float, default=None)
+    parser.add_argument("--state_outcome_num_steps", type=int, default=None)
     return parser.parse_args()
 
 
@@ -219,6 +241,13 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "state_risk_distance_scale": "auto",
         "state_risk_max_candidates": 128,
         "state_risk_distance_dims": None,
+        "use_state_conditioned_outcome_model": False,
+        "state_outcome_trace_dirs": [],
+        "state_outcome_penalty_weight": 0.0,
+        "state_outcome_min_examples": 6,
+        "state_outcome_l2": 1.0,
+        "state_outcome_learning_rate": 0.1,
+        "state_outcome_num_steps": 1000,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -230,6 +259,7 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         merged["state_dims"] = _parse_list(merged.get("state_dims"), int)
     if merged.get("state_risk_distance_dims") is not None:
         merged["state_risk_distance_dims"] = _parse_list(merged.get("state_risk_distance_dims"), int)
+    merged["state_outcome_trace_dirs"] = _parse_str_list(merged.get("state_outcome_trace_dirs"))
     return argparse.Namespace(**merged)
 
 
@@ -373,6 +403,23 @@ def main() -> None:
         offline_prior_penalties = offline_edge_prior_penalty_map(offline_prior_scores)
         for key, value in offline_prior_penalties.items():
             edge_risk_penalties[key] = float(edge_risk_penalties.get(key, 0.0)) + float(value)
+        state_outcome_model = None
+        state_outcome_examples = pd.DataFrame()
+        if args.use_state_conditioned_outcome_model:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            state_outcome_examples = load_state_conditioned_attempt_examples(args.state_outcome_trace_dirs)
+            state_outcome_examples.to_csv(out_dir / "state_conditioned_outcome_training_examples.csv", index=False)
+            state_outcome_model = fit_state_conditioned_outcome_model(
+                state_outcome_examples,
+                min_examples=args.state_outcome_min_examples,
+                l2=args.state_outcome_l2,
+                learning_rate=args.state_outcome_learning_rate,
+                num_steps=args.state_outcome_num_steps,
+            )
+            (out_dir / "state_conditioned_outcome_model_summary.json").write_text(
+                json.dumps(_json_safe(state_outcome_model.to_dict()), indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
         if args.use_edge_outcome_model:
             out_dir.mkdir(parents=True, exist_ok=True)
             outcome_scores.to_csv(out_dir / "edge_outcome_scores.csv", index=False)
@@ -413,6 +460,9 @@ def main() -> None:
             state_risk_distance_scale=args.state_risk_distance_scale,
             state_risk_max_candidates=args.state_risk_max_candidates,
             state_risk_distance_dims=args.state_risk_distance_dims,
+            use_state_conditioned_outcome_model=args.use_state_conditioned_outcome_model,
+            state_conditioned_outcome_model=state_outcome_model,
+            state_outcome_penalty_weight=args.state_outcome_penalty_weight,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -451,6 +501,11 @@ def main() -> None:
             state_rows.extend(trace.get("state_conditioned_risk_rows", []) or [])
         if state_rows:
             pd.DataFrame(state_rows).to_csv(out_dir / "state_conditioned_risk_scores.csv", index=False)
+        state_outcome_rows: list[dict[str, Any]] = []
+        for trace in traces:
+            state_outcome_rows.extend(trace.get("state_conditioned_outcome_rows", []) or [])
+        if state_outcome_rows:
+            pd.DataFrame(state_outcome_rows).to_csv(out_dir / "state_conditioned_outcome_scores.csv", index=False)
     extra = {"device_resolved": str(device)}
     if args.action_mode == "hierarchical_support":
         extra.update(
@@ -474,6 +529,13 @@ def main() -> None:
                 "state_risk_distance_scale": args.state_risk_distance_scale,
                 "state_risk_max_candidates": int(args.state_risk_max_candidates),
                 "state_risk_distance_dims": args.state_risk_distance_dims,
+                "state_conditioned_outcome_model_used": bool(args.use_state_conditioned_outcome_model),
+                "state_outcome_trace_dirs": args.state_outcome_trace_dirs,
+                "state_outcome_penalty_weight": float(args.state_outcome_penalty_weight),
+                "state_outcome_min_examples": int(args.state_outcome_min_examples),
+                "state_outcome_l2": float(args.state_outcome_l2),
+                "state_outcome_learning_rate": float(args.state_outcome_learning_rate),
+                "state_outcome_num_steps": int(args.state_outcome_num_steps),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

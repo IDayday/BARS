@@ -1,0 +1,36 @@
+{
+  "bias": 1.9417725959747392,
+  "fallback_failure_prob": 0.8536585365853658,
+  "feature_columns": [
+    "edge_static_risk_penalty",
+    "edge_state_risk_penalty",
+    "edge_failure_count",
+    "base_planning_cost",
+    "selected_init_distance"
+  ],
+  "feature_means": [
+    0.6313931079735735,
+    0.08492931995202965,
+    0.1,
+    7.866969833791963,
+    10.259549099206925
+  ],
+  "feature_scales": [
+    1.502347258095012,
+    0.1394570284786329,
+    0.2999999999999999,
+    1.5832305483281492,
+    3.310129317468076
+  ],
+  "is_fitted": true,
+  "l2": 1.0,
+  "num_examples": 80,
+  "num_failures": 69,
+  "weights": [
+    0.07551106457740334,
+    0.03345735573231352,
+    -0.04213973077229048,
+    0.04241169114561799,
+    0.5574567335851724
+  ]
+}
