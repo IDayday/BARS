@@ -36,6 +36,10 @@ from phase3f.edge_memory import (
 )
 from phase3f.edge_outcome_model import edge_outcome_penalty_map, fit_edge_outcome_scores
 from phase3f.offline_edge_prior import build_offline_edge_prior_scores, offline_edge_prior_penalty_map
+from phase3f.state_conditioned_risk import (
+    compute_state_conditioned_initiation_scores,
+    state_conditioned_penalty_map,
+)
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -823,3 +827,61 @@ def test_offline_edge_prior_penalty_changes_support_planning_route():
     )
     assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
     assert list(__import__("networkx").shortest_path(prior_penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_state_conditioned_risk_penalizes_far_initiation_edge():
+    observations = np.asarray([[0.0], [1.0], [10.0], [11.0]], dtype=np.float32)
+    graph_edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1],
+            "src": [0, 0],
+            "dst": [1, 2],
+            "median_h": [1.0, 1.0],
+            "cost": [1.0, 1.0],
+        }
+    )
+    graph_segments = {
+        "edge_id": np.asarray([0, 1], dtype=np.int64),
+        "global_i": np.asarray([0, 2], dtype=np.int64),
+        "global_j": np.asarray([1, 3], dtype=np.int64),
+    }
+    scores = compute_state_conditioned_initiation_scores(
+        graph_edges,
+        bank_edges=None,
+        graph_segments=graph_segments,
+        bank_segments={},
+        observations=observations,
+        current_obs=np.asarray([0.0], dtype=np.float32),
+        current_cluster=0,
+        distance_scale=1.0,
+        penalty_weight=2.0,
+    ).set_index("segment_edge_id")
+
+    assert scores.loc[1, "state_conditioned_risk_penalty"] > scores.loc[0, "state_conditioned_risk_penalty"]
+    assert scores.loc[0, "min_initiation_distance"] == 0.0
+
+
+def test_state_conditioned_penalty_changes_support_planning_route():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 0, 2],
+            "dst": [1, 2, 1],
+            "median_h": [1.0, 2.0, 2.0],
+            "cost": [1.0, 2.0, 2.0],
+        }
+    )
+    scores = pd.DataFrame(
+        {
+            "segment_source": ["graph"],
+            "segment_edge_id": [0],
+            "state_conditioned_risk_penalty": [10.0],
+        }
+    )
+    base = build_support_planning_graph(edges)
+    state_penalized = build_support_planning_graph(
+        edges,
+        edge_state_risk_penalties=state_conditioned_penalty_map(scores),
+    )
+    assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
+    assert list(__import__("networkx").shortest_path(state_penalized, 0, 1, weight="cost")) == [0, 2, 1]

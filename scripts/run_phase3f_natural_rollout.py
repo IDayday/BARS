@@ -142,6 +142,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--offline_prior_horizon_weight", type=float, default=None)
     parser.add_argument("--offline_prior_policy_weight", type=float, default=None)
     parser.add_argument("--offline_prior_compatibility_weight", type=float, default=None)
+    parser.add_argument("--use_state_conditioned_risk", action="store_true")
+    parser.add_argument("--state_risk_penalty_weight", type=float, default=None)
+    parser.add_argument("--state_risk_distance_scale", default=None)
+    parser.add_argument("--state_risk_max_candidates", type=int, default=None)
+    parser.add_argument("--state_risk_distance_dims", default=None)
     return parser.parse_args()
 
 
@@ -209,6 +214,11 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "offline_prior_horizon_weight": 0.10,
         "offline_prior_policy_weight": 0.05,
         "offline_prior_compatibility_weight": 0.05,
+        "use_state_conditioned_risk": False,
+        "state_risk_penalty_weight": 0.0,
+        "state_risk_distance_scale": "auto",
+        "state_risk_max_candidates": 128,
+        "state_risk_distance_dims": None,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -218,6 +228,8 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
     merged["task_ids"] = _parse_list(merged.get("task_ids"), int)
     if merged.get("state_dims") is not None:
         merged["state_dims"] = _parse_list(merged.get("state_dims"), int)
+    if merged.get("state_risk_distance_dims") is not None:
+        merged["state_risk_distance_dims"] = _parse_list(merged.get("state_risk_distance_dims"), int)
     return argparse.Namespace(**merged)
 
 
@@ -396,6 +408,11 @@ def main() -> None:
             policy_mse_scale=args.policy_mse_scale,
             prior_failed_edge_counts=prior_failed_counts,
             edge_risk_penalties=edge_risk_penalties,
+            use_state_conditioned_risk=args.use_state_conditioned_risk,
+            state_risk_penalty_weight=args.state_risk_penalty_weight,
+            state_risk_distance_scale=args.state_risk_distance_scale,
+            state_risk_max_candidates=args.state_risk_max_candidates,
+            state_risk_distance_dims=args.state_risk_distance_dims,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -429,6 +446,11 @@ def main() -> None:
             update_memory=args.update_edge_memory,
             memory_penalty_mode=args.memory_penalty_mode,
         )
+        state_rows: list[dict[str, Any]] = []
+        for trace in traces:
+            state_rows.extend(trace.get("state_conditioned_risk_rows", []) or [])
+        if state_rows:
+            pd.DataFrame(state_rows).to_csv(out_dir / "state_conditioned_risk_scores.csv", index=False)
     extra = {"device_resolved": str(device)}
     if args.action_mode == "hierarchical_support":
         extra.update(
@@ -447,6 +469,11 @@ def main() -> None:
                 "offline_prior_num_scored_edges": int(offline_prior_scores.shape[0]),
                 "offline_prior_num_penalized_edges": int(len(offline_prior_penalties)),
                 "total_edge_risk_penalized_edges": int(len(edge_risk_penalties)),
+                "state_conditioned_risk_used": bool(args.use_state_conditioned_risk),
+                "state_risk_penalty_weight": float(args.state_risk_penalty_weight),
+                "state_risk_distance_scale": args.state_risk_distance_scale,
+                "state_risk_max_candidates": int(args.state_risk_max_candidates),
+                "state_risk_distance_dims": args.state_risk_distance_dims,
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

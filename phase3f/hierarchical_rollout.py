@@ -17,6 +17,10 @@ from phase3f.natural_rollout import (
     _success_value,
 )
 from phase3.edge_rollout import policy_action
+from phase3f.state_conditioned_risk import (
+    compute_state_conditioned_initiation_scores,
+    state_conditioned_penalty_map,
+)
 
 
 def fit_runtime_cluster_model(
@@ -122,10 +126,12 @@ def build_support_planning_graph(
     failed_edge_counts: dict[tuple[str, int], int] | None = None,
     failure_penalty: float = 0.0,
     edge_risk_penalties: dict[tuple[str, int], float] | None = None,
+    edge_state_risk_penalties: dict[tuple[str, int], float] | None = None,
 ) -> nx.DiGraph:
     graph = nx.DiGraph()
     failed_edge_counts = failed_edge_counts or {}
     edge_risk_penalties = edge_risk_penalties or {}
+    edge_state_risk_penalties = edge_state_risk_penalties or {}
 
     def maybe_add(row: Any, source: str, connector: bool) -> None:
         src = int(getattr(row, "src"))
@@ -134,7 +140,9 @@ def build_support_planning_graph(
         segment_source, segment_edge_id, policy_edge_id = _edge_identity(row, source)
         failure_count = int(failed_edge_counts.get((segment_source, int(segment_edge_id)), 0))
         failure_cost = float(failure_penalty) * failure_count
-        risk_penalty = float(edge_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
+        static_risk_penalty = float(edge_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
+        state_risk_penalty = float(edge_state_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
+        risk_penalty = static_risk_penalty + state_risk_penalty
         cost = float(base_cost + failure_cost + risk_penalty)
         attrs = {
             "src": src,
@@ -145,6 +153,8 @@ def build_support_planning_graph(
             "failure_cost": float(failure_cost),
             "edge_outcome_penalty": float(risk_penalty),
             "edge_risk_penalty": float(risk_penalty),
+            "edge_static_risk_penalty": float(static_risk_penalty),
+            "edge_state_risk_penalty": float(state_risk_penalty),
             "median_h": float(getattr(row, "median_h", cost)),
             "max_h": float(getattr(row, "max_h", getattr(row, "median_h", cost))),
             "edge_id": int(getattr(row, "edge_id")),
@@ -343,6 +353,11 @@ def run_hierarchical_support_episodes(
     policy_mse_scale: float = 0.05,
     prior_failed_edge_counts: dict[tuple[str, int], int] | None = None,
     edge_risk_penalties: dict[tuple[str, int], float] | None = None,
+    use_state_conditioned_risk: bool = False,
+    state_risk_penalty_weight: float = 0.0,
+    state_risk_distance_scale: float | str | None = "auto",
+    state_risk_max_candidates: int = 128,
+    state_risk_distance_dims: list[int] | None = None,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
     actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -366,6 +381,7 @@ def run_hierarchical_support_episodes(
         initial_goal_l2 = float("nan")
         final_goal_l2 = float("nan")
         step_trace: list[dict[str, Any]] = []
+        state_risk_rows: list[dict[str, Any]] = []
         start_cluster = -1
         goal_cluster = -1
         try:
@@ -399,6 +415,29 @@ def run_hierarchical_support_episodes(
                     subgoal_info = {}
                     need_plan = edge_cursor >= len(active_edges)
                 if need_plan:
+                    dynamic_scores = pd.DataFrame()
+                    dynamic_penalties: dict[tuple[str, int], float] = {}
+                    if use_state_conditioned_risk and float(state_risk_penalty_weight) > 0.0:
+                        dynamic_scores = compute_state_conditioned_initiation_scores(
+                            graph_edges,
+                            bank_edges=bank_edges,
+                            graph_segments=graph_segments,
+                            bank_segments=bank_segments,
+                            observations=observations,
+                            current_obs=obs,
+                            current_cluster=current_cluster,
+                            distance_dims=state_risk_distance_dims,
+                            max_candidates_per_edge=state_risk_max_candidates,
+                            distance_scale=state_risk_distance_scale,
+                            penalty_weight=state_risk_penalty_weight,
+                        )
+                        if not dynamic_scores.empty:
+                            for row in dynamic_scores.to_dict(orient="records"):
+                                row["episode_id"] = int(episode_id)
+                                row["replan_index"] = int(replans)
+                                row["current_cluster"] = int(current_cluster)
+                                state_risk_rows.append(row)
+                            dynamic_penalties = state_conditioned_penalty_map(dynamic_scores)
                     graph = build_support_planning_graph(
                         graph_edges,
                         bank_edges=bank_edges,
@@ -408,6 +447,7 @@ def run_hierarchical_support_episodes(
                         failed_edge_counts=failed_edge_counts,
                         failure_penalty=failure_penalty,
                         edge_risk_penalties=edge_risk_penalties,
+                        edge_state_risk_penalties=dynamic_penalties,
                     )
                     active_path, plan_status = plan_cluster_path(graph, current_cluster, goal_cluster)
                     if (not active_path or len(active_path) <= 1) and allow_full_bank_fallback:
@@ -421,6 +461,7 @@ def run_hierarchical_support_episodes(
                             failed_edge_counts=failed_edge_counts,
                             failure_penalty=failure_penalty,
                             edge_risk_penalties=edge_risk_penalties,
+                            edge_state_risk_penalties=dynamic_penalties,
                         )
                         fallback_path, fallback_status = plan_cluster_path(fallback_graph, current_cluster, goal_cluster)
                         if fallback_path and len(fallback_path) > 1:
@@ -504,6 +545,8 @@ def run_hierarchical_support_episodes(
                         "edge_failure_cost": float(edge_attrs.get("failure_cost", 0.0)),
                         "edge_outcome_penalty": float(edge_attrs.get("edge_outcome_penalty", 0.0)),
                         "edge_risk_penalty": float(edge_attrs.get("edge_risk_penalty", 0.0)),
+                        "edge_static_risk_penalty": float(edge_attrs.get("edge_static_risk_penalty", 0.0)),
+                        "edge_state_risk_penalty": float(edge_attrs.get("edge_state_risk_penalty", 0.0)),
                         "edge_planning_cost": float(edge_attrs.get("cost", 0.0)),
                         **subgoal_info,
                     }
@@ -563,6 +606,7 @@ def run_hierarchical_support_episodes(
                 "success": float(success),
                 "failure_reason": failure_reason,
                 "steps": step_trace,
+                "state_conditioned_risk_rows": state_risk_rows,
             }
         )
     return pd.DataFrame(episode_rows), traces

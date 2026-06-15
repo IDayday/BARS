@@ -1450,6 +1450,44 @@ Lessons:
   current online observation and candidate segment initiation distance, not only
   on edge id.
 
+### State-Conditioned Initiation Risk
+
+Status:
+
+Implemented as Phase 5H. The hierarchical support planner now scores outgoing
+candidate support edges at each replan by the distance between the current
+online observation and the edge's offline initiation samples. The resulting
+dynamic penalty is added to the Phase 5F online outcome prior and Phase 5G
+offline prior, without adding any unsupported edges.
+
+Results:
+
+- AntMaze task id 1, seeds 0/1/2, 3 episodes x 120-step cap:
+  - Phase 5F outcome-only: success `0.0`, mean final goal L2 `43.0624`, mean
+    L2 improvement `0.9920`, mean completed edges `1.667`.
+  - Phase 5G offline prior + outcome: success `0.0`, mean final goal L2
+    `42.0333`, mean L2 improvement `1.7897`, mean completed edges `0.333`.
+  - Phase 5H state-conditioned risk: success `0.0`, mean final goal L2
+    `42.1237`, mean L2 improvement `1.7527`, mean completed edges `1.667`.
+- The main Phase 5H run wrote 146 dynamic risk rows. Mean nearest-initiation
+  distance was `3.6451`, with mean dynamic penalty `0.3013`.
+- A small risk-weight check suggests mild dynamic risk is preferable to a strong
+  penalty in this smoke: one `0.5`-weight run reached mean final L2 `40.7735`,
+  while `2.0` reached `41.7904` but had lower mean improvement.
+
+Lessons:
+
+- State-conditioned initiation distance is the most concrete Phase 5
+  planner-side improvement so far: it keeps the support-only graph semantics,
+  preserves most of the Phase 5G final-distance gain, and recovers completed
+  edge progress to the Phase 5F level in the matched 3-episode smoke.
+- It is still a hand-weighted heuristic. Natural-start variance is high, and
+  the current run still has zero task success.
+- The next mature algorithmic step should replace the additive heuristics with
+  a learned state-conditioned edge success model using current state, nearest
+  initiation distance, support/certification features, GCBC action-fit
+  evidence, compatibility context, and online attempt outcomes.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1517,6 +1555,10 @@ Lessons:
 - Phase 5G shows a mild offline prior over all support edges can improve
   AntMaze natural-start final-goal distance relative to outcome-only memory in
   a small 3-episode smoke.
+- Phase 5H shows current-state distance to offline initiation samples is a
+  useful support-edge planning signal in a small AntMaze natural-start smoke,
+  improving the trade-off between goal-distance progress and completed-edge
+  progress relative to Phase 5G.
 
 ## Claims Not Yet Supported
 
@@ -1559,3 +1601,6 @@ Lessons:
   not score unseen support edges well enough.
 - Phase 5G offline edge priors do not solve online task success and reduce
   completed-edge count in the current AntMaze smoke.
+- Phase 5H state-conditioned initiation risk is not a complete algorithm, is
+  not calibrated as an edge success probability, and still gives zero task
+  success in the current AntMaze smoke.
