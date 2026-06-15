@@ -1,0 +1,137 @@
+{
+  "base_node_count": 731,
+  "diff": [
+    {
+      "method": "global_w5",
+      "num_changed_paths": 217,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.059370725034199726,
+      "reference_method": "original"
+    },
+    {
+      "method": "gate_w5_cost102",
+      "num_changed_paths": 37,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.01012311901504788,
+      "reference_method": "original"
+    },
+    {
+      "method": "gate_w5_cost105",
+      "num_changed_paths": 109,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.029822161422708618,
+      "reference_method": "original"
+    },
+    {
+      "method": "gate_w5_cost108",
+      "num_changed_paths": 118,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.03228454172366621,
+      "reference_method": "original"
+    },
+    {
+      "method": "gate_multi_cost105",
+      "num_changed_paths": 124,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.03392612859097127,
+      "reference_method": "original"
+    },
+    {
+      "method": "gate_multi_cost108",
+      "num_changed_paths": 212,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.058002735978112174,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage40_gas_support_patch/scene-play-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8.csv",
+  "methods": [
+    "original",
+    "global_w5",
+    "gate_w5_cost102",
+    "gate_w5_cost105",
+    "gate_w5_cost108",
+    "gate_multi_cost105",
+    "gate_multi_cost108"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.82561831754796,
+      "mean_path_edges": 2.2621067031463746,
+      "mean_same_traj_support": 16.374555403556773,
+      "mean_unsupported_edge_fraction": 0.9624715002279982,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "gate_multi_cost105",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.98173660977595,
+      "mean_path_edges": 2.26484268125855,
+      "mean_same_traj_support": 18.860624715002277,
+      "mean_unsupported_edge_fraction": 0.9544003647970817,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "gate_multi_cost108",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.73763206588912,
+      "mean_path_edges": 2.2618331053351572,
+      "mean_same_traj_support": 13.061764705882354,
+      "mean_unsupported_edge_fraction": 0.9691974464204286,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "gate_w5_cost102",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.80460817934551,
+      "mean_path_edges": 2.2618331053351572,
+      "mean_same_traj_support": 16.084427724578205,
+      "mean_unsupported_edge_fraction": 0.9638622891016871,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "gate_w5_cost105",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.81479245497655,
+      "mean_path_edges": 2.2621067031463746,
+      "mean_same_traj_support": 16.52624259005928,
+      "mean_unsupported_edge_fraction": 0.9630870953032377,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "gate_w5_cost108",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 91.67900488730552,
+      "mean_path_edges": 2.2593707250342,
+      "mean_same_traj_support": 16.367236662106702,
+      "mean_unsupported_edge_fraction": 0.963155494756042,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "global_w5",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.72566164971703,
+      "mean_path_edges": 2.2618331053351572,
+      "mean_same_traj_support": 11.24033287733698,
+      "mean_unsupported_edge_fraction": 0.9726630186958505,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "original",
+      "num_paths": 3655
+    }
+  ]
+}

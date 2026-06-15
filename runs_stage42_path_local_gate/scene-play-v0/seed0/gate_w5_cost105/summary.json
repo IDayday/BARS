@@ -1,0 +1,31 @@
+{
+  "base_keygraph": "runs_stage40_official_gas_artifacts/scene-play-v0/seed0/graph/keygraph.pkl",
+  "base_node_count": 731,
+  "candidate_keygraphs": {
+    "hybrid_w5p00_forward": "runs_stage40_gas_support_patch/scene-play-v0/seed0/patched_graph_hybrid_w5p00_forward/keygraph.pkl"
+  },
+  "candidate_methods": [
+    "hybrid_w5p00_forward"
+  ],
+  "edge_scores_csv": "runs_stage40_gas_support_patch/scene-play-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8.csv",
+  "gate": {
+    "distance_mode": "base_cost",
+    "improvement_mode": "any",
+    "max_base_cost_ratio": 1.05,
+    "max_edge_delta": 1,
+    "min_support_gain": 1e-09,
+    "min_unsupported_gain": 1e-09
+  },
+  "mean_selected_cost_ratio": 1.0262212531246644,
+  "mean_selected_edge_delta": 0.0,
+  "mean_selected_support_gain": 162.43272171253824,
+  "mean_selected_unsupported_gain": 0.29510703363914376,
+  "num_candidate_decisions": 217,
+  "num_selected_paths": 109,
+  "output_keygraph": "runs_stage42_path_local_gate/scene-play-v0/seed0/gate_w5_cost105/keygraph.pkl",
+  "selected_by_method": {
+    "hybrid_w5p00_forward": 109
+  },
+  "selected_path_rate": 0.029740791268758525,
+  "selection_csv": "runs_stage42_path_local_gate/scene-play-v0/seed0/gate_w5_cost105/selection.csv"
+}

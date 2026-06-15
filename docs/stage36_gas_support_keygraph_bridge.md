@@ -471,3 +471,43 @@ Result files:
 - `runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_summary.json`
 - `runs_stage41_task_conditioned_support/scene-play-v0/seed0/path_audit_taskmix/path_summary.csv`
 - `runs_stage41_task_conditioned_support/scene-play-v0/seed0/path_audit_taskmix/path_diff_summary.csv`
+
+## Stage42 Path-Local Support Gate
+
+Stage42 tests the path-local version of the Stage41 conclusion.  Instead of
+choosing a support-risk keygraph per task, it chooses per `(task_id,
+source_node)` whether to keep the original GAS path or accept a support-risk
+candidate path.  Candidate acceptance is gated by support improvement and by
+candidate cost measured on the original GAS graph, not the risk-weighted graph.
+Accepted paths write original-graph cost back to `task_paths_dist_dict`, so the
+cached distance field remains on the GAS geometric scale.
+
+The best graph-side variant is `gate_multi_cost108`: it accepts 212 local path
+changes, has path change rate `0.058`, improves unsupported path-edge fraction
+from `0.973` to `0.954`, and improves mean same-trajectory support from
+`11.240` to `18.861`.
+
+Closed-loop ep50 results:
+
+| dataset | method | success | mean length | unsupported path-edge fraction | mean same-traj support | path change rate |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| scene play | original | `0.756` | `343.468` | `0.973` | `11.240` | `0.000` |
+| scene play | global `w=5` | `0.764` | `348.896` | `0.963` | `16.367` | `0.059` |
+| scene play | `gate_w5_cost108` | `0.732` | `355.588` | `0.963` | `16.526` | `0.032` |
+| scene play | `gate_multi_cost105` | `0.724` | `361.548` | `0.962` | `16.375` | `0.034` |
+| scene play | `gate_multi_cost108` | `0.728` | `361.404` | `0.954` | `18.861` | `0.058` |
+
+This is the strongest negative result so far for support-only routing on Scene.
+Even local, cost-normalized support gates improve graph metrics while reducing
+closed-loop success.  The actionable conclusion is that support evidence should
+serve as a veto/risk feature, not as the dominant route-selection objective.
+The next bridge attempt needs actor-aware compatibility from closed-loop traces,
+subgoal progress, or a learned contract model.
+
+Result files:
+
+- `docs/stage42_path_local_gate_summary.md`
+- `runs_stage42_path_local_gate/scene-play-v0/seed0/stage42_gate_eval_summary.csv`
+- `runs_stage42_path_local_gate/scene-play-v0/seed0/stage42_gate_summary.json`
+- `runs_stage42_path_local_gate/scene-play-v0/seed0/path_audit_gate_sweep/path_summary.csv`
+- `runs_stage42_path_local_gate/scene-play-v0/seed0/path_audit_gate_sweep/path_diff_summary.csv`

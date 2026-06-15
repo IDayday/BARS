@@ -1,0 +1,16 @@
+{
+  "conclusion": "Path-local support gates improve support metrics but reduce Scene closed-loop success; support-only path risk is insufficient without policy/execution compatibility.",
+  "dataset": "scene-play-v0",
+  "eval_summary_csv": "runs_stage42_path_local_gate/scene-play-v0/seed0/stage42_gate_eval_summary.csv",
+  "key_result": {
+    "gate_multi_cost105_ep50_success": 0.724,
+    "gate_multi_cost108_ep50_success": 0.728,
+    "gate_w5_cost108_ep50_success": 0.732,
+    "global_w5_ep50_success": 0.764,
+    "original_ep50_success": 0.756
+  },
+  "path_metrics_by_task_csv": "runs_stage42_path_local_gate/scene-play-v0/seed0/stage42_path_metrics_by_task.csv",
+  "seed": 0,
+  "selection_by_task_csv": "runs_stage42_path_local_gate/scene-play-v0/seed0/stage42_selection_by_task.csv",
+  "stage": "stage42_path_local_support_gate"
+}

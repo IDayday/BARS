@@ -14,6 +14,7 @@ from bars.gas_bars.support_keygraph import (
 )
 from scripts.stage37_prepare_calibrated_support_scores import add_calibrated_support_columns
 from scripts.stage41_mix_task_keygraph_paths import mix_task_keygraph_paths
+from scripts.stage42_path_local_gated_keygraph import path_local_gated_mix
 
 
 def _dummy_keygraph():
@@ -202,3 +203,56 @@ def test_stage41_task_path_mixer_replaces_only_selected_task_caches():
     assert base.task_paths_dict[1][0] == [0, 1]
     assert mixed.bars_task_method_map == {"1": "a", "2": "b"}
     assert {row["method"] for row in rows} == {"a", "b"}
+
+
+def test_stage42_path_local_gate_selects_only_local_improvements():
+    base = SimpleNamespace(
+        base_node_cnt=3,
+        task_paths_dict={1: {0: [0, 2], 1: [1, 2]}},
+        task_paths_dist_dict={1: {0: 1.0, 1: 1.0}},
+        graph=nx.DiGraph(),
+    )
+    for idx in range(3):
+        base.graph.add_node(idx)
+    base.graph.add_edge(0, 1, weight=0.4)
+    base.graph.add_edge(1, 2, weight=0.4)
+    base.graph.add_edge(0, 2, weight=1.0)
+    base.graph.add_edge(1, 0, weight=0.4)
+    base.graph.add_edge(2, 1, weight=0.4)
+    base.graph.add_edge(2, 0, weight=1.0)
+
+    candidate = SimpleNamespace(
+        task_paths_dict={1: {0: [0, 1, 2], 1: [1, 0, 2]}},
+        # Deliberately risk-inflated distances. The gate should write base cost.
+        task_paths_dist_dict={1: {0: 99.0, 1: 77.0}},
+    )
+    edge_scores = pd.DataFrame(
+        [
+            {"u": 0, "v": 2, "local_support": 0, "same_traj_support": 0},
+            {"u": 0, "v": 1, "local_support": 1, "same_traj_support": 5},
+            {"u": 1, "v": 2, "local_support": 1, "same_traj_support": 5},
+            {"u": 1, "v": 0, "local_support": 1, "same_traj_support": 0},
+        ]
+    )
+
+    mixed, selected, summary = path_local_gated_mix(
+        base,
+        {"candidate": candidate},
+        edge_scores,
+        max_base_cost_ratio=1.0,
+        max_edge_delta=1,
+        min_support_gain=1.0,
+        min_unsupported_gain=0.1,
+        improvement_mode="both",
+        unsupported_weight=20.0,
+        support_weight=1.0,
+        cost_penalty=10.0,
+        edge_penalty=5.0,
+        distance_mode="base_cost",
+    )
+
+    assert mixed.task_paths_dict[1][0] == [0, 1, 2]
+    assert mixed.task_paths_dist_dict[1][0] == 0.8
+    assert mixed.task_paths_dict[1][1] == [1, 2]
+    assert len(selected) == 1
+    assert summary["num_selected_paths"] == 1

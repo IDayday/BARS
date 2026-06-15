@@ -2325,6 +2325,14 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   that whole-task cache selection is too coarse; future improvements need
   policy-aware/path-local compatibility and cost-scale-normalized risk rather
   than only support-aware graph routing.
+- Stage42 makes the support route selection path-local and cost-normalized:
+  each `(task, source)` path change is accepted only if it improves support
+  while staying close to original GAS geometric cost. This still fails on Scene:
+  `gate_multi_cost108` improves unsupported path-edge fraction from `0.973` to
+  `0.954` and mean same-trajectory support from `11.240` to `18.861`, but ep50
+  success drops to `0.728` versus original `0.756` and global `w=5` `0.764`.
+  The new rule is that support evidence should be a veto or risk feature, not
+  the primary path-selection objective without actor-aware compatibility.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
