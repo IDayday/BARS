@@ -1527,12 +1527,47 @@ Lessons:
 - The fitted coefficient pattern supports the repeated empirical finding that
   current-state distance to offline initiation support is a key edge-risk
   feature.
-- The model is not yet mature. The dataset is small and failure-heavy, no
-  heldout online-attempt calibration has been run, and task success remains
-  zero.
+- The model is not yet mature. The dataset is small and failure-heavy, and the
+  later Phase 5J heldout audit shows weak validation separation. Task success
+  remains zero.
 - Larger risk weights can become over-conservative. Future configs should
   select penalty weight by heldout attempt completion or paired online sweeps,
   not by a single smoke.
+
+### State-Outcome Calibration Audit
+
+Status:
+
+Implemented as Phase 5J. Existing natural-start hierarchical rollout traces are
+converted into attempt-level examples with source/run/episode groups. The
+Phase 5I model is trained on group-disjoint train attempts and evaluated on
+heldout attempts. A conservative penalty selector chooses the largest validation
+risk separation subject to mean learned-penalty budgets.
+
+Results:
+
+- Inputs: 8 AntMaze result dirs from Phase 5F/5G/5H/5I, 213 extracted attempts,
+  24 trace groups.
+- Split: 152 train attempts, 61 validation attempts.
+- Train metrics: Brier `0.1358`, AUC `0.6999`, risk separation `0.0828`.
+- Validation metrics: Brier `0.1155`, AUC `0.5556`, risk separation `0.0110`.
+- Selector output: weight `0.5`, because larger weights violate the configured
+  mean learned-penalty budget `0.5`.
+
+Lessons:
+
+- Phase 5J supports the Phase 5I `0.5` penalty weight as a conservative
+  budgeted planner-cost scale, not as a strongly calibrated success model.
+- Heldout predictive separation is weak. The current features are useful for
+  partial-progress planning but not mature enough to claim calibrated edge
+  executability.
+- The fitted risk model again gives positive weight to selected/initiation
+  distance and state-conditioned initiation risk, reinforcing the main design
+  rule: graph edges should be trusted only when the current online state is
+  close to offline initiation support.
+- A quick offline feature check suggests plan-time GCBC policy mismatch can
+  improve heldout AUC, but the planner does not yet compute that feature for
+  every outgoing candidate before graph search.
 
 ## Claims Currently Supported
 
@@ -1608,6 +1643,9 @@ Lessons:
 - Phase 5I shows a mild learned state-conditioned outcome penalty can improve
   AntMaze natural-start partial progress over Phase 5F/5G/5H in a matched
   3-episode smoke, while preserving support-only graph semantics.
+- Phase 5J shows the Phase 5I weight `0.5` is consistent with a conservative
+  heldout penalty-budget selector, while also showing that current
+  state-outcome predictions are only weakly calibrated on heldout attempts.
 
 ## Claims Not Yet Supported
 
@@ -1656,3 +1694,6 @@ Lessons:
 - Phase 5I state-conditioned outcome modeling is not a completed algorithm,
   is not yet calibrated on heldout online attempts, and still does not achieve
   AntMaze task success or beat GAS.
+- Phase 5J does not validate Phase 5I as a calibrated edge success model:
+  heldout AUC is only `0.5556`, and the selected penalty weight is a budgeted
+  cost scale rather than a probability threshold.

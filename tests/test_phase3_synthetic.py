@@ -47,6 +47,12 @@ from phase3f.state_conditioned_outcome_model import (
     score_state_conditioned_outcome_candidates,
     state_conditioned_outcome_penalty_map,
 )
+from phase3f.state_outcome_calibration import (
+    calibrate_state_outcome_model,
+    evaluate_failure_predictions,
+    select_penalty_weight,
+    split_by_trace_group,
+)
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -1021,3 +1027,75 @@ def test_state_conditioned_outcome_penalty_changes_support_planning_route():
     )
     assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
     assert list(__import__("networkx").shortest_path(learned_penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_state_outcome_group_split_has_no_trace_group_leakage():
+    examples = pd.DataFrame(
+        {
+            "trace_group": ["a", "a", "b", "b", "c", "c", "d", "d"],
+            "timeout": [0, 0, 1, 1, 0, 1, 1, 1],
+        }
+    )
+    train, val = split_by_trace_group(examples, val_fraction=0.5, seed=0)
+    assert set(train["trace_group"]).isdisjoint(set(val["trace_group"]))
+    assert len(train) > 0
+    assert len(val) > 0
+
+
+def test_state_outcome_prediction_metrics_report_separation():
+    examples = pd.DataFrame({"timeout": [0, 0, 1, 1]})
+    metrics = evaluate_failure_predictions(
+        examples,
+        np.asarray([0.1, 0.2, 0.8, 0.9], dtype=np.float64),
+        split="val",
+    )
+    assert metrics["brier"] < 0.05
+    assert metrics["auc"] == 1.0
+    assert metrics["risk_separation"] > 0.5
+
+
+def test_penalty_weight_selection_respects_mean_penalty_budget():
+    validation = pd.DataFrame(
+        {
+            "timeout": [0, 0, 1, 1],
+            "predicted_failure_prob": [0.2, 0.3, 0.8, 0.9],
+        }
+    )
+    selection = select_penalty_weight(
+        validation,
+        penalty_weights=[0.5, 1.0, 2.0],
+        max_mean_penalty=0.5,
+        max_completed_mean_penalty=0.5,
+    )
+    selected = float(selection.loc[selection["selected"], "penalty_weight"].iloc[0])
+    assert selected == 0.5
+    assert not bool(selection.loc[selection["penalty_weight"] == 1.0, "valid_under_budget"].iloc[0])
+    assert not bool(selection.loc[selection["penalty_weight"] == 2.0, "valid_under_budget"].iloc[0])
+
+
+def test_state_outcome_calibration_trains_and_selects_weight():
+    examples = pd.DataFrame(
+        {
+            "trace_group": ["a", "a", "b", "b", "c", "c", "d", "d"],
+            "timeout": [0, 0, 1, 1, 0, 0, 1, 1],
+            "edge_static_risk_penalty": [0.1, 0.2, 3.0, 3.5, 0.1, 0.1, 4.0, 4.5],
+            "edge_state_risk_penalty": [0.1, 0.1, 2.0, 2.0, 0.2, 0.2, 3.0, 3.0],
+            "edge_failure_count": [0, 0, 1, 1, 0, 0, 2, 2],
+            "base_planning_cost": [1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0],
+            "selected_init_distance": [0.1, 0.2, 8.0, 9.0, 0.1, 0.2, 10.0, 11.0],
+        }
+    )
+    result = calibrate_state_outcome_model(
+        examples,
+        val_fraction=0.5,
+        seed=1,
+        min_examples=4,
+        l2=0.1,
+        learning_rate=0.1,
+        num_steps=300,
+        penalty_weights=[0.5, 1.0],
+        max_mean_penalty=0.8,
+    )
+    assert result["model"].is_fitted
+    assert result["metrics"].shape[0] == 2
+    assert result["selected_weight"] in {0.5, 1.0}

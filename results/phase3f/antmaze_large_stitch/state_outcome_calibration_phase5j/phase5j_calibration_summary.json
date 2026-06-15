@@ -1,0 +1,25 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "max_completed_mean_penalty": 0.5,
+  "max_mean_penalty": 0.5,
+  "note": "Heldout attempt calibration is not task success.",
+  "num_examples": 213,
+  "num_trace_groups": 24,
+  "num_train_examples": 152,
+  "num_val_examples": 61,
+  "selected_penalty_weight": 0.5,
+  "trace_dirs": [
+    "results/phase3f/antmaze_large_stitch/edge_outcome_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/offline_prior_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_conditioned_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_conditioned_w0p5_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_conditioned_w2p0_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_outcome_w0p5_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_outcome_3ep_corebot100k_H10_B120",
+    "results/phase3f/antmaze_large_stitch/state_outcome_w2p0_3ep_corebot100k_H10_B120"
+  ],
+  "val_auc": 0.5555555555555556,
+  "val_brier": 0.11554173858554204,
+  "val_log_loss": 0.3994881665456241,
+  "val_risk_separation": 0.011043365889632506
+}
