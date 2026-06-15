@@ -1,0 +1,25 @@
+dataset_name: scene-play-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+preflight_root: results/phase3/env_preflight_gcrlo
+method: hierarchical_repaired_phase4o_s04_H25_B192
+model_path: results/phase4m_training/scene_play/core_plus_bottleneck_budget192_H25_3000/planner_relevant_repair_s04_seed0/model.pt
+output_dir: results/phase3f
+action_mode: hierarchical_support
+num_episodes: 2
+max_steps: 200
+task_ids: [1, 2]
+seed: 0
+device: auto
+max_transitions: 200000
+cluster_method: kmeans
+state_dims:
+n_clusters: 512
+graph_edges_csv: results/phase4e/scene_play/core_plus_bottleneck_budget192_H25__repair_all_budget192_H25/augmented_option_edges.csv
+graph_segments_npz: results/phase2/scene_play/core_plus_bottleneck_budget192_H25/edge_segments.npz
+bank_edges_csv: results/phase2/scene_play/all_budget192_H25/option_edges.csv
+bank_segments_npz: results/phase2/scene_play/all_budget192_H25/edge_segments.npz
+edge_horizon_multiplier: 2.0
+max_edge_horizon: 50
+max_replans: 8
+subgoal_max_candidates: 256
+allow_full_bank_fallback: true

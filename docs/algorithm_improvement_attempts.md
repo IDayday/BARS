@@ -1294,6 +1294,35 @@ Lessons:
   next mature algorithmic unit needs graph planning, option subgoal selection,
   and switching.
 
+### Hierarchical Natural-Start Rollout
+
+Status:
+
+Implemented as Phase 5C. The executor plans over support-certified edges,
+optionally falls back to the full support bank without adding kNN/proximity
+shortcuts, selects subgoals from real edge segments, and switches options when
+the online state enters the destination cluster.
+
+Results:
+
+- AntMaze repaired/corebot100k: 2 episodes x 200 steps, success `0.0`, mean
+  completed edges `1.0`, failure `max_replans_exceeded`.
+- AntMaze repaired/Phase4M s04: 2 episodes x 200 steps, success `0.0`, mean
+  completed edges `2.5`, failure `max_replans_exceeded`.
+- Scene repaired/Phase4O s04: 1 episode x 40 steps, success `0.0`, mean
+  completed edges `0.0`, failure `max_steps_without_success`.
+
+Lessons:
+
+- Natural-start hierarchical execution is now instrumented, but not solved.
+- AntMaze exposes endpoint coverage and long-path instability; every replan
+  used full support-bank fallback.
+- Scene exposes low-level option completion/subgoal mismatch on an otherwise
+  short support path.
+- Initiation-aware segment subgoal selection is directionally useful because it
+  turns zero-progress AntMaze traces into partial edge completion, but it is not
+  enough for task success.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1348,6 +1377,9 @@ Lessons:
   policy-support score.
 - Phase 5B shows the local `gcrlo` stack can run reset-free natural-start
   OGBench closed-loop episodes with trained GCBC checkpoints.
+- Phase 5C shows support-certified hierarchical natural-start rollout can plan
+  and execute partial online option paths, and provides concrete failure
+  diagnostics for endpoint coverage, replanning, and edge completion.
 
 ## Claims Not Yet Supported
 
@@ -1380,3 +1412,5 @@ Lessons:
 - Phase 5B direct GCBC smoke success rate is not evidence that support graphs
   are ineffective; it does not include hierarchical planning or option
   switching.
+- Phase 5C partial edge completion is not task success and does not yet beat
+  GAS or any online baseline.

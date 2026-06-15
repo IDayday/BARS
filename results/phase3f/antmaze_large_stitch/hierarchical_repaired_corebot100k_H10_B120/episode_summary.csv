@@ -1,0 +1,3 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,success,total_reward,initial_goal_l2,final_goal_l2,start_cluster,goal_cluster,planned_edges,completed_edges,replans,full_bank_fallbacks,failure_reason
+antmaze-large-stitch-v0,hierarchical_repaired_corebot100k_H10_B120,0,0,1,155,0.0,0.0,43.79807662963867,38.16215896606445,1,398,161,2,9,9,max_replans_exceeded
+antmaze-large-stitch-v0,hierarchical_repaired_corebot100k_H10_B120,1,1,2,126,0.0,0.0,16.97965431213379,19.45408058166504,152,18,252,0,9,9,max_replans_exceeded

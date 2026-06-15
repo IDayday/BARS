@@ -1,0 +1,2 @@
+dataset_name,method,num_episodes,success_rate,mean_steps,mean_total_reward,mean_final_goal_l2,skipped,skipped_reason
+scene-play-v0,hierarchical_repaired_phase4o_s04_H25_B192,1,0.0,40.0,0.0,5.9754438400268555,False,

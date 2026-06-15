@@ -22,7 +22,13 @@ from phase3f.natural_rollout import (  # noqa: E402
     run_natural_start_episodes,
     write_natural_rollout_outputs,
 )
+from phase3f.hierarchical_rollout import (  # noqa: E402
+    fit_runtime_cluster_model,
+    load_graph_artifacts,
+    run_hierarchical_support_episodes,
+)
 from phase3f.task_eval import load_preflight_status, write_env_unavailable_skip  # noqa: E402
+from phase1.data import load_ogbench_dataset  # noqa: E402
 
 
 def _dataset_key(dataset_name: str) -> str:
@@ -74,10 +80,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task_ids", default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--device", default=None)
-    parser.add_argument("--action_mode", choices=["direct_gcbc", "random", "zero"], default=None)
+    parser.add_argument("--action_mode", choices=["direct_gcbc", "random", "zero", "hierarchical_support"], default=None)
     parser.add_argument("--trace_every", type=int, default=None)
     parser.add_argument("--keep_going_after_success", action="store_true")
     parser.add_argument("--skip_preflight_check", action="store_true")
+    parser.add_argument("--max_transitions", type=int, default=None)
+    parser.add_argument("--cluster_method", default=None)
+    parser.add_argument("--n_clusters", type=int, default=None)
+    parser.add_argument("--state_dims", default=None)
+    parser.add_argument("--graph_edges_csv", default=None)
+    parser.add_argument("--graph_segments_npz", default=None)
+    parser.add_argument("--bank_edges_csv", default=None)
+    parser.add_argument("--bank_segments_npz", default=None)
+    parser.add_argument("--disable_bank_connectors", action="store_true")
+    parser.add_argument("--allow_full_bank_fallback", action="store_true")
+    parser.add_argument("--edge_horizon_multiplier", type=float, default=None)
+    parser.add_argument("--max_edge_horizon", type=int, default=None)
+    parser.add_argument("--max_replans", type=int, default=None)
+    parser.add_argument("--subgoal_max_candidates", type=int, default=None)
     return parser.parse_args()
 
 
@@ -101,6 +121,20 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "trace_every": 1,
         "skip_preflight_check": False,
         "keep_going_after_success": False,
+        "max_transitions": 200000,
+        "cluster_method": None,
+        "n_clusters": None,
+        "state_dims": None,
+        "graph_edges_csv": None,
+        "graph_segments_npz": None,
+        "bank_edges_csv": None,
+        "bank_segments_npz": None,
+        "disable_bank_connectors": False,
+        "allow_full_bank_fallback": False,
+        "edge_horizon_multiplier": 2.0,
+        "max_edge_horizon": None,
+        "max_replans": 5,
+        "subgoal_max_candidates": 256,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -108,6 +142,8 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
     if not merged.get("dataset_name"):
         raise ValueError("--dataset_name is required")
     merged["task_ids"] = _parse_list(merged.get("task_ids"), int)
+    if merged.get("state_dims") is not None:
+        merged["state_dims"] = _parse_list(merged.get("state_dims"), int)
     return argparse.Namespace(**merged)
 
 
@@ -144,7 +180,7 @@ def main() -> None:
 
     device = resolve_device(args.device)
     policy = None
-    if args.action_mode == "direct_gcbc":
+    if args.action_mode in {"direct_gcbc", "hierarchical_support"}:
         if not args.model_path:
             write_env_unavailable_skip(out_dir, args.dataset_name, args.method, "missing_model_path")
             _write_config(out_dir / "config_resolved.yaml", args, {"device_resolved": str(device)})
@@ -170,20 +206,74 @@ def main() -> None:
         print(f"[phase3F] skipped natural-start rollout: {reason} output_dir={out_dir}")
         return
 
-    episodes, traces = run_natural_start_episodes(
-        env,
-        policy,
-        dataset_name=args.dataset_name,
-        method=args.method,
-        num_episodes=args.num_episodes,
-        max_steps=args.max_steps,
-        task_ids=args.task_ids,
-        seed=args.seed,
-        action_mode=args.action_mode,
-        device=device,
-        stop_on_success=not args.keep_going_after_success,
-        trace_every=args.trace_every,
-    )
+    if args.action_mode == "hierarchical_support":
+        if not args.cluster_method or args.n_clusters is None:
+            write_env_unavailable_skip(out_dir, args.dataset_name, args.method, "missing_cluster_config")
+            _write_config(out_dir / "config_resolved.yaml", args, {"device_resolved": str(device)})
+            print(f"[phase3F] skipped hierarchical rollout: missing_cluster_config output_dir={out_dir}")
+            return
+        if not args.graph_edges_csv or not args.graph_segments_npz:
+            write_env_unavailable_skip(out_dir, args.dataset_name, args.method, "missing_graph_artifacts")
+            _write_config(out_dir / "config_resolved.yaml", args, {"device_resolved": str(device)})
+            print(f"[phase3F] skipped hierarchical rollout: missing_graph_artifacts output_dir={out_dir}")
+            return
+        dataset = load_ogbench_dataset(
+            args.dataset_name,
+            args.dataset_dir,
+            split="train",
+            max_transitions=args.max_transitions,
+        )
+        cluster_model = fit_runtime_cluster_model(
+            dataset,
+            cluster_method=args.cluster_method,
+            n_clusters=args.n_clusters,
+            seed=args.seed,
+            state_dims=args.state_dims,
+        )
+        graph_edges, graph_segments, bank_edges, bank_segments = load_graph_artifacts(
+            graph_edges_csv=args.graph_edges_csv,
+            graph_segments_npz=args.graph_segments_npz,
+            bank_edges_csv=args.bank_edges_csv,
+            bank_segments_npz=args.bank_segments_npz,
+        )
+        episodes, traces = run_hierarchical_support_episodes(
+            env,
+            policy,
+            dataset=dataset,
+            cluster_model=cluster_model,
+            graph_edges=graph_edges,
+            graph_segments=graph_segments,
+            bank_edges=bank_edges,
+            bank_segments=bank_segments,
+            dataset_name=args.dataset_name,
+            method=args.method,
+            num_episodes=args.num_episodes,
+            max_steps=args.max_steps,
+            task_ids=args.task_ids,
+            seed=args.seed,
+            device=str(device),
+            allow_bank_connectors=not args.disable_bank_connectors,
+            edge_horizon_multiplier=args.edge_horizon_multiplier,
+            max_edge_horizon=args.max_edge_horizon,
+            max_replans=args.max_replans,
+            subgoal_max_candidates=args.subgoal_max_candidates,
+            allow_full_bank_fallback=args.allow_full_bank_fallback,
+        )
+    else:
+        episodes, traces = run_natural_start_episodes(
+            env,
+            policy,
+            dataset_name=args.dataset_name,
+            method=args.method,
+            num_episodes=args.num_episodes,
+            max_steps=args.max_steps,
+            task_ids=args.task_ids,
+            seed=args.seed,
+            action_mode=args.action_mode,
+            device=device,
+            stop_on_success=not args.keep_going_after_success,
+            trace_every=args.trace_every,
+        )
     summary = write_natural_rollout_outputs(
         out_dir,
         dataset_name=args.dataset_name,

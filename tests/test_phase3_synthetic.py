@@ -22,6 +22,10 @@ from phase3.reset_utils import (
     probe_reset_capability,
 )
 from phase3f.natural_rollout import run_natural_start_episodes, write_natural_rollout_outputs
+from phase3f.hierarchical_rollout import (
+    build_support_planning_graph,
+    run_hierarchical_support_episodes,
+)
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -324,3 +328,118 @@ def test_natural_start_direct_rollout_uses_env_goal_and_writes_summary(tmp_path)
     )
     assert summary.loc[0, "success_rate"] == 1.0
     assert (tmp_path / "episode_traces.jsonl").read_text().strip()
+
+
+def test_support_planning_graph_adds_only_support_bank_connectors():
+    graph_edges = pd.DataFrame(
+        {
+            "edge_id": [5],
+            "src": [1],
+            "dst": [2],
+            "median_h": [1.0],
+            "cost": [1.0],
+        }
+    )
+    bank_edges = pd.DataFrame(
+        {
+            "edge_id": [7, 8, 9],
+            "src": [0, 9, 8],
+            "dst": [1, 2, 9],
+            "median_h": [1.0, 1.0, 1.0],
+            "cost": [1.0, 1.0, 1.0],
+        }
+    )
+    graph = build_support_planning_graph(
+        graph_edges,
+        bank_edges=bank_edges,
+        start_cluster=0,
+        goal_cluster=2,
+        allow_bank_connectors=True,
+    )
+    assert graph.has_edge(0, 1)
+    assert graph.has_edge(1, 2)
+    assert graph.has_edge(9, 2)
+    assert not graph.has_edge(8, 9)
+    assert graph[0][1]["is_bank_connector"] is True
+
+
+def test_hierarchical_support_rollout_switches_support_edges():
+    observations = np.asarray(
+        [
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [2.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    dataset = {
+        "observations": observations,
+        "actions": np.zeros((3, 2), dtype=np.float32),
+        "next_observations": observations.copy(),
+        "terminals": np.zeros(3, dtype=bool),
+    }
+    cluster_model = fit_state_clusters(
+        observations,
+        method="grid_xy",
+        n_clusters=3,
+        seed=0,
+        state_dims=[0, 1],
+        n_bins_x=3,
+        n_bins_y=1,
+    )
+    graph_edges = pd.DataFrame({"edge_id": [5], "src": [1], "dst": [2], "median_h": [1.0], "cost": [1.0]})
+    bank_edges = pd.DataFrame({"edge_id": [7], "src": [0], "dst": [1], "median_h": [1.0], "cost": [1.0]})
+    graph_segments = {
+        "edge_id": np.asarray([5], dtype=np.int64),
+        "global_i": np.asarray([1], dtype=np.int64),
+        "global_j": np.asarray([2], dtype=np.int64),
+    }
+    bank_segments = {
+        "edge_id": np.asarray([7], dtype=np.int64),
+        "global_i": np.asarray([0], dtype=np.int64),
+        "global_j": np.asarray([1], dtype=np.int64),
+    }
+
+    class DummyActionSpace:
+        shape = (2,)
+        low = np.asarray([-1.0, -1.0], dtype=np.float32)
+        high = np.asarray([1.0, 1.0], dtype=np.float32)
+
+    class DummyEnv:
+        action_space = DummyActionSpace()
+
+        def __init__(self):
+            self.obs = observations[0].copy()
+
+        def reset(self, seed=None, options=None):
+            del seed, options
+            self.obs = observations[0].copy()
+            return self.obs.copy(), {"goal": observations[2].copy()}
+
+        def step(self, action):
+            self.obs = self.obs + np.asarray(action, dtype=np.float32)
+            success = bool(self.obs[0] >= 2.0)
+            return self.obs.copy(), float(success), success, False, {"success": success}
+
+    class StepPolicy:
+        def __call__(self, obs, goal):
+            delta = np.asarray(goal, dtype=np.float32) - np.asarray(obs, dtype=np.float32)
+            return np.clip(delta, -1.0, 1.0).astype(np.float32)
+
+    episodes, traces = run_hierarchical_support_episodes(
+        DummyEnv(),
+        StepPolicy(),
+        dataset=dataset,
+        cluster_model=cluster_model,
+        graph_edges=graph_edges,
+        graph_segments=graph_segments,
+        bank_edges=bank_edges,
+        bank_segments=bank_segments,
+        dataset_name="dummy-v0",
+        method="hierarchical_support",
+        num_episodes=1,
+        max_steps=5,
+    )
+    assert episodes.loc[0, "success"] == 1.0
+    assert episodes.loc[0, "completed_edges"] >= 1
+    assert traces[0]["steps"][0]["segment_source"] == "bank"

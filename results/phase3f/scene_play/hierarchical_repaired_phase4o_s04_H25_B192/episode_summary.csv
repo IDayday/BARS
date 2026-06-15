@@ -1,0 +1,2 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,success,total_reward,initial_goal_l2,final_goal_l2,start_cluster,goal_cluster,planned_edges,completed_edges,replans,full_bank_fallbacks,failure_reason
+scene-play-v0,hierarchical_repaired_phase4o_s04_H25_B192,0,0,1,40,0.0,0.0,6.9439826011657715,5.9754438400268555,365,66,6,0,2,0,max_steps_without_success

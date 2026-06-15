@@ -99,7 +99,12 @@ runs completed in `gcrlo` for AntMaze and Scene, but direct edge-BC GCBC did not
 solve either task in 2 episodes x 100 steps. This only validates the online
 evaluation interface; it does not validate the graph algorithm.
 
-Next evaluation should prioritize hierarchical natural-start rollout:
+Phase 5C adds hierarchical support-graph natural-start rollout. It can plan and
+execute partial option paths, but the current policies still do not solve the
+tasks. AntMaze requires full support-bank fallback and repeatedly replans; Scene
+plans a short path but does not reliably complete the first option.
+
+Next evaluation should improve the hierarchical natural-start protocol:
 
 1. `env.reset()`.
 2. Infer current cluster from observation.

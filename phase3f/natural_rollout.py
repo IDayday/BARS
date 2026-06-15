@@ -291,6 +291,7 @@ def write_natural_rollout_outputs(
             ]
         )
     else:
+        mean_final_goal_l2 = float(episodes["final_goal_l2"].mean()) if "final_goal_l2" in episodes else np.nan
         summary = pd.DataFrame(
             [
                 {
@@ -300,7 +301,7 @@ def write_natural_rollout_outputs(
                     "success_rate": float(episodes["success"].mean()),
                     "mean_steps": float(episodes["num_steps"].mean()),
                     "mean_total_reward": float(episodes["total_reward"].mean()),
-                    "mean_final_goal_l2": float(episodes["final_goal_l2"].mean()),
+                    "mean_final_goal_l2": mean_final_goal_l2,
                     "skipped": bool(skipped),
                     "skipped_reason": skipped_reason,
                 }
