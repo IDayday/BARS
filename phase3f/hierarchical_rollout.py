@@ -334,6 +334,7 @@ def run_hierarchical_support_episodes(
     downstream_weight: float = 0.25,
     policy_mse_weight: float = 0.0,
     policy_mse_scale: float = 0.05,
+    prior_failed_edge_counts: dict[tuple[str, int], int] | None = None,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
     actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -350,7 +351,9 @@ def run_hierarchical_support_episodes(
         completed_edges = 0
         planned_edges = 0
         failed_edge_attempts = 0
-        failed_edge_counts: dict[tuple[str, int], int] = {}
+        failed_edge_counts: dict[tuple[str, int], int] = dict(prior_failed_edge_counts or {})
+        current_failed_edges: set[tuple[str, int]] = set()
+        prior_penalized_edges = len(failed_edge_counts)
         failure_reason = ""
         initial_goal_l2 = float("nan")
         final_goal_l2 = float("nan")
@@ -478,6 +481,8 @@ def run_hierarchical_support_episodes(
                         "edge_src": int(edge_attrs["src"]),
                         "edge_dst": int(edge_attrs["dst"]),
                         "edge_id": int(edge_attrs["edge_id"]),
+                        "segment_edge_id": int(edge_attrs["segment_edge_id"]),
+                        "policy_edge_id": int(edge_attrs["policy_edge_id"]),
                         "segment_source": str(edge_attrs["segment_source"]),
                         "subgoal_reason": current_subgoal_reason,
                         "edge_step": int(edge_step),
@@ -500,6 +505,7 @@ def run_hierarchical_support_episodes(
                 elif edge_step >= horizon:
                     fail_key = (str(edge_attrs["segment_source"]), int(edge_attrs["segment_edge_id"]))
                     failed_edge_counts[fail_key] = int(failed_edge_counts.get(fail_key, 0)) + 1
+                    current_failed_edges.add(fail_key)
                     failed_edge_attempts += 1
                     active_edges = []
                     current_subgoal = None
@@ -528,7 +534,8 @@ def run_hierarchical_support_episodes(
                 "replans": int(replans),
                 "full_bank_fallbacks": int(full_bank_fallbacks),
                 "failed_edge_attempts": int(failed_edge_attempts),
-                "unique_failed_edges": int(len(failed_edge_counts)),
+                "unique_failed_edges": int(len(current_failed_edges)),
+                "prior_penalized_edges": int(prior_penalized_edges),
                 "failure_reason": failure_reason,
             }
         )

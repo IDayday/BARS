@@ -27,6 +27,11 @@ from phase3f.hierarchical_rollout import (  # noqa: E402
     load_graph_artifacts,
     run_hierarchical_support_episodes,
 )
+from phase3f.edge_memory import (  # noqa: E402
+    load_edge_memory,
+    memory_failed_edge_counts,
+    write_edge_memory_outputs,
+)
 from phase3f.task_eval import load_preflight_status, write_env_unavailable_skip  # noqa: E402
 from phase1.data import load_ogbench_dataset  # noqa: E402
 
@@ -105,6 +110,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--downstream_weight", type=float, default=None)
     parser.add_argument("--policy_mse_weight", type=float, default=None)
     parser.add_argument("--policy_mse_scale", type=float, default=None)
+    parser.add_argument("--edge_memory_csv", default=None)
+    parser.add_argument("--use_edge_memory", action="store_true")
+    parser.add_argument("--update_edge_memory", action="store_true")
+    parser.add_argument("--memory_penalty_mode", default=None)
     return parser.parse_args()
 
 
@@ -149,6 +158,10 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "downstream_weight": 0.25,
         "policy_mse_weight": 0.0,
         "policy_mse_scale": 0.05,
+        "edge_memory_csv": None,
+        "use_edge_memory": False,
+        "update_edge_memory": False,
+        "memory_penalty_mode": "failure_excess",
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -265,6 +278,8 @@ def main() -> None:
             bank_edges_csv=args.bank_edges_csv,
             bank_segments_npz=args.bank_segments_npz,
         )
+        edge_memory = load_edge_memory(args.edge_memory_csv) if args.use_edge_memory else load_edge_memory(None)
+        prior_failed_counts = memory_failed_edge_counts(edge_memory, mode=args.memory_penalty_mode)
         episodes, traces = run_hierarchical_support_episodes(
             env,
             policy,
@@ -292,6 +307,7 @@ def main() -> None:
             downstream_weight=args.downstream_weight,
             policy_mse_weight=args.policy_mse_weight,
             policy_mse_scale=args.policy_mse_scale,
+            prior_failed_edge_counts=prior_failed_counts,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -317,12 +333,24 @@ def main() -> None:
         skipped=False,
         skipped_reason="",
     )
+    if args.action_mode == "hierarchical_support":
+        write_edge_memory_outputs(
+            out_dir,
+            traces,
+            edge_memory_csv=args.edge_memory_csv,
+            update_memory=args.update_edge_memory,
+            memory_penalty_mode=args.memory_penalty_mode,
+        )
     extra = {"device_resolved": str(device)}
     if args.action_mode == "hierarchical_support":
         extra.update(
             {
                 "cluster_cache_path_resolved": str(cache_path) if cache_path is not None else None,
                 "cluster_cache_hit": bool(cluster_cache_hit),
+                "edge_memory_csv_resolved": args.edge_memory_csv,
+                "edge_memory_used": bool(args.use_edge_memory),
+                "edge_memory_updated": bool(args.update_edge_memory),
+                "edge_memory_prior_penalized_edges": int(len(prior_failed_counts)),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

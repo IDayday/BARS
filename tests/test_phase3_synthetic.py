@@ -28,6 +28,12 @@ from phase3f.hierarchical_rollout import (
     load_or_fit_runtime_cluster_model,
     run_hierarchical_support_episodes,
 )
+from phase3f.edge_memory import (
+    extract_edge_attempts_from_traces,
+    memory_failed_edge_counts,
+    merge_edge_memory,
+    summarize_edge_attempts,
+)
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -530,3 +536,98 @@ def test_runtime_cluster_model_cache_hits_second_load(tmp_path):
     assert hit1 is False
     assert hit2 is True
     assert cache_path.exists()
+
+
+def test_edge_memory_extracts_attempts_and_summarizes_failures():
+    traces = [
+        {
+            "episode_id": 0,
+            "steps": [
+                {
+                    "cluster": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "edge_id": 10,
+                    "segment_edge_id": 10,
+                    "segment_source": "graph",
+                    "subgoal_l2": 1.0,
+                    "selected_policy_action_mse": 0.2,
+                },
+                {
+                    "cluster": 1,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "edge_id": 10,
+                    "segment_edge_id": 10,
+                    "segment_source": "graph",
+                    "subgoal_l2": 0.1,
+                    "selected_policy_action_mse": 0.4,
+                },
+                {
+                    "cluster": 1,
+                    "edge_src": 1,
+                    "edge_dst": 2,
+                    "edge_id": 11,
+                    "segment_edge_id": 11,
+                    "segment_source": "bank",
+                    "subgoal_l2": 2.0,
+                    "selected_policy_action_mse": 0.6,
+                },
+            ],
+        }
+    ]
+    attempts = extract_edge_attempts_from_traces(traces)
+    summary = summarize_edge_attempts(attempts).set_index(["segment_source", "segment_edge_id"])
+
+    assert attempts.shape[0] == 2
+    assert summary.loc[("graph", 10), "completed"] == 1
+    assert summary.loc[("graph", 10), "timeouts"] == 0
+    assert summary.loc[("bank", 11), "completed"] == 0
+    assert summary.loc[("bank", 11), "timeouts"] == 1
+    assert summary.loc[("bank", 11), "failure_excess"] == 1
+
+
+def test_edge_memory_merge_produces_failed_edge_penalty_counts():
+    existing = pd.DataFrame(
+        {
+            "segment_source": ["graph"],
+            "segment_edge_id": [3],
+            "edge_src": [0],
+            "edge_dst": [1],
+            "attempts": [2],
+            "completed": [0],
+            "timeouts": [2],
+            "success_rate": [0.0],
+            "failure_excess": [2],
+            "mean_attempt_steps": [4.0],
+            "mean_final_subgoal_l2": [1.0],
+            "mean_selected_policy_action_mse": [0.5],
+        }
+    )
+    new_summary = pd.DataFrame(
+        {
+            "segment_source": ["graph", "bank"],
+            "segment_edge_id": [3, 7],
+            "edge_src": [0, 9],
+            "edge_dst": [1, 10],
+            "attempts": [1, 1],
+            "completed": [1, 0],
+            "timeouts": [0, 1],
+            "success_rate": [1.0, 0.0],
+            "failure_excess": [0, 1],
+            "mean_attempt_steps": [2.0, 3.0],
+            "mean_final_subgoal_l2": [0.0, 2.0],
+            "mean_selected_policy_action_mse": [0.1, 0.2],
+        }
+    )
+
+    merged = merge_edge_memory(existing, new_summary)
+    failed_counts = memory_failed_edge_counts(merged, mode="failure_excess")
+
+    graph_row = merged[(merged["segment_source"] == "graph") & (merged["segment_edge_id"] == 3)].iloc[0]
+    assert graph_row["attempts"] == 3
+    assert graph_row["completed"] == 1
+    assert graph_row["timeouts"] == 2
+    assert graph_row["failure_excess"] == 1
+    assert failed_counts[("graph", 3)] == 1
+    assert failed_counts[("bank", 7)] == 1

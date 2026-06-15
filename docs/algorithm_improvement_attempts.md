@@ -1,6 +1,6 @@
 # BARS Algorithm Improvement Attempt Log
 
-Last updated: 2026-06-14
+Last updated: 2026-06-15
 
 This document is the running ledger for BARS algorithm improvement attempts. It
 records what was tried, what the evidence says, what remains unproven, and what
@@ -1352,6 +1352,35 @@ Lessons:
 - Graph-only improvements have diminishing returns until low-level execution
   from online drift states is handled.
 
+### Persistent Edge Outcome Memory
+
+Status:
+
+Implemented as Phase 5E. The hierarchical executor now extracts online edge
+attempts from traces, summarizes completed versus timed-out attempts, persists
+edge outcome memory across runs, and can convert prior failures into
+support-edge cost penalties during replanning.
+
+Results:
+
+- AntMaze bootstrap run: 1 episode x 120-step cap, success `0.0`, completed
+  edges `1`, final goal L2 `38.3014`, memory updated to 6 attempted edges with
+  5 penalized edges.
+- AntMaze replay run: loaded 5 prior penalized edges, success `0.0`, completed
+  edges `3`, final goal L2 `42.0989`, memory updated to 15 attempted edges
+  with 11 penalized edges.
+- The replay confirms memory is read and affects planning, but task success
+  remains zero and final goal distance worsens.
+
+Lessons:
+
+- Persistent edge memory is useful instrumentation and should be kept.
+- Naive count-based failure penalties are not a complete closed-loop execution
+  model. They can move planning away from known failed edges and into different
+  untested support-certified edges that fail for similar online drift reasons.
+- The next mature attempt should learn a conditioned edge outcome model from
+  this memory rather than applying only a scalar edge-id penalty.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1412,6 +1441,8 @@ Lessons:
 - Phase 5D shows policy-aware segment scoring can reduce selected offline
   policy MSE and modestly improve AntMaze partial edge progress, while exposing
   that this proxy alone is not enough for online success.
+- Phase 5E shows persistent online edge outcome memory can be extracted,
+  persisted, and fed back into support-only replanning.
 
 ## Claims Not Yet Supported
 
@@ -1448,3 +1479,5 @@ Lessons:
   GAS or any online baseline.
 - Phase 5D policy-aware scoring is not a calibrated edge success probability
   and does not solve Scene or AntMaze natural-start tasks.
+- Phase 5E count-based failure memory is not a complete algorithm and does not
+  improve online task success in the current AntMaze smoke.

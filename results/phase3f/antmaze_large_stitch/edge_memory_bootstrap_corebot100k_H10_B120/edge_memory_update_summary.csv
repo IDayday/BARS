@@ -1,0 +1,2 @@
+edge_memory_csv,num_memory_edges,num_penalized_edges,memory_penalty_mode
+results/phase3f/edge_memory/antmaze_corebot100k_H10_B120.csv,6,5,failure_excess
