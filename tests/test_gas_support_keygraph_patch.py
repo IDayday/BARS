@@ -12,6 +12,7 @@ from bars.gas_bars.support_keygraph import (
     patch_gas_keygraph_with_support,
     save_keygraph_pickle,
 )
+from scripts.stage37_prepare_calibrated_support_scores import add_calibrated_support_columns
 
 
 def _dummy_keygraph():
@@ -157,3 +158,21 @@ def test_keygraph_pickle_roundtrip_uses_gas_dict_payload(tmp_path):
     loaded = load_keygraph_pickle(out)
     assert loaded.base_node_cnt == kg.base_node_cnt
     assert np.allclose(loaded.nodes, kg.nodes)
+
+
+def test_calibrated_support_risk_columns_are_monotone_and_protect_goal_edges():
+    scores = pd.DataFrame(
+        [
+            {"u": 0, "v": 1, "edge_source": "gas_distance", "local_support": 0, "same_traj_support": 0},
+            {"u": 1, "v": 2, "edge_source": "gas_distance", "local_support": 1, "same_traj_support": 3},
+            {"u": 2, "v": 3, "edge_source": "gas_distance", "local_support": 1, "same_traj_support": 20},
+            {"u": 3, "v": 4, "edge_source": "gas_goal_connector", "local_support": 0, "same_traj_support": 0},
+        ]
+    )
+
+    out = add_calibrated_support_columns(scores, target_support=8.0, protect_goal_edges=True)
+
+    assert out.loc[0, "risk_hybrid_support"] > out.loc[1, "risk_hybrid_support"]
+    assert out.loc[1, "risk_hybrid_support"] > out.loc[2, "risk_hybrid_support"]
+    assert out.loc[3, "risk_hybrid_support"] == 0.0
+    assert out.loc[3, "risk_unsupported_binary"] == 0.0

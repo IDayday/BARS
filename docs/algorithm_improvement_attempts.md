@@ -1223,6 +1223,74 @@ planner rather than training a BARS-native policy. The next decisive version
 needs calibrated risk, larger evaluation budgets, and multi-seed/multi-env
 replication.
 
+### Stage37: Calibrated GAS Support Risk
+
+Question:
+
+Can continuous support-risk calibration improve the Stage36 GAS bridge beyond a
+fixed binary unsupported-edge penalty?
+
+Reviewed before implementation:
+
+- Stage36 forward-corrected GAS patch results, especially the non-monotonic
+  relationship between support pressure and success.
+- GAS cached-path semantics and the requirement to recompute directional costs
+  on the reversed graph.
+- Existing edge-score fields: `local_support`, `same_traj_support`,
+  `edge_source`, and protected goal connectors.
+
+Implemented:
+
+- Added `scripts/stage37_prepare_calibrated_support_scores.py`.
+- Derived continuous non-goal edge risk columns from `same_traj_support`:
+  inverse-square-root support risk, target-support shortfall, binary
+  unsupported risk, and a hybrid support risk.
+- Kept goal connectors protected at zero calibrated risk.
+- Patched GAS keygraphs by setting `unsupported_penalty=0` and adding
+  `risk_weight * risk_hybrid_support` to the GAS edge cost.
+- Ran targeted giant-stitch closed-loop A/B with the unchanged official GAS
+  actor.
+
+Evidence:
+
+- Giant stitch 10 episodes/task:
+  original success `0.90`, mean length `690.42`;
+  binary penalty `0.5` success `0.92`, mean length `689.16`;
+  hybrid support risk weight `0.25` success `0.96`, mean length `675.66`;
+  hybrid support risk weight `0.5` success `0.94`, mean length `694.10`.
+- The hybrid `0.25` path changes `70.6%` of cached paths, reduces mean
+  unsupported path-edge fraction from `0.670` to `0.523`, and raises mean
+  same-trajectory support from `9.60` to `14.84`.
+- 20 episodes/task validation:
+  original success `0.91`, mean length `687.01`;
+  hybrid support risk weight `0.25` success `0.94`, mean length `677.69`.
+- The validated gain is concentrated on task 1 in this seed:
+  task1 success improves from `0.80` to `0.95`; tasks 2/3/4/5 are unchanged at
+  `1.00/0.95/0.85/0.95`.
+
+Analysis:
+
+This is currently the strongest final-success result. It directly addresses
+the user's concern that graph improvements must translate into policy success:
+the low-level policy is an official mature GAS actor, and the only change is a
+BARS-derived calibrated support-risk prior over GAS-compatible edges. The
+result also refines the design rule. The best setting is not the strongest
+support pressure; it is a mild continuous risk that nudges planning away from
+thinly supported shortcuts while preserving GAS's learned target distribution.
+
+This supports a concrete algorithmic direction for a publishable BARS variant:
+support-aware calibrated planner risk as a drop-in graph correction for
+learned-distance/proximity graph methods, followed by a BARS-native version
+where the same risk signal shapes both graph construction and policy target
+sampling.
+
+Remaining gap:
+
+The result is one seed and one environment. It improves a GAS planner, not yet
+a fully BARS-native policy. The next required step is multi-seed replication
+and applying the same calibrated support-risk patch to additional official GAS
+artifacts or environments.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -2021,6 +2089,13 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   SCC-only penalty `8` drops success to `0.86`. The emerging algorithmic rule
   is mild calibrated support risk over GAS-compatible edges, with directional
   forward-cost path recomputation.
+- Stage37 is the strongest final-success result so far: calibrated hybrid
+  support risk with weight `0.25` improves official GAS giant-stitch success
+  from `0.90` to `0.96` over 10 episodes/task and from `0.91` to `0.94` over
+  20 episodes/task, while shortening the 20-episode mean trajectory length from
+  `687.01` to `677.69`. This is still one seed / one environment, but it shows
+  that BARS support evidence can improve final closed-loop success when applied
+  through a GAS-compatible planner interface.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2099,6 +2174,9 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   `0.5` gives a small success gain, but it is not yet strong evidence of SOTA
   improvement; the decisive next test needs calibrated risk and broader
   multi-seed/multi-env evaluation.
+- Stage37 gives a larger one-seed GAS success gain with calibrated support
+  risk, but it is not yet SOTA evidence until replicated across seeds and at
+  least one additional environment/artifact.
 - Fixed all-edge unsupported-support penalties are not a mature algorithm.
   Giant-stitch shows mild penalty can help, while stronger penalty mainly
   changes paths and does not monotonically improve success under a strong

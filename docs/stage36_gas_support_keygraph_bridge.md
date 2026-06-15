@@ -221,3 +221,49 @@ The next decisive experiment is the same patch on non-saturated official GAS
 artifacts with calibrated risk rather than constant penalties. `scene-play-v0`
 is also a useful next check because its way-step scale and manipulation
 dynamics differ from AntMaze.
+
+## Stage37 Calibrated Support Risk
+
+Stage37 tests the next step: replace fixed binary unsupported-edge penalties
+with a continuous support-risk column computed from `same_traj_support`.
+
+The generated calibrated columns are:
+
+- `risk_unsupported_binary`: `1` for unsupported non-goal edges, else `0`.
+- `risk_inv_sqrt_support`: `1 / sqrt(1 + same_traj_support)`.
+- `risk_low_support_target`: linear shortfall to a target support count.
+- `risk_hybrid_support`: average of inverse-sqrt risk and target shortfall.
+
+Goal connectors are protected with zero calibrated risk. The keygraph patcher
+then uses `unsupported_penalty=0` and adds
+`risk_weight * risk_hybrid_support` to the GAS edge cost.
+
+Giant stitch, same official GAS actor, 10 episodes/task:
+
+| method | risk signal | weight | success | mean episode length | mean unsupported path-edge fraction | mean same-trajectory support |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| original keygraph | none | 0 | `0.90` | `690.42` | `0.670` | `9.60` |
+| binary support | `local_support == 0` | 0.25 | `0.90` | `693.44` | `0.502` | `14.73` |
+| binary support | `local_support == 0` | 0.5 | `0.92` | `689.16` | `0.366` | `17.37` |
+| binary support | `local_support == 0` | 2.0 | `0.90` | `679.10` | `0.169` | `24.18` |
+| hybrid support risk | `risk_hybrid_support` | 0.25 | `0.96` | `675.66` | `0.523` | `14.84` |
+| hybrid support risk | `risk_hybrid_support` | 0.5 | `0.94` | `694.10` | `0.435` | `17.31` |
+| SCC-only support | `scc_only_support` | 8.0 | `0.86` | `694.54` | `0.670` | `9.60` |
+
+The best setting, `risk_hybrid_support` with weight `0.25`, was rerun with
+20 episodes/task:
+
+| method | episodes/task | success | mean episode length | task1 | task2 | task3 | task4 | task5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| original keygraph | 20 | `0.91` | `687.01` | `0.80` | `1.00` | `0.95` | `0.85` | `0.95` |
+| hybrid support risk | 20 | `0.94` | `677.69` | `0.95` | `1.00` | `0.95` | `0.85` | `0.95` |
+
+This is the strongest final-success signal so far. It is still one seed and
+one environment, but it shows that a calibrated BARS support-risk prior can
+improve a mature GAS actor's closed-loop success and shorten trajectories
+without changing the actor.
+
+Engineering note: keygraph patching should run with `JAX_PLATFORMS=cpu` when
+not evaluating, because official GAS keygraph pickles may contain JAX arrays
+and can otherwise initialize CUDA during unpickling. Closed-loop evaluation can
+use the GPU normally.

@@ -1,0 +1,118 @@
+{
+  "base_node_count": 1932,
+  "diff": [
+    {
+      "method": "binary_p0p25_forward",
+      "num_changed_paths": 7355,
+      "num_common_paths": 9660,
+      "path_change_rate": 0.7613871635610766,
+      "reference_method": "original"
+    },
+    {
+      "method": "binary_p0p5_forward",
+      "num_changed_paths": 8619,
+      "num_common_paths": 9660,
+      "path_change_rate": 0.8922360248447205,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p25_forward",
+      "num_changed_paths": 6823,
+      "num_common_paths": 9660,
+      "path_change_rate": 0.7063146997929607,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p5_forward",
+      "num_changed_paths": 7999,
+      "num_common_paths": 9660,
+      "path_change_rate": 0.8280538302277433,
+      "reference_method": "original"
+    },
+    {
+      "method": "invsqrt_w0p5_forward",
+      "num_changed_paths": 7764,
+      "num_common_paths": 9660,
+      "path_change_rate": 0.8037267080745342,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8.csv",
+  "methods": [
+    "original",
+    "binary_p0p25_forward",
+    "binary_p0p5_forward",
+    "hybrid_w0p25_forward",
+    "hybrid_w0p5_forward",
+    "invsqrt_w0p5_forward"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 163.4785052710315,
+      "mean_path_edges": 25.698033126293996,
+      "mean_same_traj_support": 14.734855600655495,
+      "mean_unsupported_edge_fraction": 0.502051359548878,
+      "mean_unsupported_scc_edge_fraction": 0.001801059794555124,
+      "method": "binary_p0p25_forward",
+      "num_paths": 9660
+    },
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 165.9042717896263,
+      "mean_path_edges": 26.0203933747412,
+      "mean_same_traj_support": 17.368540361173856,
+      "mean_unsupported_edge_fraction": 0.36639934317226064,
+      "mean_unsupported_scc_edge_fraction": 0.0017791010861435749,
+      "method": "binary_p0p5_forward",
+      "num_paths": 9660
+    },
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 164.06517393678166,
+      "mean_path_edges": 25.610766045548655,
+      "mean_same_traj_support": 14.83969761134086,
+      "mean_unsupported_edge_fraction": 0.523100877265497,
+      "mean_unsupported_scc_edge_fraction": 0.0018133344694898895,
+      "method": "hybrid_w0p25_forward",
+      "num_paths": 9660
+    },
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 167.3094348812573,
+      "mean_path_edges": 25.888923395445136,
+      "mean_same_traj_support": 17.30724049633839,
+      "mean_unsupported_edge_fraction": 0.435326174172163,
+      "mean_unsupported_scc_edge_fraction": 0.001792581193485886,
+      "method": "hybrid_w0p5_forward",
+      "num_paths": 9660
+    },
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 167.90606386177788,
+      "mean_path_edges": 25.708385093167703,
+      "mean_same_traj_support": 16.39239903447046,
+      "mean_unsupported_edge_fraction": 0.46275957846688937,
+      "mean_unsupported_scc_edge_fraction": 0.0018041022802283962,
+      "method": "invsqrt_w0p5_forward",
+      "num_paths": 9660
+    },
+    {
+      "mean_num_scc_edges": 0.042443064182194616,
+      "mean_num_unsupported_scc_edges": 0.03571428571428571,
+      "mean_path_cost": 160.0751839666016,
+      "mean_path_edges": 25.409316770186336,
+      "mean_same_traj_support": 9.598381574524213,
+      "mean_unsupported_edge_fraction": 0.6701622778479862,
+      "mean_unsupported_scc_edge_fraction": 0.0018093138769499767,
+      "method": "original",
+      "num_paths": 9660
+    }
+  ]
+}
