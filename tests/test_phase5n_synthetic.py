@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from phase3.edge_rollout import policy_action
+from phase3.models import GCBCMLP
 from phase5n.planner_subgoal_dataset import (
     TARGET_SOURCE_TO_ID,
     PlannerMixedGCBCDataset,
@@ -131,3 +133,49 @@ def test_mixed_dataset_source_probabilities_can_include_all_sources():
     assert TARGET_SOURCE_TO_ID["final_goal_hindsight"] in seen
     assert TARGET_SOURCE_TO_ID["support_edge_local"] in seen
     assert TARGET_SOURCE_TO_ID["planner_first_edge_replay"] in seen
+
+
+def test_source_head_gcbc_uses_target_source_id_and_policy_action_infers_runtime_source():
+    torch.manual_seed(0)
+    model = GCBCMLP(
+        obs_dim=2,
+        action_dim=1,
+        hidden_dims=[8],
+        use_remaining_h=True,
+        remaining_h_scale=10.0,
+        num_target_sources=3,
+        target_source_embedding_dim=4,
+        target_source_head_mode="heads",
+    )
+    obs = torch.zeros(4, 2)
+    goal = torch.ones(4, 2)
+    remaining = torch.ones(4)
+    edge = torch.zeros(4, dtype=torch.long)
+    source0 = torch.zeros(4, dtype=torch.long)
+    source2 = torch.full((4,), 2, dtype=torch.long)
+    out0 = model(obs, goal, remaining, edge, source0)
+    out2 = model(obs, goal, remaining, edge, source2)
+    assert out0.shape == (4, 1)
+    assert out2.shape == (4, 1)
+    assert not torch.allclose(out0, out2)
+
+    direct = policy_action(model, np.zeros(2, dtype=np.float32), np.ones(2, dtype=np.float32), remaining_h=5)
+    edge_action = policy_action(
+        model,
+        np.zeros(2, dtype=np.float32),
+        np.ones(2, dtype=np.float32),
+        remaining_h=5,
+        edge_id=0,
+    )
+    explicit = policy_action(
+        model,
+        np.zeros(2, dtype=np.float32),
+        np.ones(2, dtype=np.float32),
+        remaining_h=5,
+        edge_id=0,
+        target_source_id=2,
+    )
+    assert direct.shape == (1,)
+    assert edge_action.shape == (1,)
+    assert np.allclose(edge_action, explicit)
+    assert not np.allclose(direct, edge_action)

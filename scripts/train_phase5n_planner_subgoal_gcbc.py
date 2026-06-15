@@ -63,6 +63,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None)
     parser.add_argument("--dataloader_num_workers", type=int, default=None)
     parser.add_argument("--edge_embedding_dim", type=int, default=None)
+    parser.add_argument("--num_target_sources", type=int, default=None)
+    parser.add_argument("--target_source_embedding_dim", type=int, default=None)
+    parser.add_argument("--target_source_head_mode", default=None, choices=["none", "heads"])
+    parser.add_argument("--default_target_source_id", type=int, default=None)
     parser.add_argument("--num_planner_queries", type=int, default=None)
     args = parser.parse_args()
     config = _load_config(args.config)
@@ -84,6 +88,10 @@ def parse_args() -> argparse.Namespace:
         "log_interval": None,
         "edge_embedding_dim": 0,
         "dataloader_num_workers": 0,
+        "num_target_sources": 0,
+        "target_source_embedding_dim": 0,
+        "target_source_head_mode": "none",
+        "default_target_source_id": 0,
         "source_probabilities": {
             "final_goal_hindsight": 0.25,
             "support_edge_local": 0.35,
@@ -142,6 +150,10 @@ def main() -> None:
         device=args.device,
         dataloader_num_workers=args.dataloader_num_workers,
         edge_embedding_dim=args.edge_embedding_dim,
+        num_target_sources=args.num_target_sources,
+        target_source_embedding_dim=args.target_source_embedding_dim,
+        target_source_head_mode=args.target_source_head_mode,
+        default_target_source_id=args.default_target_source_id,
         source_probabilities=args.source_probabilities,
         source_loss_weights=args.source_loss_weights,
         num_planner_queries=args.num_planner_queries,

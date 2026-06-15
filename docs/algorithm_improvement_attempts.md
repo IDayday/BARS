@@ -1935,6 +1935,11 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   edges while keeping the official GAS actor unchanged. This is the cleanest
   immediate success-rate A/B route because it tests graph evidence on a mature
   low-level policy without pretending that BARS clusters are GAS skills.
+- Phase 5P tests source-conditioned GCBC action heads for final-goal,
+  support-edge, and planner-replay targets. It slightly reduces final-goal MSE
+  relative to Phase 5N but worsens overall, support-edge, and planner-replay
+  MSE; direct rollout final distance improves modestly, while the best
+  hierarchical state-outcome rollout regresses and success remains `0.0`.
 
 ## Claims Not Yet Supported
 
@@ -2006,3 +2011,5 @@ See `docs/phase5o_policy_action_mse_reference.md`.
 - Stage36 has not yet produced an online success-rate result; it only provides
   the patched-keygraph mechanism and protocol needed to compare original GAS vs
   BARS-support-patched GAS under the same policy.
+- Phase 5P source heads are not a complete low-level policy solution and do
+  not improve AntMaze task success.

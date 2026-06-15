@@ -87,7 +87,13 @@ def evaluate_mixed_policy_mse(
         for batch in loader:
             batch = _batch_to_device(batch, device)
             model_edge_ids = batch["edge_id"].long().clamp(min=0)
-            pred = model(batch["obs"], batch["goal"], batch["remaining_h"], model_edge_ids)
+            pred = model(
+                batch["obs"],
+                batch["goal"],
+                batch["remaining_h"],
+                model_edge_ids,
+                batch.get("target_source_id"),
+            )
             per_sample = torch.mean((pred - batch["action"].float()) ** 2, dim=1).detach().cpu().numpy()
             source_ids = batch["target_source_id"].detach().cpu().numpy()
             edge_ids = batch["edge_id"].detach().cpu().numpy()
@@ -194,6 +200,10 @@ def train_planner_subgoal_gcbc(
     dataloader_num_workers: int = 0,
     use_remaining_h: bool = True,
     edge_embedding_dim: int = 0,
+    num_target_sources: int = 0,
+    target_source_embedding_dim: int = 0,
+    target_source_head_mode: str = "none",
+    default_target_source_id: int = 0,
     source_probabilities: dict[str, float] | None = None,
     source_loss_weights: dict[str, float] | None = None,
     num_planner_queries: int = 5000,
@@ -253,6 +263,10 @@ def train_planner_subgoal_gcbc(
         remaining_h_scale=full.max_h,
         num_edges=max(1, num_edges),
         edge_embedding_dim=int(edge_embedding_dim),
+        num_target_sources=int(num_target_sources),
+        target_source_embedding_dim=int(target_source_embedding_dim),
+        target_source_head_mode=str(target_source_head_mode),
+        default_target_source_id=int(default_target_source_id),
     ).to(dev)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(lr))
     loader = _cycle(
@@ -275,7 +289,13 @@ def train_planner_subgoal_gcbc(
         model.train()
         batch = _batch_to_device(next(loader), dev)
         model_edge_ids = batch["edge_id"].long().clamp(min=0, max=max(0, num_edges - 1))
-        pred = model(batch["obs"], batch["goal"], batch["remaining_h"], model_edge_ids)
+        pred = model(
+            batch["obs"],
+            batch["goal"],
+            batch["remaining_h"],
+            model_edge_ids,
+            batch.get("target_source_id"),
+        )
         unweighted_loss = action_mse(pred, batch["action"])
         loss = _weighted_action_mse(pred, batch["action"], batch["sample_weight"])
         optimizer.zero_grad(set_to_none=True)
@@ -335,6 +355,10 @@ def train_planner_subgoal_gcbc(
         "num_edges": int(num_edges),
         "device": str(dev),
         "dataloader_num_workers": int(dataloader_num_workers),
+        "num_target_sources": int(num_target_sources),
+        "target_source_embedding_dim": int(target_source_embedding_dim),
+        "target_source_head_mode": str(target_source_head_mode),
+        "default_target_source_id": int(default_target_source_id),
         "source_probabilities": full.source_probabilities,
         "source_loss_weights": full.source_loss_weights,
         "num_planner_queries": int(num_planner_queries),
@@ -364,6 +388,10 @@ def train_planner_subgoal_gcbc(
                 "remaining_h_scale": full.max_h,
                 "num_edges": max(1, num_edges),
                 "edge_embedding_dim": int(edge_embedding_dim),
+                "num_target_sources": int(num_target_sources),
+                "target_source_embedding_dim": int(target_source_embedding_dim),
+                "target_source_head_mode": str(target_source_head_mode),
+                "default_target_source_id": int(default_target_source_id),
             },
             "config": resolved,
         },

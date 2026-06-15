@@ -54,6 +54,7 @@ def policy_action(
     goal: np.ndarray,
     remaining_h: float | None = None,
     edge_id: int | None = None,
+    target_source_id: int | None = None,
     device: str | torch.device | None = None,
 ) -> np.ndarray:
     if hasattr(policy, "eval") and callable(policy.eval):
@@ -65,7 +66,11 @@ def policy_action(
             goal_t = torch.as_tensor(goal, dtype=torch.float32, device=dev).reshape(1, -1)
             rem_t = None if remaining_h is None else torch.as_tensor([float(remaining_h)], dtype=torch.float32, device=dev)
             edge_t = None if edge_id is None else torch.as_tensor([int(edge_id)], dtype=torch.long, device=dev)
-            action = policy(obs_t, goal_t, rem_t, edge_t).detach().cpu().numpy()[0]
+            source_id = 0 if edge_id is None else 2
+            if target_source_id is not None:
+                source_id = int(target_source_id)
+            source_t = torch.as_tensor([source_id], dtype=torch.long, device=dev)
+            action = policy(obs_t, goal_t, rem_t, edge_t, source_t).detach().cpu().numpy()[0]
         return np.asarray(action, dtype=np.float32)
     action = policy(obs, goal)
     return np.asarray(action, dtype=np.float32)
