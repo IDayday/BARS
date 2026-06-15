@@ -1,0 +1,27 @@
+dataset_name: antmaze-large-stitch-v0
+output_dir: results/phase3f/antmaze_large_stitch/preplan_policy_calibration_phase5k
+trace_dirs:
+  - results/phase3f/antmaze_large_stitch/edge_outcome_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/offline_prior_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_conditioned_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_conditioned_w0p5_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_conditioned_w2p0_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_outcome_w0p5_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_outcome_3ep_corebot100k_H10_B120
+  - results/phase3f/antmaze_large_stitch/state_outcome_w2p0_3ep_corebot100k_H10_B120
+seed: 0
+val_fraction: 0.3
+min_examples: 8
+feature_columns:
+  - edge_static_risk_penalty
+  - edge_state_risk_penalty
+  - edge_failure_count
+  - base_planning_cost
+  - selected_init_distance
+  - preplan_policy_action_mse
+l2: 1.0
+learning_rate: 0.05
+num_steps: 800
+penalty_weights: [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]
+max_mean_penalty: 0.5
+max_completed_mean_penalty: 0.5

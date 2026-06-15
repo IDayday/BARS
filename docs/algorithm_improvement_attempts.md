@@ -1569,6 +1569,43 @@ Lessons:
   improve heldout AUC, but the planner does not yet compute that feature for
   every outgoing candidate before graph search.
 
+### Preplan Policy Mismatch
+
+Status:
+
+Implemented as Phase 5K. The planner now scores every outgoing support-edge
+candidate before graph search by computing GCBC one-step action MSE on sampled
+offline initiation-to-termination segments. This value is logged as
+`preplan_policy_action_mse` and can be used by the state-conditioned outcome
+model. Support-only semantics are unchanged.
+
+Results:
+
+- Heldout calibration improves when adding `preplan_policy_action_mse`:
+  - Phase 5J baseline: validation Brier `0.1155`, AUC `0.5556`, risk
+    separation `0.0110`.
+  - Phase 5K policy-mismatch features: validation Brier `0.1142`, AUC
+    `0.5979`, risk separation `0.0299`.
+- AntMaze task id 1, seeds 0/1/2, 3 episodes x 120-step cap:
+  - Phase 5I weight `0.5`: success `0.0`, mean final goal L2 `39.7197`, mean
+    completed edges `2.333`, mean failed attempts `6.000`.
+  - Phase 5K weight `0.25`: success `0.0`, mean final goal L2 `40.4602`, mean
+    completed edges `2.667`, mean failed attempts `5.667`.
+  - Phase 5K weight `0.5`: success `0.0`, mean final goal L2 `39.8942`, mean
+    completed edges `1.667`, mean failed attempts `5.333`.
+  - Phase 5K weight `0.75`: success `0.0`, mean final goal L2 `41.1478`,
+    mean completed edges `1.667`, mean failed attempts `5.667`.
+
+Lessons:
+
+- Preplan policy mismatch is a useful risk feature and improves heldout
+  attempt discrimination.
+- Online, it reduces replanning / failed-attempt counts but does not improve
+  over Phase 5I's best final-goal-distance smoke.
+- The next bottleneck is not only edge ranking. The low-level executor needs an
+  earlier recovery or switching mechanism when subgoal distance grows, instead
+  of waiting for edge horizon timeout.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1646,6 +1683,9 @@ Lessons:
 - Phase 5J shows the Phase 5I weight `0.5` is consistent with a conservative
   heldout penalty-budget selector, while also showing that current
   state-outcome predictions are only weakly calibrated on heldout attempts.
+- Phase 5K shows preplan GCBC policy mismatch is a useful heldout
+  attempt-risk feature and can reduce online replanning / failed attempts in a
+  small AntMaze smoke without adding unsupported graph edges.
 
 ## Claims Not Yet Supported
 
@@ -1697,3 +1737,6 @@ Lessons:
 - Phase 5J does not validate Phase 5I as a calibrated edge success model:
   heldout AUC is only `0.5556`, and the selected penalty weight is a budgeted
   cost scale rather than a probability threshold.
+- Phase 5K does not beat Phase 5I's best online final-goal-distance smoke and
+  still gives zero AntMaze task success; policy mismatch alone is not a
+  complete execution fix.

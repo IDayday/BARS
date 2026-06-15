@@ -169,6 +169,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state_outcome_l2", type=float, default=None)
     parser.add_argument("--state_outcome_learning_rate", type=float, default=None)
     parser.add_argument("--state_outcome_num_steps", type=int, default=None)
+    parser.add_argument("--state_outcome_feature_columns", default=None)
+    parser.add_argument("--use_preplan_policy_mismatch", action="store_true")
+    parser.add_argument("--preplan_policy_mismatch_max_candidates", type=int, default=None)
     return parser.parse_args()
 
 
@@ -248,6 +251,9 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "state_outcome_l2": 1.0,
         "state_outcome_learning_rate": 0.1,
         "state_outcome_num_steps": 1000,
+        "state_outcome_feature_columns": None,
+        "use_preplan_policy_mismatch": False,
+        "preplan_policy_mismatch_max_candidates": 64,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -260,6 +266,8 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
     if merged.get("state_risk_distance_dims") is not None:
         merged["state_risk_distance_dims"] = _parse_list(merged.get("state_risk_distance_dims"), int)
     merged["state_outcome_trace_dirs"] = _parse_str_list(merged.get("state_outcome_trace_dirs"))
+    if merged.get("state_outcome_feature_columns") is not None:
+        merged["state_outcome_feature_columns"] = _parse_str_list(merged.get("state_outcome_feature_columns"))
     return argparse.Namespace(**merged)
 
 
@@ -411,6 +419,7 @@ def main() -> None:
             state_outcome_examples.to_csv(out_dir / "state_conditioned_outcome_training_examples.csv", index=False)
             state_outcome_model = fit_state_conditioned_outcome_model(
                 state_outcome_examples,
+                feature_columns=args.state_outcome_feature_columns,
                 min_examples=args.state_outcome_min_examples,
                 l2=args.state_outcome_l2,
                 learning_rate=args.state_outcome_learning_rate,
@@ -463,6 +472,8 @@ def main() -> None:
             use_state_conditioned_outcome_model=args.use_state_conditioned_outcome_model,
             state_conditioned_outcome_model=state_outcome_model,
             state_outcome_penalty_weight=args.state_outcome_penalty_weight,
+            use_preplan_policy_mismatch=args.use_preplan_policy_mismatch,
+            preplan_policy_mismatch_max_candidates=args.preplan_policy_mismatch_max_candidates,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -506,6 +517,11 @@ def main() -> None:
             state_outcome_rows.extend(trace.get("state_conditioned_outcome_rows", []) or [])
         if state_outcome_rows:
             pd.DataFrame(state_outcome_rows).to_csv(out_dir / "state_conditioned_outcome_scores.csv", index=False)
+        preplan_policy_rows: list[dict[str, Any]] = []
+        for trace in traces:
+            preplan_policy_rows.extend(trace.get("preplan_policy_mismatch_rows", []) or [])
+        if preplan_policy_rows:
+            pd.DataFrame(preplan_policy_rows).to_csv(out_dir / "preplan_policy_mismatch_scores.csv", index=False)
     extra = {"device_resolved": str(device)}
     if args.action_mode == "hierarchical_support":
         extra.update(
@@ -536,6 +552,9 @@ def main() -> None:
                 "state_outcome_l2": float(args.state_outcome_l2),
                 "state_outcome_learning_rate": float(args.state_outcome_learning_rate),
                 "state_outcome_num_steps": int(args.state_outcome_num_steps),
+                "state_outcome_feature_columns": args.state_outcome_feature_columns,
+                "preplan_policy_mismatch_used": bool(args.use_preplan_policy_mismatch),
+                "preplan_policy_mismatch_max_candidates": int(args.preplan_policy_mismatch_max_candidates),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

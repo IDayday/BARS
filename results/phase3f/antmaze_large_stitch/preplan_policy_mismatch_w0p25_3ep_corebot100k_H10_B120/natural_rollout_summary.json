@@ -1,0 +1,11 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "mean_final_goal_l2": 40.46018091837565,
+  "mean_steps": 117.33333333333333,
+  "mean_total_reward": 0.0,
+  "method": "preplan_policy_mismatch_w0p25_3ep_corebot100k_H10_B120",
+  "num_episodes": 3,
+  "skipped": false,
+  "skipped_reason": "",
+  "success_rate": 0.0
+}

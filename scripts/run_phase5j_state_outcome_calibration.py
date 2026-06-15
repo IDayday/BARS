@@ -51,6 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--l2", type=float, default=None)
     parser.add_argument("--learning_rate", type=float, default=None)
     parser.add_argument("--num_steps", type=int, default=None)
+    parser.add_argument("--feature_columns", default=None)
     parser.add_argument("--penalty_weights", default=None)
     parser.add_argument("--max_mean_penalty", type=float, default=None)
     parser.add_argument("--max_completed_mean_penalty", type=float, default=None)
@@ -73,6 +74,7 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "l2": 1.0,
         "learning_rate": 0.05,
         "num_steps": 800,
+        "feature_columns": None,
         "penalty_weights": [0.0, 0.25, 0.5, 1.0, 2.0, 4.0],
         "max_mean_penalty": 0.5,
         "max_completed_mean_penalty": 0.5,
@@ -82,6 +84,8 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
             merged[key] = value
     merged["trace_dirs"] = _parse_list(merged["trace_dirs"], str)
     merged["penalty_weights"] = _parse_list(merged["penalty_weights"], float)
+    if merged.get("feature_columns") is not None:
+        merged["feature_columns"] = _parse_list(merged["feature_columns"], str)
     if not merged["trace_dirs"]:
         raise ValueError("trace_dirs must contain at least one rollout result dir or episode_traces.jsonl")
     return argparse.Namespace(**merged)
@@ -130,6 +134,7 @@ def main() -> None:
         val_fraction=args.val_fraction,
         seed=args.seed,
         min_examples=args.min_examples,
+        feature_columns=args.feature_columns,
         l2=args.l2,
         learning_rate=args.learning_rate,
         num_steps=args.num_steps,
@@ -158,6 +163,7 @@ def main() -> None:
         "num_val_examples": int(len(result["val_examples"])),
         "num_trace_groups": int(examples["trace_group"].nunique()) if "trace_group" in examples.columns else 0,
         "selected_penalty_weight": float(result["selected_weight"]),
+        "feature_columns": result["model"].feature_columns,
         "val_brier": float(val_metrics.get("brier", float("nan"))),
         "val_log_loss": float(val_metrics.get("log_loss", float("nan"))),
         "val_auc": float(val_metrics.get("auc", float("nan"))),

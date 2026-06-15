@@ -17,6 +17,7 @@ from phase3f.natural_rollout import (
     _success_value,
 )
 from phase3.edge_rollout import policy_action
+from phase3f.preplan_policy_mismatch import compute_preplan_policy_mismatch_scores, preplan_policy_mse_map
 from phase3f.state_conditioned_risk import (
     compute_state_conditioned_initiation_scores,
     state_conditioned_penalty_map,
@@ -134,12 +135,14 @@ def build_support_planning_graph(
     edge_risk_penalties: dict[tuple[str, int], float] | None = None,
     edge_state_risk_penalties: dict[tuple[str, int], float] | None = None,
     edge_learned_state_risk_penalties: dict[tuple[str, int], float] | None = None,
+    edge_preplan_policy_mse: dict[tuple[str, int], float] | None = None,
 ) -> nx.DiGraph:
     graph = nx.DiGraph()
     failed_edge_counts = failed_edge_counts or {}
     edge_risk_penalties = edge_risk_penalties or {}
     edge_state_risk_penalties = edge_state_risk_penalties or {}
     edge_learned_state_risk_penalties = edge_learned_state_risk_penalties or {}
+    edge_preplan_policy_mse = edge_preplan_policy_mse or {}
 
     def maybe_add(row: Any, source: str, connector: bool) -> None:
         src = int(getattr(row, "src"))
@@ -153,6 +156,7 @@ def build_support_planning_graph(
         learned_state_risk_penalty = float(
             edge_learned_state_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0)
         )
+        preplan_policy_mse = float(edge_preplan_policy_mse.get((segment_source, int(segment_edge_id)), np.nan))
         risk_penalty = static_risk_penalty + state_risk_penalty + learned_state_risk_penalty
         cost = float(base_cost + failure_cost + risk_penalty)
         attrs = {
@@ -167,6 +171,7 @@ def build_support_planning_graph(
             "edge_static_risk_penalty": float(static_risk_penalty),
             "edge_state_risk_penalty": float(state_risk_penalty),
             "edge_learned_state_risk_penalty": float(learned_state_risk_penalty),
+            "edge_preplan_policy_action_mse": float(preplan_policy_mse),
             "median_h": float(getattr(row, "median_h", cost)),
             "max_h": float(getattr(row, "max_h", getattr(row, "median_h", cost))),
             "edge_id": int(getattr(row, "edge_id")),
@@ -373,6 +378,8 @@ def run_hierarchical_support_episodes(
     use_state_conditioned_outcome_model: bool = False,
     state_conditioned_outcome_model: StateConditionedOutcomeModel | None = None,
     state_outcome_penalty_weight: float = 0.0,
+    use_preplan_policy_mismatch: bool = False,
+    preplan_policy_mismatch_max_candidates: int = 64,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
     actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -398,6 +405,7 @@ def run_hierarchical_support_episodes(
         step_trace: list[dict[str, Any]] = []
         state_risk_rows: list[dict[str, Any]] = []
         state_outcome_rows: list[dict[str, Any]] = []
+        preplan_policy_rows: list[dict[str, Any]] = []
         start_cluster = -1
         goal_cluster = -1
         try:
@@ -434,6 +442,8 @@ def run_hierarchical_support_episodes(
                     dynamic_scores = pd.DataFrame()
                     dynamic_penalties: dict[tuple[str, int], float] = {}
                     learned_dynamic_penalties: dict[tuple[str, int], float] = {}
+                    preplan_policy_scores = pd.DataFrame()
+                    preplan_policy_mse = {}
                     needs_dynamic_scores = bool(
                         (use_state_conditioned_risk and float(state_risk_penalty_weight) > 0.0)
                         or (
@@ -469,6 +479,24 @@ def run_hierarchical_support_episodes(
                                 state_risk_rows.append(row)
                             if use_state_conditioned_risk and float(state_risk_penalty_weight) > 0.0:
                                 dynamic_penalties = state_conditioned_penalty_map(dynamic_scores)
+                            if use_preplan_policy_mismatch and policy is not None:
+                                preplan_policy_scores = compute_preplan_policy_mismatch_scores(
+                                    dynamic_scores,
+                                    graph_segments=graph_segments,
+                                    bank_segments=bank_segments,
+                                    observations=observations,
+                                    actions=actions,
+                                    policy=policy,
+                                    device=device,
+                                    max_candidates_per_edge=preplan_policy_mismatch_max_candidates,
+                                )
+                                if not preplan_policy_scores.empty:
+                                    for row in preplan_policy_scores.to_dict(orient="records"):
+                                        row["episode_id"] = int(episode_id)
+                                        row["replan_index"] = int(replans)
+                                        row["current_cluster"] = int(current_cluster)
+                                        preplan_policy_rows.append(row)
+                                    preplan_policy_mse = preplan_policy_mse_map(preplan_policy_scores)
                             if (
                                 use_state_conditioned_outcome_model
                                 and state_conditioned_outcome_model is not None
@@ -481,6 +509,7 @@ def run_hierarchical_support_episodes(
                                     edge_static_risk_penalties=edge_risk_penalties,
                                     failed_edge_counts=failed_edge_counts,
                                     failure_penalty=failure_penalty,
+                                    preplan_policy_scores=preplan_policy_scores,
                                 )
                                 learned_scores = score_state_conditioned_outcome_candidates(
                                     state_conditioned_outcome_model,
@@ -505,6 +534,7 @@ def run_hierarchical_support_episodes(
                         edge_risk_penalties=edge_risk_penalties,
                         edge_state_risk_penalties=dynamic_penalties,
                         edge_learned_state_risk_penalties=learned_dynamic_penalties,
+                        edge_preplan_policy_mse=preplan_policy_mse,
                     )
                     active_path, plan_status = plan_cluster_path(graph, current_cluster, goal_cluster)
                     if (not active_path or len(active_path) <= 1) and allow_full_bank_fallback:
@@ -520,6 +550,7 @@ def run_hierarchical_support_episodes(
                             edge_risk_penalties=edge_risk_penalties,
                             edge_state_risk_penalties=dynamic_penalties,
                             edge_learned_state_risk_penalties=learned_dynamic_penalties,
+                            edge_preplan_policy_mse=preplan_policy_mse,
                         )
                         fallback_path, fallback_status = plan_cluster_path(fallback_graph, current_cluster, goal_cluster)
                         if fallback_path and len(fallback_path) > 1:
@@ -608,6 +639,9 @@ def run_hierarchical_support_episodes(
                         "edge_learned_state_risk_penalty": float(
                             edge_attrs.get("edge_learned_state_risk_penalty", 0.0)
                         ),
+                        "edge_preplan_policy_action_mse": float(
+                            edge_attrs.get("edge_preplan_policy_action_mse", np.nan)
+                        ),
                         "edge_planning_cost": float(edge_attrs.get("cost", 0.0)),
                         **subgoal_info,
                     }
@@ -669,6 +703,7 @@ def run_hierarchical_support_episodes(
                 "steps": step_trace,
                 "state_conditioned_risk_rows": state_risk_rows,
                 "state_conditioned_outcome_rows": state_outcome_rows,
+                "preplan_policy_mismatch_rows": preplan_policy_rows,
             }
         )
     return pd.DataFrame(episode_rows), traces

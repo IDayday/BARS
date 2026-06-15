@@ -29,6 +29,7 @@ ATTEMPT_EXAMPLE_COLUMNS = [
     "final_cluster",
     "final_subgoal_l2",
     "mean_selected_policy_action_mse",
+    "preplan_policy_action_mse",
     "edge_static_risk_penalty",
     "edge_state_risk_penalty",
     "edge_failure_count",
@@ -52,6 +53,7 @@ STATE_OUTCOME_SCORE_COLUMNS = [
     "base_planning_cost",
     "edge_planning_cost_before_state_outcome",
     "selected_init_distance",
+    "preplan_policy_action_mse",
     "predicted_failure_prob",
     "state_conditioned_outcome_penalty",
     "state_conditioned_outcome_model_fitted",
@@ -121,6 +123,10 @@ def extract_state_conditioned_attempt_examples_from_traces(traces: list[dict[str
                     "final_subgoal_l2": _safe_float(final_step.get("subgoal_l2"), np.nan),
                     "mean_selected_policy_action_mse": (
                         float(np.mean(policy_mse_values)) if policy_mse_values else float("nan")
+                    ),
+                    "preplan_policy_action_mse": _safe_float(
+                        first_step.get("edge_preplan_policy_action_mse"),
+                        float(np.mean(policy_mse_values)) if policy_mse_values else np.nan,
                     ),
                     "edge_static_risk_penalty": _safe_float(first_step.get("edge_static_risk_penalty"), 0.0),
                     "edge_state_risk_penalty": _safe_float(first_step.get("edge_state_risk_penalty"), 0.0),
@@ -355,6 +361,7 @@ def build_state_conditioned_outcome_candidate_features(
     edge_static_risk_penalties: dict[tuple[str, int], float] | None = None,
     failed_edge_counts: dict[tuple[str, int], int] | None = None,
     failure_penalty: float = 0.0,
+    preplan_policy_scores: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     if state_scores.empty:
         return pd.DataFrame(columns=STATE_OUTCOME_SCORE_COLUMNS)
@@ -362,6 +369,13 @@ def build_state_conditioned_outcome_candidate_features(
     failed_edge_counts = failed_edge_counts or {}
     lookup = _edge_lookup(graph_edges, "graph")
     lookup.update(_edge_lookup(bank_edges, "bank"))
+    policy_lookup: dict[tuple[str, int], float] = {}
+    if preplan_policy_scores is not None and not preplan_policy_scores.empty:
+        for policy_row in preplan_policy_scores.itertuples(index=False):
+            key = (str(getattr(policy_row, "segment_source")), int(getattr(policy_row, "segment_edge_id")))
+            value = _safe_float(getattr(policy_row, "mean_preplan_policy_action_mse", np.nan), np.nan)
+            if np.isfinite(value):
+                policy_lookup[key] = value
     rows: list[dict[str, Any]] = []
     for row in state_scores.itertuples(index=False):
         key = (str(getattr(row, "segment_source")), int(getattr(row, "segment_edge_id")))
@@ -385,6 +399,7 @@ def build_state_conditioned_outcome_candidate_features(
                 "base_planning_cost": float(base_cost),
                 "edge_planning_cost_before_state_outcome": float(base_cost + static_penalty + state_penalty + failure_cost),
                 "selected_init_distance": _safe_float(getattr(row, "min_initiation_distance", 0.0), 0.0),
+                "preplan_policy_action_mse": float(policy_lookup.get(key, np.nan)),
             }
         )
     return pd.DataFrame(rows)

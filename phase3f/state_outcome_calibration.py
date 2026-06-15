@@ -200,6 +200,7 @@ def calibrate_state_outcome_model(
     val_fraction: float = 0.3,
     seed: int = 0,
     min_examples: int = 8,
+    feature_columns: list[str] | None = None,
     l2: float = 1.0,
     learning_rate: float = 0.05,
     num_steps: int = 800,
@@ -210,6 +211,7 @@ def calibrate_state_outcome_model(
     train, val = split_by_trace_group(examples, val_fraction=val_fraction, seed=seed)
     model = fit_state_conditioned_outcome_model(
         train,
+        feature_columns=feature_columns,
         min_examples=min_examples,
         l2=l2,
         learning_rate=learning_rate,

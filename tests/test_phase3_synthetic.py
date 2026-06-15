@@ -36,6 +36,7 @@ from phase3f.edge_memory import (
 )
 from phase3f.edge_outcome_model import edge_outcome_penalty_map, fit_edge_outcome_scores
 from phase3f.offline_edge_prior import build_offline_edge_prior_scores, offline_edge_prior_penalty_map
+from phase3f.preplan_policy_mismatch import compute_preplan_policy_mismatch_scores, preplan_policy_mse_map
 from phase3f.state_conditioned_risk import (
     compute_state_conditioned_initiation_scores,
     state_conditioned_penalty_map,
@@ -947,6 +948,7 @@ def test_state_conditioned_outcome_examples_split_restarted_attempts():
     assert examples["completed"].tolist() == [0, 1]
     assert np.isclose(float(examples.iloc[0]["base_planning_cost"]), 2.0)
     assert np.isclose(float(examples.iloc[1]["base_planning_cost"]), 2.0)
+    assert "preplan_policy_action_mse" in examples.columns
 
 
 def test_state_conditioned_outcome_model_scores_high_risk_failures_higher():
@@ -1027,6 +1029,64 @@ def test_state_conditioned_outcome_penalty_changes_support_planning_route():
     )
     assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
     assert list(__import__("networkx").shortest_path(learned_penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_preplan_policy_mismatch_scores_bad_edge_higher():
+    observations = np.asarray([[0.0], [1.0], [10.0], [11.0]], dtype=np.float32)
+    actions = np.asarray([[1.0], [0.0], [0.0], [0.0]], dtype=np.float32)
+    edges = pd.DataFrame(
+        {
+            "segment_source": ["graph", "graph"],
+            "segment_edge_id": [0, 1],
+            "planner_edge_id": [0, 1],
+            "src": [0, 0],
+            "dst": [1, 2],
+        }
+    )
+    segments = {
+        "edge_id": np.asarray([0, 1], dtype=np.int64),
+        "global_i": np.asarray([0, 2], dtype=np.int64),
+        "global_j": np.asarray([1, 3], dtype=np.int64),
+    }
+
+    def policy(obs, goal):
+        return np.asarray([goal.reshape(-1)[0] - obs.reshape(-1)[0]], dtype=np.float32)
+
+    scores = compute_preplan_policy_mismatch_scores(
+        edges,
+        graph_segments=segments,
+        bank_segments={},
+        observations=observations,
+        actions=actions,
+        policy=policy,
+    ).set_index("segment_edge_id")
+    assert scores.loc[1, "mean_preplan_policy_action_mse"] > scores.loc[0, "mean_preplan_policy_action_mse"]
+    assert preplan_policy_mse_map(scores.reset_index())[("graph", 1)] > 0.0
+
+
+def test_state_outcome_model_can_use_preplan_policy_mismatch_feature():
+    examples = pd.DataFrame(
+        {
+            "timeout": [0, 0, 0, 1, 1, 1],
+            "edge_static_risk_penalty": [0.0] * 6,
+            "edge_state_risk_penalty": [0.0] * 6,
+            "edge_failure_count": [0] * 6,
+            "base_planning_cost": [1.0] * 6,
+            "selected_init_distance": [1.0] * 6,
+            "preplan_policy_action_mse": [0.01, 0.02, 0.01, 0.5, 0.6, 0.7],
+        }
+    )
+    model = fit_state_conditioned_outcome_model(
+        examples,
+        feature_columns=["preplan_policy_action_mse"],
+        min_examples=4,
+        l2=0.1,
+        learning_rate=0.1,
+        num_steps=500,
+    )
+    preds = model.predict_failure_proba(pd.DataFrame({"preplan_policy_action_mse": [0.01, 0.7]}))
+    assert model.is_fitted
+    assert preds[1] > preds[0]
 
 
 def test_state_outcome_group_split_has_no_trace_group_leakage():
