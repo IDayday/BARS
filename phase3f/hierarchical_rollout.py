@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,37 @@ def fit_runtime_cluster_model(
         seed=int(seed),
         state_dims=state_dims,
     )
+
+
+def load_or_fit_runtime_cluster_model(
+    dataset: dict[str, Any],
+    *,
+    cluster_method: str,
+    n_clusters: int,
+    seed: int = 0,
+    state_dims: list[int] | None = None,
+    cache_path: str | Path | None = None,
+) -> tuple[dict[str, Any], bool]:
+    """Load a cached runtime cluster model or fit and optionally cache it."""
+
+    if cache_path is not None:
+        path = Path(cache_path)
+        if path.exists():
+            with path.open("rb") as f:
+                return pickle.load(f), True
+    model = fit_runtime_cluster_model(
+        dataset,
+        cluster_method=cluster_method,
+        n_clusters=n_clusters,
+        seed=seed,
+        state_dims=state_dims,
+    )
+    if cache_path is not None:
+        path = Path(cache_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as f:
+            pickle.dump(model, f)
+    return model, False
 
 
 def _read_edges(path: str | Path | None) -> pd.DataFrame:
@@ -87,18 +119,25 @@ def build_support_planning_graph(
     goal_cluster: int | None = None,
     allow_bank_connectors: bool = True,
     include_all_bank_edges: bool = False,
+    failed_edge_counts: dict[tuple[str, int], int] | None = None,
+    failure_penalty: float = 0.0,
 ) -> nx.DiGraph:
     graph = nx.DiGraph()
+    failed_edge_counts = failed_edge_counts or {}
 
     def maybe_add(row: Any, source: str, connector: bool) -> None:
         src = int(getattr(row, "src"))
         dst = int(getattr(row, "dst"))
-        cost = _row_cost(row)
+        base_cost = _row_cost(row)
         segment_source, segment_edge_id, policy_edge_id = _edge_identity(row, source)
+        failure_count = int(failed_edge_counts.get((segment_source, int(segment_edge_id)), 0))
+        cost = float(base_cost + float(failure_penalty) * failure_count)
         attrs = {
             "src": src,
             "dst": dst,
+            "base_cost": float(base_cost),
             "cost": cost,
+            "failure_count": failure_count,
             "median_h": float(getattr(row, "median_h", cost)),
             "max_h": float(getattr(row, "max_h", getattr(row, "median_h", cost))),
             "edge_id": int(getattr(row, "edge_id")),
@@ -140,6 +179,31 @@ def _segment_store(source: str, graph_segments: dict[str, np.ndarray], bank_segm
     return bank_segments if source == "bank" else graph_segments
 
 
+def _candidate_policy_mse(
+    policy: Any,
+    init_obs: np.ndarray,
+    term_obs: np.ndarray,
+    actions: np.ndarray,
+    init_idx: np.ndarray,
+    *,
+    edge_id: int,
+    device: str | None,
+) -> np.ndarray:
+    values = np.zeros(init_obs.shape[0], dtype=np.float64)
+    for i in range(init_obs.shape[0]):
+        pred = policy_action(
+            policy,
+            init_obs[i],
+            term_obs[i],
+            remaining_h=1.0,
+            edge_id=edge_id,
+            device=device,
+        )
+        target = np.asarray(actions[int(init_idx[i])], dtype=np.float32).reshape(-1)
+        values[i] = float(np.mean((np.asarray(pred, dtype=np.float32).reshape(-1) - target) ** 2))
+    return values
+
+
 def choose_edge_subgoal(
     observations: np.ndarray,
     edge_attrs: dict[str, Any],
@@ -150,12 +214,18 @@ def choose_edge_subgoal(
     final_goal: np.ndarray,
     next_edge_attrs: dict[str, Any] | None = None,
     max_candidates: int = 256,
+    initiation_weight: float = 1.0,
     downstream_weight: float = 0.25,
-) -> tuple[np.ndarray | None, str]:
+    policy: Any | None = None,
+    actions: np.ndarray | None = None,
+    device: str | None = None,
+    policy_mse_weight: float = 0.0,
+    policy_mse_scale: float = 0.05,
+) -> tuple[np.ndarray | None, str, dict[str, float]]:
     store = _segment_store(str(edge_attrs["segment_source"]), graph_segments, bank_segments)
     seg_idx = _segments_for_edge(store, int(edge_attrs["segment_edge_id"]))
     if seg_idx.size == 0:
-        return None, "missing_edge_segments"
+        return None, "missing_edge_segments", {}
     rng = np.random.default_rng(int(edge_attrs["segment_edge_id"]))
     if seg_idx.size > int(max_candidates):
         seg_idx = rng.choice(seg_idx, size=int(max_candidates), replace=False)
@@ -168,6 +238,8 @@ def choose_edge_subgoal(
     init_flat = init_obs.reshape(init_obs.shape[0], -1)
     current_flat = np.asarray(current_obs, dtype=np.float32).reshape(1, -1)
     init_dist = np.linalg.norm(init_flat - current_flat, axis=1)
+    downstream_dist = np.zeros_like(init_dist)
+    reason = "nearest_current_and_final_goal"
 
     if next_edge_attrs is not None:
         next_store = _segment_store(str(next_edge_attrs["segment_source"]), graph_segments, bank_segments)
@@ -180,14 +252,43 @@ def choose_edge_subgoal(
             term_flat = term_obs.reshape(term_obs.shape[0], -1)
             next_init_flat = next_init_obs.reshape(next_init_obs.shape[0], -1)
             distances = np.linalg.norm(term_flat[:, None, :] - next_init_flat[None, :, :], axis=2)
-            bridge_dist = np.min(distances, axis=1)
-            chosen = int(np.argmin(init_dist + float(downstream_weight) * bridge_dist))
-            return np.asarray(term_obs[chosen], dtype=np.float32), "nearest_current_and_next_initiation"
+            downstream_dist = np.min(distances, axis=1)
+            reason = "policy_aware_current_and_next_initiation"
+    if reason == "nearest_current_and_final_goal":
+        goal = np.asarray(final_goal, dtype=np.float32).reshape(1, -1)
+        downstream_dist = np.linalg.norm(term_obs.reshape(term_obs.shape[0], -1) - goal.reshape(1, -1), axis=1)
+        reason = "policy_aware_current_and_final_goal"
 
-    goal = np.asarray(final_goal, dtype=np.float32).reshape(1, -1)
-    goal_dist = np.linalg.norm(term_obs.reshape(term_obs.shape[0], -1) - goal.reshape(1, -1), axis=1)
-    chosen = int(np.argmin(init_dist + float(downstream_weight) * goal_dist))
-    return np.asarray(term_obs[chosen], dtype=np.float32), "nearest_current_and_final_goal"
+    policy_mse = np.zeros_like(init_dist)
+    policy_mse_used = 0.0
+    if policy is not None and actions is not None and float(policy_mse_weight) > 0.0:
+        policy_mse = _candidate_policy_mse(
+            policy,
+            init_obs,
+            term_obs,
+            np.asarray(actions, dtype=np.float32),
+            init_idx,
+            edge_id=int(edge_attrs["policy_edge_id"]),
+            device=device,
+        )
+        policy_mse_used = 1.0
+
+    score = (
+        float(initiation_weight) * init_dist
+        + float(downstream_weight) * downstream_dist
+        + float(policy_mse_weight) * (policy_mse / max(1e-6, float(policy_mse_scale)))
+    )
+    chosen = int(np.argmin(score))
+    info = {
+        "selected_init_distance": float(init_dist[chosen]),
+        "selected_downstream_distance": float(downstream_dist[chosen]),
+        "selected_policy_action_mse": float(policy_mse[chosen]) if policy_mse_used else float("nan"),
+        "mean_candidate_policy_action_mse": float(np.mean(policy_mse)) if policy_mse_used else float("nan"),
+        "selected_subgoal_score": float(score[chosen]),
+        "num_subgoal_candidates": float(term_obs.shape[0]),
+        "policy_mse_used": policy_mse_used,
+    }
+    return np.asarray(term_obs[chosen], dtype=np.float32), reason, info
 
 
 def plan_cluster_path(graph: nx.DiGraph, start_cluster: int, goal_cluster: int) -> tuple[list[int], str]:
@@ -228,8 +329,14 @@ def run_hierarchical_support_episodes(
     max_replans: int = 5,
     subgoal_max_candidates: int = 256,
     allow_full_bank_fallback: bool = False,
+    failure_penalty: float = 0.0,
+    initiation_weight: float = 1.0,
+    downstream_weight: float = 0.25,
+    policy_mse_weight: float = 0.0,
+    policy_mse_scale: float = 0.05,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
+    actions = np.asarray(dataset["actions"], dtype=np.float32)
     episode_rows: list[dict[str, Any]] = []
     traces: list[dict[str, Any]] = []
     for episode_id in range(int(num_episodes)):
@@ -242,6 +349,8 @@ def run_hierarchical_support_episodes(
         full_bank_fallbacks = 0
         completed_edges = 0
         planned_edges = 0
+        failed_edge_attempts = 0
+        failed_edge_counts: dict[tuple[str, int], int] = {}
         failure_reason = ""
         initial_goal_l2 = float("nan")
         final_goal_l2 = float("nan")
@@ -262,6 +371,7 @@ def run_hierarchical_support_episodes(
             edge_step = 0
             current_subgoal: np.ndarray | None = None
             current_subgoal_reason = ""
+            subgoal_info: dict[str, float] = {}
             while num_steps < int(max_steps):
                 current_cluster = int(assign_clusters(obs.reshape(1, -1), cluster_model)[0])
                 if start_cluster < 0:
@@ -275,6 +385,7 @@ def run_hierarchical_support_episodes(
                     edge_cursor += 1
                     edge_step = 0
                     current_subgoal = None
+                    subgoal_info = {}
                     need_plan = edge_cursor >= len(active_edges)
                 if need_plan:
                     graph = build_support_planning_graph(
@@ -283,6 +394,8 @@ def run_hierarchical_support_episodes(
                         start_cluster=current_cluster,
                         goal_cluster=goal_cluster,
                         allow_bank_connectors=allow_bank_connectors,
+                        failed_edge_counts=failed_edge_counts,
+                        failure_penalty=failure_penalty,
                     )
                     active_path, plan_status = plan_cluster_path(graph, current_cluster, goal_cluster)
                     if (not active_path or len(active_path) <= 1) and allow_full_bank_fallback:
@@ -293,6 +406,8 @@ def run_hierarchical_support_episodes(
                             goal_cluster=goal_cluster,
                             allow_bank_connectors=True,
                             include_all_bank_edges=True,
+                            failed_edge_counts=failed_edge_counts,
+                            failure_penalty=failure_penalty,
                         )
                         fallback_path, fallback_status = plan_cluster_path(fallback_graph, current_cluster, goal_cluster)
                         if fallback_path and len(fallback_path) > 1:
@@ -308,6 +423,7 @@ def run_hierarchical_support_episodes(
                     edge_cursor = 0
                     edge_step = 0
                     current_subgoal = None
+                    subgoal_info = {}
                     replans += 1
                     if replans > int(max_replans):
                         failure_reason = "max_replans_exceeded"
@@ -315,7 +431,7 @@ def run_hierarchical_support_episodes(
                 edge_attrs = active_edges[edge_cursor]
                 if current_subgoal is None:
                     next_edge = active_edges[edge_cursor + 1] if edge_cursor + 1 < len(active_edges) else None
-                    current_subgoal, current_subgoal_reason = choose_edge_subgoal(
+                    current_subgoal, current_subgoal_reason, subgoal_info = choose_edge_subgoal(
                         observations,
                         edge_attrs,
                         graph_segments,
@@ -324,6 +440,13 @@ def run_hierarchical_support_episodes(
                         final_goal=final_goal,
                         next_edge_attrs=next_edge,
                         max_candidates=subgoal_max_candidates,
+                        initiation_weight=initiation_weight,
+                        downstream_weight=downstream_weight,
+                        policy=policy,
+                        actions=actions,
+                        device=device,
+                        policy_mse_weight=policy_mse_weight,
+                        policy_mse_scale=policy_mse_scale,
                     )
                     if current_subgoal is None:
                         failure_reason = current_subgoal_reason
@@ -362,6 +485,8 @@ def run_hierarchical_support_episodes(
                         "reward": float(reward),
                         "subgoal_l2": subgoal_l2,
                         "action_norm": float(np.linalg.norm(action.reshape(-1))),
+                        "edge_failure_count": int(edge_attrs.get("failure_count", 0)),
+                        **subgoal_info,
                     }
                 )
                 if success >= 1.0 or terminated or truncated:
@@ -371,9 +496,14 @@ def run_hierarchical_support_episodes(
                     edge_cursor += 1
                     edge_step = 0
                     current_subgoal = None
+                    subgoal_info = {}
                 elif edge_step >= horizon:
+                    fail_key = (str(edge_attrs["segment_source"]), int(edge_attrs["segment_edge_id"]))
+                    failed_edge_counts[fail_key] = int(failed_edge_counts.get(fail_key, 0)) + 1
+                    failed_edge_attempts += 1
                     active_edges = []
                     current_subgoal = None
+                    subgoal_info = {}
                     edge_step = 0
             if success < 1.0 and not failure_reason:
                 failure_reason = "max_steps_without_success"
@@ -397,6 +527,8 @@ def run_hierarchical_support_episodes(
                 "completed_edges": int(completed_edges),
                 "replans": int(replans),
                 "full_bank_fallbacks": int(full_bank_fallbacks),
+                "failed_edge_attempts": int(failed_edge_attempts),
+                "unique_failed_edges": int(len(failed_edge_counts)),
                 "failure_reason": failure_reason,
             }
         )

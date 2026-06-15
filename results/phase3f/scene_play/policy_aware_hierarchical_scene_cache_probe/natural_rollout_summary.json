@@ -1,0 +1,11 @@
+{
+  "dataset_name": "scene-play-v0",
+  "mean_final_goal_l2": 6.930710315704346,
+  "mean_steps": 1.0,
+  "mean_total_reward": 0.0,
+  "method": "policy_aware_hierarchical_scene_cache_probe",
+  "num_episodes": 1,
+  "skipped": false,
+  "skipped_reason": "",
+  "success_rate": 0.0
+}

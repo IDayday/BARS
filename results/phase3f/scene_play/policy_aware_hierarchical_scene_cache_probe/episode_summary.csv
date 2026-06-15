@@ -1,0 +1,2 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,success,total_reward,initial_goal_l2,final_goal_l2,start_cluster,goal_cluster,planned_edges,completed_edges,replans,full_bank_fallbacks,failed_edge_attempts,unique_failed_edges,failure_reason
+scene-play-v0,policy_aware_hierarchical_scene_cache_probe,0,0,1,1,0.0,0.0,6.919687747955322,6.930710315704346,365,23,5,0,1,0,0,0,max_steps_without_success

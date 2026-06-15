@@ -24,6 +24,8 @@ from phase3.reset_utils import (
 from phase3f.natural_rollout import run_natural_start_episodes, write_natural_rollout_outputs
 from phase3f.hierarchical_rollout import (
     build_support_planning_graph,
+    choose_edge_subgoal,
+    load_or_fit_runtime_cluster_model,
     run_hierarchical_support_episodes,
 )
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
@@ -443,3 +445,88 @@ def test_hierarchical_support_rollout_switches_support_edges():
     assert episodes.loc[0, "success"] == 1.0
     assert episodes.loc[0, "completed_edges"] >= 1
     assert traces[0]["steps"][0]["segment_source"] == "bank"
+
+
+def test_policy_aware_subgoal_scoring_can_override_nearest_initiation():
+    observations = np.asarray([[0.0], [1.0], [2.0], [3.0]], dtype=np.float32)
+    actions = np.asarray([[10.0], [0.0], [0.0], [0.0]], dtype=np.float32)
+    segments = {
+        "edge_id": np.asarray([4, 4], dtype=np.int64),
+        "global_i": np.asarray([0, 2], dtype=np.int64),
+        "global_j": np.asarray([1, 3], dtype=np.int64),
+    }
+    edge_attrs = {
+        "segment_source": "graph",
+        "segment_edge_id": 4,
+        "policy_edge_id": 4,
+    }
+
+    class ZeroPolicy:
+        def __call__(self, obs, goal):
+            del obs, goal
+            return np.asarray([0.0], dtype=np.float32)
+
+    subgoal, reason, info = choose_edge_subgoal(
+        observations,
+        edge_attrs,
+        segments,
+        {},
+        current_obs=observations[0],
+        final_goal=observations[3],
+        initiation_weight=1.0,
+        downstream_weight=0.0,
+        policy=ZeroPolicy(),
+        actions=actions,
+        policy_mse_weight=1.0,
+        policy_mse_scale=1.0,
+    )
+    assert reason == "policy_aware_current_and_final_goal"
+    assert np.allclose(subgoal, observations[3])
+    assert info["selected_policy_action_mse"] == 0.0
+    assert info["policy_mse_used"] == 1.0
+
+
+def test_failure_penalty_changes_support_planning_route():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 0, 2],
+            "dst": [1, 2, 1],
+            "median_h": [1.0, 2.0, 2.0],
+            "cost": [1.0, 2.0, 2.0],
+        }
+    )
+    base = build_support_planning_graph(edges)
+    penalized = build_support_planning_graph(
+        edges,
+        failed_edge_counts={("graph", 0): 1},
+        failure_penalty=10.0,
+    )
+    assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
+    assert list(__import__("networkx").shortest_path(penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_runtime_cluster_model_cache_hits_second_load(tmp_path):
+    dataset = {
+        "observations": np.asarray([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=np.float32)
+    }
+    cache_path = tmp_path / "cluster.pkl"
+    _, hit1 = load_or_fit_runtime_cluster_model(
+        dataset,
+        cluster_method="grid_xy",
+        n_clusters=3,
+        seed=0,
+        state_dims=[0, 1],
+        cache_path=cache_path,
+    )
+    _, hit2 = load_or_fit_runtime_cluster_model(
+        dataset,
+        cluster_method="grid_xy",
+        n_clusters=3,
+        seed=0,
+        state_dims=[0, 1],
+        cache_path=cache_path,
+    )
+    assert hit1 is False
+    assert hit2 is True
+    assert cache_path.exists()

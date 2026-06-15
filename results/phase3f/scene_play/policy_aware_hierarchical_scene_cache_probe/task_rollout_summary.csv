@@ -1,0 +1,2 @@
+dataset_name,method,num_episodes,success_rate,mean_steps,mean_total_reward,mean_final_goal_l2,skipped,skipped_reason
+scene-play-v0,policy_aware_hierarchical_scene_cache_probe,1,0.0,1.0,0.0,6.930710315704346,False,

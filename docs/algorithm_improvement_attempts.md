@@ -1323,6 +1323,35 @@ Lessons:
   turns zero-progress AntMaze traces into partial edge completion, but it is not
   enough for task success.
 
+### Policy-Aware Hierarchical Rollout
+
+Status:
+
+Implemented as Phase 5D. Candidate support segments are scored by current-state
+initiation distance, downstream connection distance, and the GCBC policy's
+offline action MSE on that segment. Replanning can penalize support edges that
+fail online within the same episode. Runtime cluster models are cached for
+faster repeated Scene evaluation.
+
+Results:
+
+- AntMaze corebot100k improved mean completed edges from `1.0` to `1.5` and
+  mean final goal L2 from `28.8081` to `27.7101`, but success remained `0.0`.
+- Scene H25 did not improve in the 1 x 40-step smoke; success remained `0.0`
+  and no option edge was completed.
+- The policy-aware score selected lower-MSE support segments than the candidate
+  average, so the proxy mechanism works, but it is insufficient for online
+  task success.
+
+Lessons:
+
+- Offline action MSE is useful as a risk feature but not as a complete
+  executability model.
+- The next algorithm should learn or estimate closed-loop edge success and
+  recovery, not only choose prettier offline segments.
+- Graph-only improvements have diminishing returns until low-level execution
+  from online drift states is handled.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1380,6 +1409,9 @@ Lessons:
 - Phase 5C shows support-certified hierarchical natural-start rollout can plan
   and execute partial online option paths, and provides concrete failure
   diagnostics for endpoint coverage, replanning, and edge completion.
+- Phase 5D shows policy-aware segment scoring can reduce selected offline
+  policy MSE and modestly improve AntMaze partial edge progress, while exposing
+  that this proxy alone is not enough for online success.
 
 ## Claims Not Yet Supported
 
@@ -1414,3 +1446,5 @@ Lessons:
   switching.
 - Phase 5C partial edge completion is not task success and does not yet beat
   GAS or any online baseline.
+- Phase 5D policy-aware scoring is not a calibrated edge success probability
+  and does not solve Scene or AntMaze natural-start tasks.

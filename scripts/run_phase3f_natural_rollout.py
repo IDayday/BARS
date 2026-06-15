@@ -23,7 +23,7 @@ from phase3f.natural_rollout import (  # noqa: E402
     write_natural_rollout_outputs,
 )
 from phase3f.hierarchical_rollout import (  # noqa: E402
-    fit_runtime_cluster_model,
+    load_or_fit_runtime_cluster_model,
     load_graph_artifacts,
     run_hierarchical_support_episodes,
 )
@@ -88,6 +88,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cluster_method", default=None)
     parser.add_argument("--n_clusters", type=int, default=None)
     parser.add_argument("--state_dims", default=None)
+    parser.add_argument("--cluster_cache_dir", default=None)
+    parser.add_argument("--cluster_cache_path", default=None)
     parser.add_argument("--graph_edges_csv", default=None)
     parser.add_argument("--graph_segments_npz", default=None)
     parser.add_argument("--bank_edges_csv", default=None)
@@ -98,6 +100,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_edge_horizon", type=int, default=None)
     parser.add_argument("--max_replans", type=int, default=None)
     parser.add_argument("--subgoal_max_candidates", type=int, default=None)
+    parser.add_argument("--failure_penalty", type=float, default=None)
+    parser.add_argument("--initiation_weight", type=float, default=None)
+    parser.add_argument("--downstream_weight", type=float, default=None)
+    parser.add_argument("--policy_mse_weight", type=float, default=None)
+    parser.add_argument("--policy_mse_scale", type=float, default=None)
     return parser.parse_args()
 
 
@@ -125,6 +132,8 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "cluster_method": None,
         "n_clusters": None,
         "state_dims": None,
+        "cluster_cache_dir": None,
+        "cluster_cache_path": None,
         "graph_edges_csv": None,
         "graph_segments_npz": None,
         "bank_edges_csv": None,
@@ -135,6 +144,11 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "max_edge_horizon": None,
         "max_replans": 5,
         "subgoal_max_candidates": 256,
+        "failure_penalty": 0.0,
+        "initiation_weight": 1.0,
+        "downstream_weight": 0.25,
+        "policy_mse_weight": 0.0,
+        "policy_mse_scale": 0.05,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -145,6 +159,19 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
     if merged.get("state_dims") is not None:
         merged["state_dims"] = _parse_list(merged.get("state_dims"), int)
     return argparse.Namespace(**merged)
+
+
+def _cluster_cache_path(args: argparse.Namespace, dataset_key: str) -> Path | None:
+    if args.cluster_cache_path:
+        return Path(args.cluster_cache_path)
+    if not args.cluster_cache_dir:
+        return None
+    dims = "all" if args.state_dims is None else "-".join(str(x) for x in args.state_dims)
+    name = (
+        f"{dataset_key}_{args.cluster_method}_k{int(args.n_clusters)}_"
+        f"seed{int(args.seed)}_max{int(args.max_transitions or 0)}_dims{dims}.pkl"
+    )
+    return Path(args.cluster_cache_dir) / name
 
 
 def _construct_env(dataset_name: str, dataset_dir: str):
@@ -223,12 +250,14 @@ def main() -> None:
             split="train",
             max_transitions=args.max_transitions,
         )
-        cluster_model = fit_runtime_cluster_model(
+        cache_path = _cluster_cache_path(args, dataset_key)
+        cluster_model, cluster_cache_hit = load_or_fit_runtime_cluster_model(
             dataset,
             cluster_method=args.cluster_method,
             n_clusters=args.n_clusters,
             seed=args.seed,
             state_dims=args.state_dims,
+            cache_path=cache_path,
         )
         graph_edges, graph_segments, bank_edges, bank_segments = load_graph_artifacts(
             graph_edges_csv=args.graph_edges_csv,
@@ -258,6 +287,11 @@ def main() -> None:
             max_replans=args.max_replans,
             subgoal_max_candidates=args.subgoal_max_candidates,
             allow_full_bank_fallback=args.allow_full_bank_fallback,
+            failure_penalty=args.failure_penalty,
+            initiation_weight=args.initiation_weight,
+            downstream_weight=args.downstream_weight,
+            policy_mse_weight=args.policy_mse_weight,
+            policy_mse_scale=args.policy_mse_scale,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -283,7 +317,15 @@ def main() -> None:
         skipped=False,
         skipped_reason="",
     )
-    _write_config(out_dir / "config_resolved.yaml", args, {"device_resolved": str(device)})
+    extra = {"device_resolved": str(device)}
+    if args.action_mode == "hierarchical_support":
+        extra.update(
+            {
+                "cluster_cache_path_resolved": str(cache_path) if cache_path is not None else None,
+                "cluster_cache_hit": bool(cluster_cache_hit),
+            }
+        )
+    _write_config(out_dir / "config_resolved.yaml", args, extra)
     (out_dir / "natural_rollout_summary.json").write_text(
         json.dumps(summary.iloc[0].to_dict(), indent=2, sort_keys=True),
         encoding="utf-8",

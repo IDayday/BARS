@@ -90,3 +90,7 @@ change. The online bottleneck is now policy-aware execution:
 4. Train longer or train specifically on planner-used edge distributions.
 5. Evaluate direct GCBC, support shortest path, repaired path, and certified
    path under the same natural-start protocol.
+
+Phase 5D implements the first version of item 2 and adds failure-penalized
+replanning plus cluster-model caching. It improves AntMaze partial progress
+slightly but still does not solve natural-start tasks.

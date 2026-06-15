@@ -1,0 +1,11 @@
+{
+  "dataset_name": "scene-play-v0",
+  "mean_final_goal_l2": 6.950658321380615,
+  "mean_steps": 40.0,
+  "mean_total_reward": 0.0,
+  "method": "policy_aware_hierarchical_phase4o_s04_H25_B192",
+  "num_episodes": 1,
+  "skipped": false,
+  "skipped_reason": "",
+  "success_rate": 0.0
+}
