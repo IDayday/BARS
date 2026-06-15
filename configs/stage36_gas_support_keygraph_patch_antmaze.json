@@ -1,0 +1,18 @@
+{
+  "description": "Patch official GAS keygraph weights with BARS support evidence, keeping the official GAS actor unchanged.",
+  "keygraph_path": "${GAS_KEYGRAPH_PATH}",
+  "edge_scores_csv": "${BARS_GAS_EDGE_SCORES_CSV}",
+  "out_keygraph_path": "runs_stage36_gas_support_patch/antmaze_large_stitch/seed0/keygraph_support_penalized.pkl",
+  "patch": {
+    "mode": "penalize",
+    "support_column": "local_support",
+    "min_support": 1.0,
+    "unsupported_penalty": 8.0,
+    "risk_column": "r_exec",
+    "risk_weight": 0.0,
+    "missing_score_policy": "protect",
+    "protect_goal_edges": true,
+    "recompute_task_paths": true
+  },
+  "evaluation_note": "Evaluate with official GAS policy by passing out_keygraph_path to external_src/GAS/evaluate_gas.py as --keygraph_path and keeping --policy_path unchanged."
+}
