@@ -1,0 +1,4 @@
+reference_method,method,num_common_paths,num_changed_paths,path_change_rate
+original,all_edges_p0p5_forward,9660,8619,0.8922360248447205
+original,all_edges_p2_forward,9660,9254,0.9579710144927536
+original,scc_only_p8_forward,9660,2,0.00020703933747412008

@@ -1152,6 +1152,77 @@ This remains reset-free offline evidence. The H25 training run is two seeds and
 3000 steps; longer training and closed-loop evaluation are still required before
 claiming execution or benchmark improvement.
 
+### Stage36: GAS Support-Keygraph Bridge
+
+Question:
+
+Can BARS graph evidence improve final closed-loop success when applied to a
+mature official GAS actor without changing the low-level policy?
+
+Reviewed before implementation:
+
+- GAS official keygraph construction, cached task-path dictionaries, and
+  `evaluate_gas.py` execution path.
+- The target-semantics mismatch between BARS raw-observation clusters and GAS
+  TDR/keygraph actor targets.
+- Prior BARS support, compatibility, and policy-MSE evidence showing that graph
+  evidence is useful but current BARS GCBC execution is weak.
+
+Implemented:
+
+- A GAS keygraph patcher that annotates, penalizes, or prunes GAS graph edges
+  using BARS support scores while keeping the official GAS actor unchanged.
+- A GAS support edge scorer that audits local same-trajectory support,
+  SCC-connector support, and unsupported shortcut exposure.
+- A path audit for cached GAS `task_paths_dict` entries.
+- A directionality fix: when support penalties are directional, cached paths
+  must be recomputed on `graph.reverse(copy=False)` so stored paths minimize
+  original forward execution costs.
+
+Evidence:
+
+- Medium navigate smoke, official GAS actor: success changes from `0.97` to
+  `0.98` over 20 episodes/task with support penalty `2`, but mean length
+  increases from `248.70` to `261.95`.
+- Giant stitch support audit: 31,986 graph edges; local-supported non-goal edge
+  rate `0.2941`; effective all-edge unsupported rate `0.7025`.
+- Giant stitch pre-fix path audit exposed the directionality bug: all-edge
+  penalty `2` changed `96.2%` of cached paths but increased mean unsupported
+  path-edge fraction from `0.670` to `0.940`, because reverse edge costs were
+  being optimized.
+- Giant stitch forward-corrected A/B, 10 episodes/task x 5 tasks:
+  original success `0.90`, mean length `690.42`;
+  all-edge penalty `0.5` success `0.92`, mean length `689.16`;
+  all-edge penalty `2` success `0.90`, mean length `679.10`;
+  SCC-only penalty `8` success `0.86`, mean length `694.54`.
+- Forward-corrected path audit: all-edge penalty `0.5` reduces mean unsupported
+  path-edge fraction from `0.670` to `0.366`; penalty `2` reduces it to
+  `0.169` but increases mean path edges from `25.41` to `28.02`.
+
+Analysis:
+
+This is the cleanest current way to test BARS graph ideas against final
+success: keep GAS's mature low-level actor and target semantics, then change
+only the planner graph costs. The result gives a real positive but small
+success signal for mild support risk on giant stitch (`0.90` to `0.92`) and a
+similar tiny medium-navigate gain (`0.97` to `0.98`). It also shows the limit:
+making paths more support-backed does not monotonically improve success. Strong
+support penalties can lengthen paths or preserve success without improvement,
+and SCC-only guarding is too sparse in the current smoke.
+
+The actionable algorithmic rule is calibrated support-aware planning, not
+replacing GAS nodes with BARS clusters and not using a fixed large unsupported
+edge penalty. Directional graph-cost correctness is now mandatory for any
+future patch.
+
+Remaining gap:
+
+Stage36 is a bridge experiment, not the final BARS algorithm. The effect size is
+small, the giant result is 50 episodes total, and it only modifies a mature GAS
+planner rather than training a BARS-native policy. The next decisive version
+needs calibrated risk, larger evaluation budgets, and multi-seed/multi-env
+replication.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -1942,14 +2013,14 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   `261.95`; support penalty `8` hurts the 5-episode smoke (`0.96` to `0.92`).
   The useful pattern is calibrated soft edge risk, not hard pruning or large
   unsupported-edge penalties.
-- Stage36 giant-stitch A/B refines that pattern on a non-saturated official
-  GAS artifact: uniform all-edge support penalties are neutral or harmful
-  (`0.90` original, `0.90` with penalty `0.5`, `0.86` with penalty `2`, 10
-  episodes/task), while an SCC-only support guard preserves success (`0.90`)
-  and slightly shortens mean length (`690.42` to `681.30`). The emerging
-  algorithmic rule is to protect GAS local distance edges and apply support
-  evidence first to structural connector shortcuts, then learn/calibrate risk
-  instead of using a constant penalty.
+- Stage36 giant-stitch forward-corrected A/B refines that pattern on a
+  non-saturated official GAS artifact: all-edge support penalty `0.5` improves
+  success from `0.90` to `0.92` over 10 episodes/task and reduces mean
+  unsupported path-edge fraction from `0.670` to `0.366`; all-edge penalty `2`
+  keeps success at `0.90` while making paths more support-backed but longer;
+  SCC-only penalty `8` drops success to `0.86`. The emerging algorithmic rule
+  is mild calibrated support risk over GAS-compatible edges, with directional
+  forward-cost path recomputation.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2024,11 +2095,13 @@ See `docs/phase5o_policy_action_mse_reference.md`.
 - GAS/HIQL/CRL action MSE is not yet known for this local protocol; it must be
   computed from live checkpoints before being used as a design target.
 - Stage36 has medium and giant online A/B smoke evidence showing
-  plug-compatibility with official GAS, but it is not yet strong evidence of
-  SOTA improvement; the decisive next test needs calibrated risk and broader
+  plug-compatibility with official GAS, and giant forward-corrected penalty
+  `0.5` gives a small success gain, but it is not yet strong evidence of SOTA
+  improvement; the decisive next test needs calibrated risk and broader
   multi-seed/multi-env evaluation.
 - Fixed all-edge unsupported-support penalties are not a mature algorithm.
-  Giant-stitch shows they can reduce success and lengthen trajectories under a
-  strong official GAS actor.
+  Giant-stitch shows mild penalty can help, while stronger penalty mainly
+  changes paths and does not monotonically improve success under a strong
+  official GAS actor.
 - Phase 5P source heads are not a complete low-level policy solution and do
   not improve AntMaze task success.

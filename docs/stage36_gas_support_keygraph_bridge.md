@@ -150,7 +150,16 @@ Support audit:
 - all-edge unsupported rate after protecting goal connectors: `0.7025`
 - SCC-only unsupported rate after protecting ordinary distance edges: `0.0028`
 
-Closed-loop A/B, same official GAS actor:
+The first giant run exposed an important implementation issue. Official GAS
+computes cached task paths with target-rooted Dijkstra and reverses the path.
+That is harmless when weights are approximately symmetric geometric distances,
+but BARS support penalties are directional: `u -> v` can be unsupported even
+when `v -> u` is supported. The patcher now recomputes cached task paths on
+`graph.reverse(copy=False)`, so the stored path minimizes the original forward
+execution cost under directional support weights.
+
+The pre-fix giant table below should be treated as evidence of this direction
+bug, not as the final support-penalty conclusion:
 
 | method | support column | episodes/task | unsupported penalty | success | mean episode length |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -159,18 +168,33 @@ Closed-loop A/B, same official GAS actor:
 | all-edge support penalty | `local_support` | 10 | 2 | `0.86` | `757.26` |
 | SCC-only support guard | `scc_only_support` | 10 | 8 | `0.90` | `681.30` |
 
-The giant result rules out a fixed uniform unsupported-edge penalty as the next
-algorithm. Penalizing every unsupported distance edge disrupts the target
-distribution that the GAS actor already handles, causing longer paths and lower
-success at penalty `2`. In contrast, SCC-only support guarding protects local
-distance edges and only targets structural graph-connector shortcuts. It is
-safer and slightly shorter in this smoke, but it is not yet a success-rate
-improvement.
+After the forward-cost recompute fix, the authoritative giant smoke is:
+
+| method | support column | episodes/task | unsupported penalty | success | mean episode length | path change rate | mean unsupported edge fraction | mean same-trajectory support |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| original keygraph | none | 10 | 0 | `0.90` | `690.42` | `0.000` | `0.670` | `9.60` |
+| all-edge support penalty | `local_support` | 10 | 0.5 | `0.92` | `689.16` | `0.892` | `0.366` | `17.37` |
+| all-edge support penalty | `local_support` | 10 | 2 | `0.90` | `679.10` | `0.958` | `0.169` | `24.18` |
+| SCC-only support guard | `scc_only_support` | 10 | 8 | `0.86` | `694.54` | `0.000` | `0.670` | `9.60` |
+
+The corrected result changes the interpretation. A mild all-edge support
+penalty is the only setting that improves success in this 50-episode smoke,
+while the stronger all-edge penalty makes paths much more support-backed but
+does not improve success. The SCC-only guard barely changes cached paths and
+drops success in this sample, so it should not be treated as the current
+winner.
+
+The useful algorithmic signal is calibrated soft support risk. Too much support
+pressure can trade unsupported shortcuts for longer paths without raising
+success, and structural-only guarding may be too sparse to affect the planner.
 
 Result files:
 
 - `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_support_patch_ablation.csv`
 - `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_support_patch_ablation_summary.json`
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_forward_support_patch_ablation.csv`
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_forward_support_patch_ablation_summary.json`
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/path_audit_forward/path_summary.csv`
 - `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/support_only_edge_scores/support_only_metrics.json`
 
 ## Current Interpretation
@@ -180,17 +204,17 @@ therefore the right bridge for near-term success-rate evidence: test graph
 evidence on a mature official GAS actor while preserving GAS target semantics.
 
 The smoke A/B says the bridge is viable but not yet a complete algorithmic win.
-BARS support evidence should be used as a calibrated risk/cost prior over GAS
-edges. It should not directly replace GAS's graph or aggressively remove
-distance edges, because the trained GAS actor and planner were optimized around
-that graph's target distribution.
+BARS support evidence can directly improve a mature GAS actor's final success
+in the mild `p0.5` giant smoke, but the effect is small and needs multi-seed /
+larger-episode confirmation. It should be used as a calibrated risk/cost prior
+over GAS edges, not as a hard replacement for GAS's graph.
 
 The strongest concrete rule so far is:
 
-- protect ordinary GAS distance edges unless policy/evaluation evidence says
-  they are harmful;
-- apply support evidence first to structural connector shortcuts, especially
-  SCC-merging edges and other graph-construction repair edges;
+- recompute cached task paths with forward execution costs whenever edge costs
+  are directional;
+- keep support pressure mild unless closed-loop evaluation justifies stronger
+  penalties;
 - move from constant penalties to calibrated edge/path risk models.
 
 The next decisive experiment is the same patch on non-saturated official GAS

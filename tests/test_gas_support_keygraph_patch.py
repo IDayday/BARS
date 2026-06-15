@@ -83,6 +83,30 @@ def test_support_penalty_recomputes_cached_gas_task_paths():
     assert result.summary["num_effective_unsupported_edges"] == 2
 
 
+def test_directional_support_penalty_uses_forward_execution_costs():
+    kg = _dummy_keygraph()
+    scores = _edge_scores()
+    # Make only the executed shortcut 0->2 unsupported.  The reverse 2->0
+    # remains supported, which catches target-rooted Dijkstra on the original
+    # directed graph because it would optimize the wrong reverse edge cost.
+    scores.loc[(scores["u"] == 0) & (scores["v"] == 2), "local_support"] = 0
+    scores.loc[(scores["u"] == 2) & (scores["v"] == 0), "local_support"] = 3
+
+    result = patch_gas_keygraph_with_support(
+        kg,
+        scores,
+        mode="penalize",
+        support_column="local_support",
+        min_support=1,
+        unsupported_penalty=10.0,
+        risk_column="r_exec",
+        risk_weight=0.0,
+    )
+
+    assert result.key_graph.task_paths_dict[1][0] == [0, 1, 3]
+    assert result.key_graph.task_paths_dist_dict[1][0] == 3.0
+
+
 def test_prune_mode_protects_task_goal_edges_by_default():
     kg = _dummy_keygraph()
     scores = _edge_scores()

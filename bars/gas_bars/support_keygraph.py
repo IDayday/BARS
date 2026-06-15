@@ -108,7 +108,13 @@ def _recompute_paths_to_existing_task_nodes(key_graph: Any) -> dict[str, int]:
             new_dists[task_id] = {}
             reachable_counts[str(task_id)] = 0
             continue
-        lengths, paths = nx.single_source_dijkstra(graph, source=target_idx, weight="weight")
+        # GAS' original keygraph weights are geometric and nearly symmetric, so
+        # its target-rooted Dijkstra can reverse paths safely. BARS support
+        # penalties are directional: an edge u->v can be unsupported even when
+        # v->u is supported.  Compute on the reversed graph so the resulting
+        # distances correspond to forward execution costs from node_idx to the
+        # task target in the original graph.
+        lengths, paths = nx.single_source_dijkstra(graph.reverse(copy=False), source=target_idx, weight="weight")
         task_paths: dict[int, list[int]] = {}
         task_dists: dict[int, float] = {}
         for node_idx, path in paths.items():
