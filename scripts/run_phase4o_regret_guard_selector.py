@@ -27,6 +27,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_direct_repair_ratio", type=float, default=1.0)
     parser.add_argument("--max_planner_used_ratio", type=float, default=0.99)
     parser.add_argument("--min_policy_support_ratio", type=float, default=1.0)
+    parser.add_argument("--disable_relaxed_improvement_fallback", action="store_true")
+    parser.add_argument("--relaxed_max_direct_repair_ratio", type=float, default=1.0)
+    parser.add_argument("--relaxed_max_planner_used_ratio", type=float, default=1.0)
+    parser.add_argument("--relaxed_min_policy_support_ratio", type=float, default=1.0)
     return parser.parse_args()
 
 
@@ -38,6 +42,10 @@ def main() -> None:
         max_direct_repair_ratio=args.max_direct_repair_ratio,
         max_planner_used_ratio=args.max_planner_used_ratio,
         min_policy_support_ratio=args.min_policy_support_ratio,
+        allow_relaxed_improvement_fallback=not args.disable_relaxed_improvement_fallback,
+        relaxed_max_direct_repair_ratio=args.relaxed_max_direct_repair_ratio,
+        relaxed_max_planner_used_ratio=args.relaxed_max_planner_used_ratio,
+        relaxed_min_policy_support_ratio=args.relaxed_min_policy_support_ratio,
     )
     annotated, selection, payload = run_regret_guard_selection(args.result_root, config)
     write_regret_guard_outputs(args.output_dir, annotated, selection, payload)

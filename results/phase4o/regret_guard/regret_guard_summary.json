@@ -1,23 +1,29 @@
 {
   "config": {
+    "allow_relaxed_improvement_fallback": true,
     "baseline_method": "augmented_loss_support_bottleneck_s03",
     "max_direct_repair_ratio": 1.0,
     "max_final_val_ratio": 1.01,
     "max_planner_used_ratio": 0.99,
-    "min_policy_support_ratio": 1.0
+    "min_policy_support_ratio": 1.0,
+    "relaxed_max_direct_repair_ratio": 1.0,
+    "relaxed_max_planner_used_ratio": 1.0,
+    "relaxed_min_policy_support_ratio": 1.0
   },
-  "mean_nonbaseline_selected_final_val_ratio": 0.9933174106399508,
-  "mean_selected_direct_repair_ratio": 0.9843471938413818,
-  "mean_selected_final_val_ratio": 0.9933174106399508,
-  "mean_selected_planner_used_repair_ratio": 0.9759366257134178,
+  "mean_nonbaseline_selected_final_val_ratio": 0.9930981210288793,
+  "mean_selected_direct_repair_ratio": 0.9841552449214142,
+  "mean_selected_final_val_ratio": 0.9930981210288793,
+  "mean_selected_planner_used_repair_ratio": 0.9798063785880092,
   "note": "Offline supervised selector; not rollout success.",
-  "num_runs": 3,
+  "num_runs": 4,
   "num_runs_fallback_baseline": 0,
   "num_runs_with_guard_pass": 3,
+  "num_runs_with_relaxed_guard_pass": 1,
   "phase": "Phase 4O",
   "selected_methods": [
     "planner_relevant_repair_s04",
     "planner_relevant_repair_s02",
+    "planner_relevant_repair_s04",
     "planner_relevant_repair_s04"
   ],
   "title": "Planner-Relevance Regret-Guard Selection"

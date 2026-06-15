@@ -16,6 +16,10 @@ class RegretGuardConfig:
     max_direct_repair_ratio: float = 1.0
     max_planner_used_ratio: float = 0.99
     min_policy_support_ratio: float = 1.0
+    allow_relaxed_improvement_fallback: bool = True
+    relaxed_max_direct_repair_ratio: float = 1.0
+    relaxed_max_planner_used_ratio: float = 1.0
+    relaxed_min_policy_support_ratio: float = 1.0
 
 
 RATIO_COLUMNS = [
@@ -90,12 +94,28 @@ def annotate_regret_guard_candidates(
     out["passes_policy_support_guard"] = out["direct_repair_policy_support_score_ratio_vs_baseline"] >= float(
         cfg.min_policy_support_ratio
     )
+    out["passes_relaxed_direct_repair_guard"] = out["direct_repair_edge_mse_ratio_vs_baseline"] <= float(
+        cfg.relaxed_max_direct_repair_ratio
+    )
+    out["passes_relaxed_planner_used_guard"] = out["planner_used_repair_edge_mse_ratio_vs_baseline"] <= float(
+        cfg.relaxed_max_planner_used_ratio
+    )
+    out["passes_relaxed_policy_support_guard"] = out["direct_repair_policy_support_score_ratio_vs_baseline"] >= float(
+        cfg.relaxed_min_policy_support_ratio
+    )
     out["guard_pass"] = (
         ~out["is_baseline"]
         & out["passes_final_val_guard"]
         & out["passes_direct_repair_guard"]
         & out["passes_planner_used_guard"]
         & out["passes_policy_support_guard"]
+    )
+    out["relaxed_guard_pass"] = (
+        ~out["is_baseline"]
+        & out["passes_final_val_guard"]
+        & out["passes_relaxed_direct_repair_guard"]
+        & out["passes_relaxed_planner_used_guard"]
+        & out["passes_relaxed_policy_support_guard"]
     )
     out["num_guard_violations"] = (
         (~out["passes_final_val_guard"]).astype(int)
@@ -130,6 +150,7 @@ def select_regret_guard_candidate(
         }
     candidates = annotated[~annotated["is_baseline"]].copy()
     passing = candidates[candidates["guard_pass"]].copy()
+    relaxed = candidates[candidates["relaxed_guard_pass"]].copy()
     sort_cols = [
         "planner_used_repair_edge_mse_ratio_vs_baseline",
         "final_val_action_mse_ratio_vs_baseline",
@@ -140,6 +161,9 @@ def select_regret_guard_candidate(
     if not passing.empty:
         selected = passing.sort_values(sort_cols, ascending=ascending, kind="mergesort").iloc[0]
         status = "guard_pass"
+    elif bool(cfg.allow_relaxed_improvement_fallback) and not relaxed.empty:
+        selected = relaxed.sort_values(sort_cols, ascending=ascending, kind="mergesort").iloc[0]
+        status = "relaxed_guard_pass"
     else:
         baseline = annotated[annotated["is_baseline"]]
         if not baseline.empty:
@@ -169,6 +193,7 @@ def select_regret_guard_candidate(
             "selected_is_baseline": bool(selected.get("is_baseline", False)),
             "num_candidates": int(candidates.shape[0]),
             "num_guard_pass_candidates": int(passing.shape[0]),
+            "num_relaxed_guard_pass_candidates": int(relaxed.shape[0]),
         }
     )
     return row
@@ -227,6 +252,7 @@ def run_regret_guard_selection(
         "config": cfg.__dict__,
         "num_runs": int(selection_table.shape[0]),
         "num_runs_with_guard_pass": int((selection_table["selection_status"] == "guard_pass").sum()),
+        "num_runs_with_relaxed_guard_pass": int((selection_table["selection_status"] == "relaxed_guard_pass").sum()),
         "num_runs_fallback_baseline": int(selection_table["selected_is_baseline"].astype(bool).sum()),
         "selected_methods": selection_table.get("selected_method", pd.Series(dtype=object)).astype(str).tolist(),
         "mean_selected_final_val_ratio": float(
@@ -265,12 +291,17 @@ def render_regret_guard_markdown(payload: dict[str, Any], selection: pd.DataFram
         "max_direct_repair_ratio",
         "max_planner_used_ratio",
         "min_policy_support_ratio",
+        "allow_relaxed_improvement_fallback",
+        "relaxed_max_direct_repair_ratio",
+        "relaxed_max_planner_used_ratio",
+        "relaxed_min_policy_support_ratio",
     ]:
         lines.append(f"- `{key}`: `{config.get(key)}`")
     lines.extend(["", "## Aggregate", ""])
     for key in [
         "num_runs",
         "num_runs_with_guard_pass",
+        "num_runs_with_relaxed_guard_pass",
         "num_runs_fallback_baseline",
         "mean_selected_final_val_ratio",
         "mean_selected_direct_repair_ratio",
@@ -306,7 +337,10 @@ def render_regret_guard_markdown(payload: dict[str, Any], selection: pd.DataFram
             "## Interpretation",
             "",
             "- A non-baseline method is recommended only when every guard passes.",
-            "- If no planner-relevant candidate passes, the selector falls back to",
+            "- If strict guards fail but the relaxed fallback is enabled, the selector",
+            "  can choose a candidate that improves direct repair MSE, planner-used",
+            "  repair MSE, and policy-support score without exceeding final-val regret.",
+            "- If neither strict nor relaxed guards pass, the selector falls back to",
             "  the same augmented-graph support+bottleneck baseline.",
             "- The selected method is an offline supervised candidate for further",
             "  validation. It is not an execution-success claim.",

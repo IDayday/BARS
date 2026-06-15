@@ -1,0 +1,13 @@
+{
+  "dataset_name": "scene-play-v0",
+  "env_available": true,
+  "env_construction_error": null,
+  "failure_reason": "unwrapped.set_state(obs): TypeError: SceneEnv.set_state() missing 2 required positional arguments: 'qvel' and 'button_states'",
+  "missing_packages": [],
+  "num_probe_states": 16,
+  "obs_reconstruction_error_max": null,
+  "obs_reconstruction_error_mean": null,
+  "reset_method": null,
+  "reset_probe_status": "reset_unsupported",
+  "reset_supported": false
+}

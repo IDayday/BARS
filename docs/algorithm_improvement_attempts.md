@@ -147,18 +147,29 @@ Implemented:
 
 Evidence:
 
-- Current probes report `env_unavailable` due missing `gymnasium`/`gym`/MuJoCo
-  dependencies in the active environment.
+- The original active environment reported `env_unavailable` due missing
+  `gymnasium`/`gym`/MuJoCo dependencies.
+- The `gcrlo` conda environment now constructs both
+  `antmaze-large-stitch-v0` and `scene-play-v0` through local OGBench
+  (`external_src/tmd-release`) with `PYTHONPATH` set.
+- `gcrlo` preflight status is `env_available` for both datasets, with
+  `reset_probe_status: reset_unsupported`.
+- Natural-start `env.reset(seed=0)` and one-step `env.step(action)` smoke tests
+  succeed for both AntMaze and Scene.
 
 Analysis:
 
-The blocker is environment construction. It should not be interpreted as a
-benchmark-level reset limitation.
+The blocker has moved from environment construction to arbitrary reset
+semantics. This should not be interpreted as AntMaze/Scene lacking online
+closed-loop evaluation support. It means edge-level reset-to-state rollout
+needs exact simulator state references, while natural-start task rollout is now
+the right next evaluation path.
 
 Remaining gap:
 
-Phase 3C closed-loop edge execution is pending until env dependencies are
-available and reset semantics can be probed reliably.
+Phase 3C edge-level arbitrary reset execution is still blocked by missing exact
+state refs (`qpos/qvel`, and Scene button state). Natural-start closed-loop task
+rollout should be implemented next in `gcrlo`.
 
 ### Phase 3D: Offline Sampling Ablation
 
@@ -1039,9 +1050,12 @@ Implemented:
   tables.
 - Annotates each candidate with final-validation, direct-repair,
   planner-used-repair, and policy-support guards.
-- Recommends a non-baseline candidate only when every guard passes.
+- Recommends a strict non-baseline candidate when every guard passes.
+- Adds a relaxed improvement fallback for candidates that improve direct
+  repair-edge MSE, planner-used repair-edge MSE, and policy-support score while
+  staying inside the final validation-MSE regret budget.
 - Falls back to the same augmented-graph support+bottleneck baseline when no
-  planner-relevant candidate passes.
+  strict or relaxed planner-relevant candidate passes.
 - Added synthetic tests for Scene H10 `s02` selection, fallback behavior, and
   violation reason reporting.
 
@@ -1056,9 +1070,13 @@ Evidence:
 - Scene H5 B192 selects `planner_relevant_repair_s04`: final validation MSE
   ratio `0.979038`, direct repair-edge MSE ratio `0.969635`, planner-used
   repair-edge MSE ratio `0.980885`, policy support score ratio `1.005549`.
-- Across selected candidates, mean final validation MSE ratio is `0.993317`,
-  mean direct repair-edge MSE ratio is `0.984347`, and mean planner-used
-  repair-edge MSE ratio is `0.975937`.
+- Scene H25 B192 selects `planner_relevant_repair_s04` under the relaxed
+  fallback: final validation MSE ratio `0.992440`, direct repair-edge MSE ratio
+  `0.983579`, planner-used repair-edge MSE ratio `0.991416`, policy support
+  score ratio `1.004670`.
+- Across selected candidates, mean final validation MSE ratio is `0.993098`,
+  mean direct repair-edge MSE ratio is `0.984155`, and mean planner-used
+  repair-edge MSE ratio is `0.979806`.
 
 Analysis:
 
@@ -1066,13 +1084,73 @@ Phase 4O makes the training-side selection rule more mature. It preserves the
 targeted planner-used repair-edge improvement, but refuses candidates that
 damage direct repair-edge fitting, policy-support score, or overall validation
 MSE beyond the configured regret budget. This reduces manual cherry-picking
-risk before expanding to Scene H25 or longer training.
+risk before expanding to longer training and additional environments.
 
 Remaining gap:
 
 The selector is only as good as the offline supervised metrics it reads. It is
 not a rollout-success validator, and the guard thresholds are evidence-based
 engineering defaults rather than calibrated execution probabilities.
+
+### Phase 4P: Scene H25 Replication and Planner Scaling
+
+Question:
+
+Does the repaired support graph plus planner-relevant loss-weighting pattern
+replicate at the larger Scene H25 horizon, and can the compatibility planner
+scale to that graph size?
+
+Reviewed before implementation:
+
+- Phase 4E Scene H5/H10 repair results showing that support-bank repair fixes
+  compressed graph coverage while compatibility constraints are still needed.
+- Phase 4M/4N/4O planner-relevant weighting and guard-selection results.
+- The Phase 4O evidence rule that selected training candidates must be guarded
+  by ordinary validation MSE, direct repair-edge MSE, planner-used repair-edge
+  MSE, and policy-support score.
+
+Implemented:
+
+- Added Scene H25 Phase 4E repair config using
+  `core_plus_bottleneck_budget192_H25` as base graph and `all_budget192_H25` as
+  the support-certified repair bank.
+- Optimized compatibility-aware planning by reusing line-graph indices, method
+  edge-cost maps, and pair-coverage lookups across query evaluations.
+- Ran Scene H25 Phase 4E repair and Phase 4M planner-relevant GCBC training for
+  baseline, `planner_relevant_repair_s04`, and `planner_relevant_repair_s02`.
+- Reran the Phase 4O selector including Scene H25.
+
+Evidence:
+
+- Scene H25 strict `compat_threshold` coverage improves from `0.17` on the base
+  compressed graph to `0.64` after adding 500 support-certified repair edges,
+  while pair incompatible fraction remains `0.000`.
+- Repaired support-shortest-path coverage reaches `0.65`, but pair incompatible
+  fraction remains high at `0.791923`, confirming that graph repair alone is
+  not enough without compatibility-aware planning.
+- Scene H25 `planner_relevant_repair_s04`: final validation MSE ratio
+  `0.992440`, direct repair-edge MSE ratio `0.983579`, planner-used repair-edge
+  MSE ratio `0.991416`, policy support score ratio `1.004670`.
+- Scene H25 `planner_relevant_repair_s02`: final validation MSE ratio
+  `0.994574`, direct repair-edge MSE ratio `0.992829`, planner-used repair-edge
+  MSE ratio `1.009024`, policy support score ratio `1.001577`.
+
+Analysis:
+
+Scene H25 strengthens the structural repair conclusion: the broader
+support-certified bank contains useful compatible connectivity that the
+compressed graph omitted. It also refines the weighting conclusion: weaker
+planner relevance is not always safer for the actual planner-used repair group.
+For H25, `s04` improves all broad supervised proxies and mildly improves
+planner-used repair-edge MSE, while `s02` worsens planner-used repair-edge MSE.
+This supports using Phase 4O selection guards rather than a fixed global
+strength.
+
+Remaining gap:
+
+This remains reset-free offline evidence. The H25 training run is two seeds and
+3000 steps; longer training and closed-loop evaluation are still required before
+claiming execution or benchmark improvement.
 
 ## Lessons So Far
 
@@ -1171,9 +1249,10 @@ Evidence required:
 
 Status:
 
-Completed as Phase 4M on Scene H5, Scene H10, and AntMaze H10, with Phase 4N
-adding a Scene H10 regret guard and Phase 4O turning that guard into a reusable
-selector. The remaining work is Scene H25 plus longer training.
+Completed as Phase 4M on Scene H5, Scene H10, Scene H25, and AntMaze H10, with
+Phase 4N adding a Scene H10 regret guard, Phase 4O turning that guard into a
+reusable selector, and Phase 4P extending the replication to Scene H25. The
+remaining work is longer training and additional environments.
 
 ### Closed-Loop Edge Execution
 
@@ -1243,6 +1322,10 @@ Evidence required:
 - Phase 4O provides a reusable offline supervised guard selector that chooses
   AntMaze H10 `s04`, Scene H10 `s02`, and Scene H5 `s04` under fixed regret and
   repair-edge improvement constraints.
+- Phase 4P shows Scene H25 graph repair improves strict compatibility-safe
+  coverage from `0.17` to `0.64`, and guarded planner-relevant weighting selects
+  `s04` with improved final validation MSE, direct repair-edge MSE, and
+  policy-support score.
 
 ## Claims Not Yet Supported
 
@@ -1266,8 +1349,9 @@ Evidence required:
 - The Phase 4K Scene H5 result generalizes to AntMaze or Scene H10/H25.
 - Phase 4M planner-relevant loss weighting improves closed-loop repair-edge
   execution or online task success.
-- The Phase 4M result generalizes to Scene H25 or longer training.
+- The Phase 4M/4P result generalizes to longer training or additional
+  environments.
 - The Phase 4N guarded strength fully eliminates Scene H10 validation-MSE regret
-  or generalizes to Scene H25/longer training.
+  or generalizes as a fixed best strength across horizons.
 - Phase 4O guard thresholds are calibrated to closed-loop execution success or
   should be treated as final hyperparameter-selection rules.

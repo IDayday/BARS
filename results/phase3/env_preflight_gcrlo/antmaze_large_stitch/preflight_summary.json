@@ -1,0 +1,53 @@
+{
+  "dataset_loaded": true,
+  "dataset_name": "antmaze-large-stitch-v0",
+  "env_error_trace": null,
+  "missing_packages": [],
+  "ogbench_env_constructed": true,
+  "ogbench_imported": true,
+  "package_imports": {
+    "d4rl": {
+      "error": "ModuleNotFoundError: No module named 'd4rl'",
+      "imported": false,
+      "missing_dependency": "d4rl",
+      "optional": true,
+      "version": null
+    },
+    "gym": {
+      "error": null,
+      "imported": true,
+      "optional": false,
+      "version": "0.23.1"
+    },
+    "gymnasium": {
+      "error": null,
+      "imported": true,
+      "optional": false,
+      "version": "1.1.1"
+    },
+    "mujoco": {
+      "error": null,
+      "imported": true,
+      "optional": false,
+      "version": "3.9.0"
+    },
+    "ogbench": {
+      "error": null,
+      "imported": true,
+      "optional": false,
+      "version": null
+    }
+  },
+  "recommended_install_hint": "d4rl is checked for compatibility only; a missing d4rl import is not fatal for this preflight.",
+  "reset_method": null,
+  "reset_probe_status": "reset_unsupported",
+  "reset_probe_summary_path": "results/phase3/env_preflight_gcrlo/antmaze_large_stitch/reset_probe_summary.json",
+  "reset_supported": false,
+  "status": "env_available",
+  "train_dataset_keys": [
+    "actions",
+    "next_observations",
+    "observations",
+    "terminals"
+  ]
+}

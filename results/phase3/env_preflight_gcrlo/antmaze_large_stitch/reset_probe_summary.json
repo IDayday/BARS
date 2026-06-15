@@ -1,0 +1,13 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "env_available": true,
+  "env_construction_error": null,
+  "failure_reason": "unwrapped.set_state(obs): TypeError: MujocoEnv.set_state() missing 1 required positional argument: 'qvel'",
+  "missing_packages": [],
+  "num_probe_states": 16,
+  "obs_reconstruction_error_max": null,
+  "obs_reconstruction_error_mean": null,
+  "reset_method": null,
+  "reset_probe_status": "reset_unsupported",
+  "reset_supported": false
+}

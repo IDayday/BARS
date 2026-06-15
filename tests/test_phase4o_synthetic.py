@@ -33,6 +33,24 @@ def _comparison_table():
     )
 
 
+def _h25_like_table():
+    return pd.DataFrame(
+        {
+            "dataset": ["scene-play-v0"] * 3,
+            "phase2_run": ["core_plus_bottleneck_budget192_H25"] * 3,
+            "method": [
+                "augmented_loss_support_bottleneck_s03",
+                "planner_relevant_repair_s02",
+                "planner_relevant_repair_s04",
+            ],
+            "final_val_action_mse_ratio_vs_baseline": [1.0, 0.9946, 0.9924],
+            "direct_repair_edge_mse_ratio_vs_baseline": [1.0, 0.9928, 0.9836],
+            "planner_used_repair_edge_mse_ratio_vs_baseline": [1.0, 1.0090, 0.9914],
+            "direct_repair_policy_support_score_ratio_vs_baseline": [1.0, 1.0016, 1.0047],
+        }
+    )
+
+
 def test_regret_guard_selects_scene_h10_s02_over_aggressive_s04():
     selection = select_regret_guard_candidate(_comparison_table())
     assert selection["selected_method"] == "planner_relevant_repair_s02"
@@ -46,6 +64,21 @@ def test_regret_guard_falls_back_to_baseline_when_no_candidate_passes():
     selection = select_regret_guard_candidate(table, config)
     assert selection["selected_method"] == "augmented_loss_support_bottleneck_s03"
     assert selection["selected_is_baseline"] is True
+    assert selection["selection_status"] == "fallback_baseline_no_guard_pass"
+
+
+def test_relaxed_guard_selects_all_metric_improver_below_strict_planner_gain():
+    selection = select_regret_guard_candidate(_h25_like_table())
+    assert selection["selected_method"] == "planner_relevant_repair_s04"
+    assert selection["selection_status"] == "relaxed_guard_pass"
+    assert selection["num_guard_pass_candidates"] == 0
+    assert selection["num_relaxed_guard_pass_candidates"] == 1
+
+
+def test_disabling_relaxed_guard_keeps_strict_baseline_fallback():
+    config = RegretGuardConfig(allow_relaxed_improvement_fallback=False)
+    selection = select_regret_guard_candidate(_h25_like_table(), config)
+    assert selection["selected_method"] == "augmented_loss_support_bottleneck_s03"
     assert selection["selection_status"] == "fallback_baseline_no_guard_pass"
 
 

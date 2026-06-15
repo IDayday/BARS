@@ -100,6 +100,37 @@ def _pair_lookup(pair_df: pd.DataFrame) -> dict[tuple[int, int], dict[str, Any]]
     }
 
 
+def _pair_coverage_lookup(
+    pair_map: dict[tuple[int, int], dict[str, Any]],
+    config: CompatibilityPlannerConfig,
+) -> dict[tuple[int, int], float]:
+    return {
+        key: _clip01(row.get("termination_bridge_coverage", config.missing_pair_coverage))
+        for key, row in pair_map.items()
+    }
+
+
+def _planning_index(edge_table: pd.DataFrame) -> dict[str, Any]:
+    rows_by_id = {int(row.edge_id): row._asdict() for row in edge_table.itertuples(index=False)}
+    by_src: dict[int, list[int]] = {}
+    nodes: set[int] = set()
+    for edge_id, row in rows_by_id.items():
+        src = int(row["src"])
+        dst = int(row["dst"])
+        by_src.setdefault(src, []).append(int(edge_id))
+        nodes.add(src)
+        nodes.add(dst)
+    return {"rows_by_id": rows_by_id, "by_src": by_src, "nodes": nodes}
+
+
+def _method_edge_costs(
+    rows_by_id: dict[int, dict[str, Any]],
+    method: str,
+    config: CompatibilityPlannerConfig,
+) -> dict[int, float]:
+    return {edge_id: _edge_cost(row, method, config) for edge_id, row in rows_by_id.items()}
+
+
 def _pair_metrics(
     first_edge_id: int,
     second_edge_id: int,
@@ -160,18 +191,31 @@ def _line_graph_shortest_path(
     method: str,
     config: CompatibilityPlannerConfig,
 ) -> tuple[list[int] | None, float]:
+    index = _planning_index(edge_table)
+    pair_coverage = _pair_coverage_lookup(pair_map, config)
+    edge_costs = _method_edge_costs(index["rows_by_id"], method, config)
+    return _line_graph_shortest_path_index(index, pair_coverage, src, dst, method, config, edge_costs)
+
+
+def _line_graph_shortest_path_index(
+    index: dict[str, Any],
+    pair_coverage: dict[tuple[int, int], float],
+    src: int,
+    dst: int,
+    method: str,
+    config: CompatibilityPlannerConfig,
+    edge_costs: dict[int, float],
+) -> tuple[list[int] | None, float]:
     if src == dst:
         return [], 0.0
-    rows_by_id = {int(row.edge_id): row._asdict() for row in edge_table.itertuples(index=False)}
-    by_src: dict[int, list[int]] = {}
-    for edge_id, row in rows_by_id.items():
-        by_src.setdefault(int(row["src"]), []).append(int(edge_id))
+    rows_by_id: dict[int, dict[str, Any]] = index["rows_by_id"]
+    by_src: dict[int, list[int]] = index["by_src"]
 
     dist: dict[int, float] = {}
     prev: dict[int, int | None] = {}
     heap: list[tuple[float, int]] = []
     for edge_id in by_src.get(int(src), []):
-        cost = _edge_cost(rows_by_id[edge_id], method, config)
+        cost = float(edge_costs[edge_id])
         dist[edge_id] = cost
         prev[edge_id] = None
         heappush(heap, (cost, edge_id))
@@ -186,14 +230,12 @@ def _line_graph_shortest_path(
             best_final = edge_id
             break
         for next_edge_id in by_src.get(int(row["dst"]), []):
-            pair = _pair_metrics(edge_id, next_edge_id, pair_map, config)
-            if _method_uses_pair_threshold(method) and (
-                _clip01(pair["termination_bridge_coverage"]) < float(config.min_pair_coverage)
-            ):
+            coverage = pair_coverage.get(_pair_key(edge_id, next_edge_id), _clip01(config.missing_pair_coverage))
+            if _method_uses_pair_threshold(method) and coverage < float(config.min_pair_coverage):
                 continue
-            step_cost = _edge_cost(rows_by_id[next_edge_id], method, config)
+            step_cost = float(edge_costs[next_edge_id])
             if _method_uses_pair_penalty(method):
-                step_cost += _pair_penalty(edge_id, next_edge_id, pair_map, config)
+                step_cost += float(config.pair_weight) * (1.0 - coverage)
             new_cost = cur_cost + step_cost
             if new_cost + EPS < dist.get(next_edge_id, np.inf):
                 dist[next_edge_id] = new_cost
@@ -232,6 +274,7 @@ def _path_metric_row(
     path_edge_ids: list[int] | None,
     planning_cost: float,
     config: CompatibilityPlannerConfig,
+    edge_index: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "method": method,
@@ -267,7 +310,9 @@ def _path_metric_row(
     if path_edge_ids is None:
         return row
 
-    by_id = {int(edge.edge_id): edge._asdict() for edge in edge_table.itertuples(index=False)}
+    by_id = edge_index["rows_by_id"] if edge_index is not None else {
+        int(edge.edge_id): edge._asdict() for edge in edge_table.itertuples(index=False)
+    }
     edge_rows = [by_id[int(edge_id)] for edge_id in path_edge_ids]
     pair_metrics = [
         _pair_metrics(a, b, pair_map, config)
@@ -340,6 +385,8 @@ def evaluate_compatibility_planning_methods(
 
     config = config or CompatibilityPlannerConfig()
     pair_map = _pair_lookup(pair_compatibility)
+    pair_coverage = _pair_coverage_lookup(pair_map, config)
+    edge_index = _planning_index(edge_table)
     queries = _parse_queries(path_queries, max_queries=max_queries, seed=seed)
     rows: list[dict[str, Any]] = []
     graph_rows: list[dict[str, Any]] = []
@@ -357,21 +404,23 @@ def evaluate_compatibility_planning_methods(
         graph_rows.append(
             {
                 "method": method,
-                "num_graph_nodes": int(len(set(edge_table["src"]).union(set(edge_table["dst"])))),
+                "num_graph_nodes": int(len(edge_index["nodes"])),
                 "num_graph_edges": int(edge_table.shape[0]),
                 "num_pair_compatibility_edges": int(pair_compatibility.shape[0]),
             }
         )
+        edge_costs = _method_edge_costs(edge_index["rows_by_id"], method, config)
         for query in queries.itertuples(index=False):
             src = int(query.start_cluster)
             dst = int(query.goal_cluster)
-            edge_path, cost = _line_graph_shortest_path(
-                edge_table=edge_table,
-                pair_map=pair_map,
+            edge_path, cost = _line_graph_shortest_path_index(
+                index=edge_index,
+                pair_coverage=pair_coverage,
                 src=src,
                 dst=dst,
                 method=method,
                 config=config,
+                edge_costs=edge_costs,
             )
             rows.append(
                 _path_metric_row(
@@ -384,6 +433,7 @@ def evaluate_compatibility_planning_methods(
                     path_edge_ids=edge_path,
                     planning_cost=cost,
                     config=config,
+                    edge_index=edge_index,
                 )
             )
     return pd.DataFrame(rows), pd.DataFrame(graph_rows)
@@ -538,4 +588,3 @@ def compatibility_summary_dict(
         "method_metrics": summary.to_dict("records"),
         "note": "Reset-free offline compatibility-aware planning; not rollout success.",
     }
-
