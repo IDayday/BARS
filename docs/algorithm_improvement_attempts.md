@@ -1942,6 +1942,14 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   `261.95`; support penalty `8` hurts the 5-episode smoke (`0.96` to `0.92`).
   The useful pattern is calibrated soft edge risk, not hard pruning or large
   unsupported-edge penalties.
+- Stage36 giant-stitch A/B refines that pattern on a non-saturated official
+  GAS artifact: uniform all-edge support penalties are neutral or harmful
+  (`0.90` original, `0.90` with penalty `0.5`, `0.86` with penalty `2`, 10
+  episodes/task), while an SCC-only support guard preserves success (`0.90`)
+  and slightly shortens mean length (`690.42` to `681.30`). The emerging
+  algorithmic rule is to protect GAS local distance edges and apply support
+  evidence first to structural connector shortcuts, then learn/calibrate risk
+  instead of using a constant penalty.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2015,9 +2023,12 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   alone is not a complete low-level policy solution.
 - GAS/HIQL/CRL action MSE is not yet known for this local protocol; it must be
   computed from live checkpoints before being used as a design target.
-- Stage36 has only a small near-saturated online A/B so far. It shows
-  plug-compatibility with official GAS and a marginal smoke improvement, but it
-  is not yet strong evidence of SOTA improvement; the decisive test must use
-  restored or regenerated non-saturated GAS artifacts.
+- Stage36 has medium and giant online A/B smoke evidence showing
+  plug-compatibility with official GAS, but it is not yet strong evidence of
+  SOTA improvement; the decisive next test needs calibrated risk and broader
+  multi-seed/multi-env evaluation.
+- Fixed all-edge unsupported-support penalties are not a mature algorithm.
+  Giant-stitch shows they can reduce success and lengthen trajectories under a
+  strong official GAS actor.
 - Phase 5P source heads are not a complete low-level policy solution and do
   not improve AntMaze task success.

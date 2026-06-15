@@ -1,0 +1,18 @@
+{
+  "dataset_embeddings": "runs_stage36_gas_support_patch/official_hf_artifact_root/antmaze-giant-stitch-v0/seed0/features/dataset_embeddings.npy",
+  "env": "antmaze-giant-stitch-v0",
+  "keygraph": "runs_stage36_gas_support_patch/official_hf_artifact_root/antmaze-giant-stitch-v0/seed0/graph/keygraph.pkl",
+  "mean_same_traj_support": 6.7646157693991125,
+  "non_goal_supported_edge_rate": 0.29413797436541844,
+  "num_edges": 31986,
+  "num_goal_connector_edges": 154,
+  "num_scc_connector_edges": 112,
+  "scc_only_supported_edge_rate": 0.9971862689926843,
+  "seed": 0,
+  "support_horizon": 16,
+  "support_k": 64,
+  "support_radius": 0.0,
+  "supported_edge_rate": 0.29462890014381293,
+  "unsupported_penalty": 8.0,
+  "unsupported_scc_connector_rate": 0.0028137310073157004
+}

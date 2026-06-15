@@ -1,0 +1,27 @@
+{
+  "max_weight_delta": 2.0,
+  "mean_weight_delta": 1.4049271556305885,
+  "min_support": 1.0,
+  "missing_score_policy": "protect",
+  "mode": "penalize",
+  "non_goal_unsupported_edge_rate": 0.7058620256345816,
+  "num_edges_after": 31986,
+  "num_edges_before": 31986,
+  "num_edges_pruned": 0,
+  "num_effective_unsupported_edges": 22469,
+  "num_scored_edges": 31986,
+  "protect_goal_edges": 1,
+  "recomputed_task_paths": 1,
+  "risk_column": "r_exec",
+  "risk_weight": 0.0,
+  "support_column": "local_support",
+  "task_reachable_node_counts": {
+    "1": 1936,
+    "2": 1936,
+    "3": 1936,
+    "4": 1936,
+    "5": 1936
+  },
+  "unsupported_edge_rate": 0.7024635778152942,
+  "unsupported_penalty": 2.0
+}

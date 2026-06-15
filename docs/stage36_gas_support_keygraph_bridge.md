@@ -135,6 +135,44 @@ Result files:
 - `runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/stage36_gas_support_patch_ablation_summary.json`
 - `runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/support_only_edge_scores/support_only_metrics.json`
 
+## Non-Saturated GAS Artifact Check
+
+I then pulled the official Hugging Face GAS artifact for
+`antmaze-giant-stitch-v0`, seed `0`, and repeated the same procedure. This is
+a better stress test because the original GAS baseline is not saturated.
+
+Support audit:
+
+- graph edges: `31986`
+- goal connector edges: `154`
+- SCC connector edges: `112`
+- non-goal local-supported edge rate: `0.2941`
+- all-edge unsupported rate after protecting goal connectors: `0.7025`
+- SCC-only unsupported rate after protecting ordinary distance edges: `0.0028`
+
+Closed-loop A/B, same official GAS actor:
+
+| method | support column | episodes/task | unsupported penalty | success | mean episode length |
+| --- | --- | ---: | ---: | ---: | ---: |
+| original keygraph | none | 10 | 0 | `0.90` | `690.42` |
+| all-edge support penalty | `local_support` | 10 | 0.5 | `0.90` | `706.28` |
+| all-edge support penalty | `local_support` | 10 | 2 | `0.86` | `757.26` |
+| SCC-only support guard | `scc_only_support` | 10 | 8 | `0.90` | `681.30` |
+
+The giant result rules out a fixed uniform unsupported-edge penalty as the next
+algorithm. Penalizing every unsupported distance edge disrupts the target
+distribution that the GAS actor already handles, causing longer paths and lower
+success at penalty `2`. In contrast, SCC-only support guarding protects local
+distance edges and only targets structural graph-connector shortcuts. It is
+safer and slightly shorter in this smoke, but it is not yet a success-rate
+improvement.
+
+Result files:
+
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_support_patch_ablation.csv`
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/stage36_giant_support_patch_ablation_summary.json`
+- `runs_stage36_gas_support_patch/antmaze-giant-stitch-v0/seed0/support_only_edge_scores/support_only_metrics.json`
+
 ## Current Interpretation
 
 Phase5P source-head GCBC did not solve the BARS policy bottleneck. Stage36 is
@@ -147,7 +185,15 @@ edges. It should not directly replace GAS's graph or aggressively remove
 distance edges, because the trained GAS actor and planner were optimized around
 that graph's target distribution.
 
+The strongest concrete rule so far is:
+
+- protect ordinary GAS distance edges unless policy/evaluation evidence says
+  they are harmful;
+- apply support evidence first to structural connector shortcuts, especially
+  SCC-merging edges and other graph-construction repair edges;
+- move from constant penalties to calibrated edge/path risk models.
+
 The next decisive experiment is the same patch on non-saturated official GAS
-artifacts such as `antmaze-large-stitch-v0` or `antmaze-giant-stitch-v0`, where
-there is enough baseline failure rate to measure whether support-calibrated
-graph costs improve success rather than merely reshuffle already solved tasks.
+artifacts with calibrated risk rather than constant penalties. `scene-play-v0`
+is also a useful next check because its way-step scale and manipulation
+dynamics differ from AntMaze.

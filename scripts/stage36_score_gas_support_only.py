@@ -145,6 +145,10 @@ def main() -> None:
     scored["r_exec_model"] = 0.0
     scored["local_support"] = local_support
     scored["same_traj_support"] = same_traj_support
+    scored["unsupported_scc_connector"] = (
+        (scored["edge_source"] == "gas_scc_connector") & (scored["local_support"] <= 0)
+    ).astype(np.int32)
+    scored["scc_only_support"] = np.where(scored["edge_source"] == "gas_scc_connector", scored["local_support"], 1)
     scored["support_penalty"] = np.where(local_support > 0, 0.0, float(args.unsupported_penalty))
     scored["r_exec"] = scored["support_penalty"]
     scored_path = out / "edge_scores.csv"
@@ -164,6 +168,9 @@ def main() -> None:
         "num_goal_connector_edges": int((scored["edge_source"] == "gas_goal_connector").sum()),
         "supported_edge_rate": float(scored["local_support"].mean()) if len(scored) else 0.0,
         "non_goal_supported_edge_rate": float(non_goal["local_support"].mean()) if len(non_goal) else 0.0,
+        "num_scc_connector_edges": int((scored["edge_source"] == "gas_scc_connector").sum()),
+        "unsupported_scc_connector_rate": float(scored["unsupported_scc_connector"].mean()) if len(scored) else 0.0,
+        "scc_only_supported_edge_rate": float(scored["scc_only_support"].mean()) if len(scored) else 0.0,
         "mean_same_traj_support": float(scored["same_traj_support"].mean()) if len(scored) else 0.0,
         "support_k": int(args.support_k),
         "support_radius": float(args.support_radius),
