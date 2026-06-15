@@ -267,3 +267,70 @@ Engineering note: keygraph patching should run with `JAX_PLATFORMS=cpu` when
 not evaluating, because official GAS keygraph pickles may contain JAX arrays
 and can otherwise initialize CUDA during unpickling. Closed-loop evaluation can
 use the GPU normally.
+
+## Stage38 Lower-Score Slice Replication
+
+The first Stage37 validation used all five giant-stitch tasks and showed a
+clear aggregate gain, but the task scores are partly saturated. Stage38
+therefore rechecked the same calibrated patch on a lower-score task slice and
+on the near-saturated medium sanity environment.
+
+The patch is unchanged: official GAS actor, original GAS node/target semantics,
+`risk_hybrid_support`, `risk_weight=0.25`, no hard unsupported penalty, and
+forward-cost cached path recomputation.
+
+| dataset / slice | episodes | method | success | mean length | mean unsupported path-edge fraction |
+| --- | ---: | --- | ---: | ---: | ---: |
+| giant stitch, all tasks | 20/task | original | `0.91` | `687.01` | `0.670` |
+| giant stitch, all tasks | 20/task | hybrid support risk | `0.94` | `677.69` | `0.523` |
+| giant stitch, task1 only | 50 | original | `0.88` | `832.92` | `0.670` |
+| giant stitch, task1 only | 50 | hybrid support risk | `0.88` | `826.98` | `0.523` |
+| medium navigate, all tasks | 20/task | original | `0.97` | `247.12` | `0.723` |
+| medium navigate, all tasks | 20/task | hybrid support risk | `0.98` | `238.27` | `0.641` |
+
+This changes the interpretation in an important way. The all-task giant result
+is still positive, and the support-risk patch consistently reduces unsupported
+path-edge usage. However, the lower-score task1-only slice does not improve
+success when evaluated with 50 episodes; it only shortens trajectories. The
+previous 20-episode task1 gain should therefore be treated as suggestive but
+not stable enough on its own.
+
+Medium navigate remains useful as a sanity check, but it is close to saturated:
+`0.97 -> 0.98` leaves too little headroom for decisive algorithm evidence.
+Future replications should prioritize lower-baseline official GAS artifacts,
+especially `antmaze-giant-navigate-v0`, `antmaze-large-explore-v0`, and
+`scene-play-v0`.
+
+A quick inventory of local historical GAS evaluations confirms this priority:
+`antmaze-giant-navigate-v0` has many all-task runs around `0.54-0.60` success
+and a median around `0.64`, so it has substantially more visible headroom than
+medium navigate.
+
+I then prepared the official `antmaze-giant-navigate-v0` GAS artifact and ran a
+small hybrid-risk weight sweep. The policy checkpoint and GAS node semantics
+were unchanged. Only the keygraph edge cost changed.
+
+| dataset / slice | episodes | method | success | mean length | unsupported path-edge fraction | mean same-traj support |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| giant navigate, all tasks | 20/task | original | `0.76` | `763.02` | `0.694` | `6.93` |
+| giant navigate, all tasks | 20/task | hybrid risk `w=0.05` | `0.75` | `755.25` | `0.669` | `7.95` |
+| giant navigate, all tasks | 20/task | hybrid risk `w=0.10` | `0.83` | `722.13` | `0.638` | `8.87` |
+| giant navigate, all tasks | 20/task | hybrid risk `w=0.25` | `0.75` | `751.98` | `0.555` | `11.03` |
+
+This is the cleanest lower-baseline success result so far: a mild calibrated
+support-risk prior improves official GAS success by `+0.07` and shortens mean
+episode length by `40.89` steps. The dose response is also informative.
+Path-risk metrics improve monotonically with weight, but closed-loop success
+does not. On this sparser graph, `w=0.25` over-regularizes planning even though
+it most strongly reduces unsupported path usage. The practical rule is to
+calibrate support pressure to graph support density instead of reusing a fixed
+weight across environments.
+
+Result files:
+
+- `runs_stage36_gas_support_patch/stage38_cross_scenario/stage38_cross_scenario_summary.csv`
+- `runs_stage36_gas_support_patch/stage38_cross_scenario/stage38_cross_scenario_summary.json`
+- `runs_stage36_gas_support_patch/stage38_low_baseline_candidates/antmaze_giant_navigate_candidate_scores.csv`
+- `runs_stage36_gas_support_patch/stage38_low_baseline_candidates/antmaze_giant_navigate_candidate_scores_summary.json`
+- `runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/stage38_giant_navigate_hybrid_weight_sweep_summary.csv`
+- `runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/stage38_giant_navigate_hybrid_weight_sweep_summary.json`

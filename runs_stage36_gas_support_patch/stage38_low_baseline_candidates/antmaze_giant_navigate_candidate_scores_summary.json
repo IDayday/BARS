@@ -1,0 +1,131 @@
+{
+  "max_success": 1.0,
+  "median_success": 0.64,
+  "min_success": 0.0,
+  "num_candidate_rows": 46,
+  "objective": "Identify lower-baseline scenarios where planner improvements have visible success headroom.",
+  "rationale": "Historical GAS evaluations are often around 0.54-0.64 success for all-task runs, much less saturated than antmaze-medium-navigate-v0.",
+  "selected_next_target": "antmaze-giant-navigate-v0 official GAS artifact, seed0, if policy download and embedding export complete.",
+  "top_low_success_candidates": [
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_clp1/segment_capture_candidate/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_ecg/action_anchored_eval/smoke/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_repair0/smoke_antmaze_nav/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_v02_contract_commit/smoke/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_v03_contract_rank/smoke/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 1000.0,
+      "num_rows": 1,
+      "source_path": "results/cage_v04_contract_intervene/smoke/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.0
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 865.0,
+      "num_rows": 1,
+      "source_path": "results/cage_clp1/segment_capture/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.5
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "per_episode",
+      "mean_length": 841.02,
+      "num_rows": 50,
+      "source_path": "runs_tmd_test/antmaze-giant-navigate-v0/seed0/gas_graph_policy_alltasks_ep10_gasseed42_screen/eval.csv",
+      "success": 0.54
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "per_episode",
+      "mean_length": 844.26,
+      "num_rows": 100,
+      "source_path": "runs_tmd_test/antmaze-giant-navigate-v0/seed0/gas_graph_policy_alltasks_ep20_gasseed42/eval.csv",
+      "success": 0.54
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "per_episode",
+      "mean_length": 830.14,
+      "num_rows": 100,
+      "source_path": "runs_stage26_tmd_tdr/phase_b/antmaze-giant-navigate-v0/seed0/gas_graph_policy_alltasks_ep20_gasseed42/eval.csv",
+      "success": 0.58
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "per_episode",
+      "mean_length": 836.46,
+      "num_rows": 250,
+      "source_path": "runs_stage26_tmd_tdr/phase_b/antmaze-giant-navigate-v0/seed0/gas_graph_policy_alltasks_ep50_gasseed42/eval.csv",
+      "success": 0.588
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "per_episode",
+      "mean_length": 850.34,
+      "num_rows": 100,
+      "source_path": "runs_tmd_test/antmaze-giant-navigate-v0/seed1/gas_graph_policy_alltasks_ep20_gasseed42/eval.csv",
+      "success": 0.59
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 824.28,
+      "num_rows": 1,
+      "source_path": "results/cage_ecg/action_anchored_eval/minipilot_antmaze/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.6
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 823.4799999999999,
+      "num_rows": 1,
+      "source_path": "results/cage_pilot0/minipilot_local_antmaze_nav/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.6
+    },
+    {
+      "dataset": "antmaze-giant-navigate-v0",
+      "format": "summary",
+      "mean_length": 812.8,
+      "num_rows": 1,
+      "source_path": "results/cage_v02_contract_commit/recheck_antmaze_no_debug/jobs/antmaze-giant-navigate-v0/seed42/gas/eval.csv",
+      "success": 0.6
+    }
+  ]
+}

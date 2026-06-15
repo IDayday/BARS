@@ -1,0 +1,2 @@
+eval/task1_episode.return,eval/task1_episode.length,eval/task1_episode.duration,eval/task1_episode.normalized_return,eval/task1_episode.success,eval/overall_episode.return,eval/overall_episode.length,eval/overall_episode.duration,eval/overall_episode.normalized_return,eval/overall_episode.success,step
+0.88,832.92,1.5438289642333984,88.0,0.88,0.88,832.92,1.5438289642333984,88.0,0.88,0

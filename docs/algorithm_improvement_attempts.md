@@ -1291,6 +1291,78 @@ a fully BARS-native policy. The next required step is multi-seed replication
 and applying the same calibrated support-risk patch to additional official GAS
 artifacts or environments.
 
+### Stage38: Lower-Score Slice Replication
+
+Question:
+
+Does the Stage37 calibrated support-risk gain hold when evaluated on a
+less-saturated slice, rather than only on an aggregate where several tasks are
+already near success?
+
+Implemented:
+
+- Reused the same GAS-compatible patch: `risk_hybrid_support`,
+  `risk_weight=0.25`, no hard unsupported penalty, and forward-cost cached path
+  recomputation.
+- Re-evaluated giant-stitch task1 only for 50 episodes.
+- Re-ran the near-saturated medium-navigate sanity case with the calibrated
+  patch.
+- Wrote a cross-scenario summary under
+  `runs_stage36_gas_support_patch/stage38_cross_scenario/`.
+
+Evidence:
+
+- Giant stitch all-task 20 episodes/task remains positive:
+  success `0.91 -> 0.94`, mean length `687.01 -> 677.69`.
+- Giant stitch task1-only 50 episodes does not improve success:
+  `0.88 -> 0.88`; mean length improves slightly, `832.92 -> 826.98`.
+- Medium navigate 20 episodes/task is near saturated:
+  success `0.97 -> 0.98`, mean length `247.12 -> 238.27`.
+- In all three comparisons, the hybrid support-risk patch reduces mean
+  unsupported path-edge fraction.
+- Historical `antmaze-giant-navigate-v0` GAS evaluations in this workspace have
+  median success around `0.64`, with many all-task runs around `0.54-0.60`.
+  This makes it a better next validation target than medium navigate.
+- Official GAS `antmaze-giant-navigate-v0`, seed0, 20 episodes/task:
+  original success `0.76`, mean length `763.02`;
+  hybrid risk `w=0.05` success `0.75`, length `755.25`;
+  hybrid risk `w=0.10` success `0.83`, length `722.13`;
+  hybrid risk `w=0.25` success `0.75`, length `751.98`.
+- The same weight sweep gives monotonic path-risk improvement:
+  unsupported path-edge fraction `0.694 -> 0.669 -> 0.638 -> 0.555`,
+  but success is non-monotonic.
+
+Analysis:
+
+This is a useful correction to Stage37. The support-risk prior is not a
+uniform success-rate improvement across every task slice. It reliably changes
+the planner toward more supported paths and can shorten trajectories, but the
+success gain is task- and saturation-dependent. The task1-only result means the
+20-episode task1 gain should be treated as suggestive rather than stable.
+
+The practical rule is to stop using near-saturated settings as the primary
+evidence source. They are useful for regression checks, but they hide whether a
+graph change actually improves hard-task success. The giant-navigate sweep
+confirms that a lower-baseline setting can expose a real closed-loop gain, but
+also shows that graph-risk improvement is not enough by itself. On sparse
+graphs, a strong support prior can over-regularize execution even while making
+paths look safer. Support pressure should be calibrated to graph support
+density, with mild risk as the default and heavier penalties justified only by
+closed-loop validation.
+
+The candidate inventory is stored at
+`runs_stage36_gas_support_patch/stage38_low_baseline_candidates/`, and the
+giant-navigate sweep summary is stored at
+`runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/stage38_giant_navigate_hybrid_weight_sweep_summary.json`.
+
+Remaining gap:
+
+This is still a GAS bridge, not a BARS-native policy. It also remains one seed
+and one official artifact. The next pass should replicate the `w=0.10` style
+calibration on `antmaze-large-explore-v0` and `scene-play-v0`, and then move the
+same risk signal into BARS-native graph construction plus policy target
+sampling.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -1302,6 +1374,9 @@ artifacts or environments.
 - GCBC validation MSE is a policy-fitting proxy, not an execution metric.
 - Random or kNN graphs can look strong under path coverage while being weak
   under edge provenance.
+- Support-risk path metrics can improve monotonically while closed-loop success
+  is non-monotonic; tune graph risk by final success, not by unsupported-edge
+  reduction alone.
 - The current environment blocker prevents online rollout claims; reset-free
   analysis should be labeled accordingly.
 

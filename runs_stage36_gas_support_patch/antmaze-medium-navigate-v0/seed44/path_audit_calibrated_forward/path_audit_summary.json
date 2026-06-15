@@ -1,0 +1,61 @@
+{
+  "base_node_count": 922,
+  "diff": [
+    {
+      "method": "hybrid_w0p25_forward",
+      "num_changed_paths": 1606,
+      "num_common_paths": 4610,
+      "path_change_rate": 0.34837310195227766,
+      "reference_method": "original"
+    },
+    {
+      "method": "binary_p2_prefixed",
+      "num_changed_paths": 3942,
+      "num_common_paths": 4610,
+      "path_change_rate": 0.8550976138828633,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/calibrated_support_scores/edge_scores_calibrated_target8.csv",
+  "methods": [
+    "original",
+    "hybrid_w0p25_forward",
+    "binary_p2_prefixed"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.34490238611713664,
+      "mean_num_unsupported_scc_edges": 0.306941431670282,
+      "mean_path_cost": 98.77571928304602,
+      "mean_path_edges": 13.103253796095444,
+      "mean_same_traj_support": 3.9777075056286426,
+      "mean_unsupported_edge_fraction": 0.9486125943019837,
+      "mean_unsupported_scc_edge_fraction": 0.024663958023473636,
+      "method": "binary_p2_prefixed",
+      "num_paths": 4610
+    },
+    {
+      "mean_num_scc_edges": 0.34490238611713664,
+      "mean_num_unsupported_scc_edges": 0.306941431670282,
+      "mean_path_cost": 74.94548736925509,
+      "mean_path_edges": 12.24880694143167,
+      "mean_same_traj_support": 7.429494489164216,
+      "mean_unsupported_edge_fraction": 0.6409775156243914,
+      "mean_unsupported_scc_edge_fraction": 0.025481038822090293,
+      "method": "hybrid_w0p25_forward",
+      "num_paths": 4610
+    },
+    {
+      "mean_num_scc_edges": 0.34490238611713664,
+      "mean_num_unsupported_scc_edges": 0.306941431670282,
+      "mean_path_cost": 72.88945106415325,
+      "mean_path_edges": 12.242516268980477,
+      "mean_same_traj_support": 6.533453587844844,
+      "mean_unsupported_edge_fraction": 0.7230540144342644,
+      "mean_unsupported_scc_edge_fraction": 0.02547392178931153,
+      "method": "original",
+      "num_paths": 4610
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "dataset_embeddings": "runs_stage38_official_gas_artifacts/antmaze-giant-navigate-v0/seed0/features/dataset_embeddings.npy",
+  "env": "antmaze-giant-navigate-v0",
+  "keygraph": "runs_stage38_official_gas_artifacts/antmaze-giant-navigate-v0/seed0/graph/keygraph.pkl",
+  "mean_same_traj_support": 9.424939467312349,
+  "non_goal_supported_edge_rate": 0.26700367647058826,
+  "num_edges": 6608,
+  "num_goal_connector_edges": 80,
+  "num_scc_connector_edges": 136,
+  "scc_only_supported_edge_rate": 0.9815375302663438,
+  "seed": 0,
+  "support_horizon": 0,
+  "support_k": 64,
+  "support_radius": 0.0,
+  "supported_edge_rate": 0.2669491525423729,
+  "unsupported_penalty": 0.15,
+  "unsupported_scc_connector_rate": 0.018462469733656173
+}

@@ -1,0 +1,80 @@
+{
+  "base_node_count": 918,
+  "diff": [
+    {
+      "method": "hybrid_w0p05_forward",
+      "num_changed_paths": 890,
+      "num_common_paths": 4590,
+      "path_change_rate": 0.19389978213507625,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p10_forward",
+      "num_changed_paths": 1985,
+      "num_common_paths": 4590,
+      "path_change_rate": 0.4324618736383442,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p25_forward",
+      "num_changed_paths": 3474,
+      "num_common_paths": 4590,
+      "path_change_rate": 0.7568627450980392,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage36_gas_support_patch/antmaze-giant-navigate-v0/seed0/support_only_edge_scores/edge_scores.csv",
+  "methods": [
+    "original",
+    "hybrid_w0p05_forward",
+    "hybrid_w0p10_forward",
+    "hybrid_w0p25_forward"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.19389978213507625,
+      "mean_num_unsupported_scc_edges": 0.1840958605664488,
+      "mean_path_cost": 143.4221010724796,
+      "mean_path_edges": 24.347712418300652,
+      "mean_same_traj_support": 7.946935432965329,
+      "mean_unsupported_edge_fraction": 0.6689635577957487,
+      "mean_unsupported_scc_edge_fraction": 0.009195140833280446,
+      "method": "hybrid_w0p05_forward",
+      "num_paths": 4590
+    },
+    {
+      "mean_num_scc_edges": 0.19389978213507625,
+      "mean_num_unsupported_scc_edges": 0.1840958605664488,
+      "mean_path_cost": 144.24852619120546,
+      "mean_path_edges": 24.304357298474944,
+      "mean_same_traj_support": 8.867985210127804,
+      "mean_unsupported_edge_fraction": 0.6378612640605518,
+      "mean_unsupported_scc_edge_fraction": 0.009205572957614632,
+      "method": "hybrid_w0p10_forward",
+      "num_paths": 4590
+    },
+    {
+      "mean_num_scc_edges": 0.19389978213507625,
+      "mean_num_unsupported_scc_edges": 0.1840958605664488,
+      "mean_path_cost": 146.4501206331081,
+      "mean_path_edges": 24.283006535947713,
+      "mean_same_traj_support": 11.030751649641562,
+      "mean_unsupported_edge_fraction": 0.5549640574530056,
+      "mean_unsupported_scc_edge_fraction": 0.00926179374681485,
+      "method": "hybrid_w0p25_forward",
+      "num_paths": 4590
+    },
+    {
+      "mean_num_scc_edges": 0.19389978213507625,
+      "mean_num_unsupported_scc_edges": 0.1840958605664488,
+      "mean_path_cost": 142.57486564131344,
+      "mean_path_edges": 24.117864923747277,
+      "mean_same_traj_support": 6.925731260119877,
+      "mean_unsupported_edge_fraction": 0.6936879768605592,
+      "mean_unsupported_scc_edge_fraction": 0.00922818605053675,
+      "method": "original",
+      "num_paths": 4590
+    }
+  ]
+}
