@@ -1,0 +1,18 @@
+{
+  "dataset_embeddings": "runs_stage40_official_gas_artifacts/scene-play-v0/seed0/features/dataset_embeddings.npy",
+  "env": "scene-play-v0",
+  "keygraph": "runs_stage40_official_gas_artifacts/scene-play-v0/seed0/graph/keygraph.pkl",
+  "mean_same_traj_support": 4.8889084902331845,
+  "non_goal_supported_edge_rate": 0.009828448892065762,
+  "num_edges": 62354,
+  "num_goal_connector_edges": 798,
+  "num_scc_connector_edges": 0,
+  "scc_only_supported_edge_rate": 1.0,
+  "seed": 0,
+  "support_horizon": 0,
+  "support_k": 64,
+  "support_radius": 0.0,
+  "supported_edge_rate": 0.009927189915642941,
+  "unsupported_penalty": 0.15,
+  "unsupported_scc_connector_rate": 0.0
+}

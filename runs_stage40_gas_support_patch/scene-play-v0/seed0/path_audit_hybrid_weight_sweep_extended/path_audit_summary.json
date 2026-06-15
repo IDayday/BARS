@@ -1,0 +1,156 @@
+{
+  "base_node_count": 731,
+  "diff": [
+    {
+      "method": "hybrid_w0p10_forward",
+      "num_changed_paths": 11,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.003009575923392613,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w0p50_forward",
+      "num_changed_paths": 22,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.006019151846785226,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w1p00_forward",
+      "num_changed_paths": 32,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.008755129958960328,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w2p00_forward",
+      "num_changed_paths": 84,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.02298221614227086,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w5p00_forward",
+      "num_changed_paths": 217,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.059370725034199726,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w10p00_forward",
+      "num_changed_paths": 482,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.13187414500683994,
+      "reference_method": "original"
+    },
+    {
+      "method": "hybrid_w20p00_forward",
+      "num_changed_paths": 894,
+      "num_common_paths": 3655,
+      "path_change_rate": 0.24459644322845417,
+      "reference_method": "original"
+    }
+  ],
+  "edge_scores_path": "runs_stage40_gas_support_patch/scene-play-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8.csv",
+  "methods": [
+    "original",
+    "hybrid_w0p10_forward",
+    "hybrid_w0p50_forward",
+    "hybrid_w1p00_forward",
+    "hybrid_w2p00_forward",
+    "hybrid_w5p00_forward",
+    "hybrid_w10p00_forward",
+    "hybrid_w20p00_forward"
+  ],
+  "reference_method": "original",
+  "summary": [
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.84283635650458,
+      "mean_path_edges": 2.26155950752394,
+      "mean_same_traj_support": 11.24033287733698,
+      "mean_unsupported_edge_fraction": 0.9726630186958505,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w0p10_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 86.32952965162808,
+      "mean_path_edges": 2.26046511627907,
+      "mean_same_traj_support": 11.662676698586411,
+      "mean_unsupported_edge_fraction": 0.9721614227086184,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w0p50_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 97.2630651444057,
+      "mean_path_edges": 2.2621067031463746,
+      "mean_same_traj_support": 19.524122207022344,
+      "mean_unsupported_edge_fraction": 0.9523255813953488,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w10p00_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 86.93643877111022,
+      "mean_path_edges": 2.2599179206566347,
+      "mean_same_traj_support": 11.735499316005471,
+      "mean_unsupported_edge_fraction": 0.9716598267213862,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w1p00_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 107.46309359730421,
+      "mean_path_edges": 2.288919288645691,
+      "mean_same_traj_support": 23.57463292293662,
+      "mean_unsupported_edge_fraction": 0.9412631098951209,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w20p00_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 88.14081064023416,
+      "mean_path_edges": 2.2596443228454173,
+      "mean_same_traj_support": 12.935088919288646,
+      "mean_unsupported_edge_fraction": 0.9696078431372549,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w2p00_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 91.67900488730552,
+      "mean_path_edges": 2.2593707250342,
+      "mean_same_traj_support": 16.367236662106702,
+      "mean_unsupported_edge_fraction": 0.963155494756042,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "hybrid_w5p00_forward",
+      "num_paths": 3655
+    },
+    {
+      "mean_num_scc_edges": 0.0,
+      "mean_num_unsupported_scc_edges": 0.0,
+      "mean_path_cost": 85.72566164971703,
+      "mean_path_edges": 2.2618331053351572,
+      "mean_same_traj_support": 11.24033287733698,
+      "mean_unsupported_edge_fraction": 0.9726630186958505,
+      "mean_unsupported_scc_edge_fraction": 0.0,
+      "method": "original",
+      "num_paths": 3655
+    }
+  ]
+}

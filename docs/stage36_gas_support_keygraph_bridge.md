@@ -383,3 +383,51 @@ Result files:
 - `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8_summary.json`
 - `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_summary.csv`
 - `runs_stage39_gas_support_patch/antmaze-large-explore-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_diff_summary.csv`
+
+## Stage40 Scene-Play Cost-Scale Check
+
+Stage40 tests whether the same support-risk bridge transfers to the
+manipulation-style `scene-play-v0` artifact. The setup is still clean: official
+GAS actor unchanged, official GAS keygraph nodes unchanged, and only
+`risk_hybrid_support` is added to keygraph edge cost.
+
+The result is not a simple AntMaze-style win. Scene's support audit is much
+sparser in local binary support and much less sensitive to small weights:
+non-goal supported edge rate is `0.0098`, `risk_hybrid_support` p50/p90 are
+both `1.0`, and AntMaze-scale weights barely change cached paths. A higher
+weight is needed just to affect planning.
+
+Closed-loop results:
+
+| dataset | episodes | method | success | mean length | unsupported path-edge fraction | mean same-traj support | path change rate |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| scene play | 20/task | original | `0.730` | `369.140` | `0.973` | `11.240` | `0.000` |
+| scene play | 20/task | hybrid risk `w=5` | `0.700` | `388.180` | `0.963` | `16.367` | `0.059` |
+| scene play | 20/task | hybrid risk `w=10` | `0.690` | `385.170` | `0.952` | `19.524` | `0.132` |
+| scene play | 20/task | hybrid risk `w=20` | `0.720` | `374.770` | `0.941` | `23.575` | `0.245` |
+| scene play | 50/task | original | `0.756` | `343.468` | `0.973` | `11.240` | `0.000` |
+| scene play | 50/task | hybrid risk `w=2` | `0.736` | `352.736` | `0.970` | `12.935` | `0.023` |
+| scene play | 50/task | hybrid risk `w=5` | `0.764` | `348.896` | `0.963` | `16.367` | `0.059` |
+| scene play | 50/task | hybrid risk `w=10` | `0.724` | `359.820` | `0.952` | `19.524` | `0.132` |
+| scene play | 50/task | hybrid risk `w=20` | `0.728` | `360.108` | `0.941` | `23.575` | `0.245` |
+
+The only positive all-task setting is `w=5`, and the gain is small:
+`0.756 -> 0.764`, with longer episodes. Stronger weights improve graph support
+metrics but reduce final success. Per-task deltas also show conflicting effects:
+some easier/opening tasks improve under stronger risk, while rearrangement/hard
+tasks degrade.
+
+The Scene lesson is important for the algorithm. A global support-risk scalar
+is not enough across task families. Manipulation tasks need risk to be
+normalized to the base edge-cost scale and conditioned on task/path context;
+otherwise support pressure can remove useful shortcuts for hard subtasks even
+when graph-level support metrics look better.
+
+Result files:
+
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/stage40_scene_hybrid_weight_sweep_summary.csv`
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/stage40_scene_hybrid_weight_sweep_summary.json`
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/support_only_edge_scores/support_only_metrics.json`
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8_summary.json`
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_summary.csv`
+- `runs_stage40_gas_support_patch/scene-play-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_diff_summary.csv`

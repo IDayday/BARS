@@ -1426,6 +1426,78 @@ support-aware graph costs and train the low-level policy on targets generated
 from that same graph/planner distribution, rather than treating graph and policy
 training as separate pieces.
 
+### Stage40: Scene-Play GAS Support-Risk Cost-Scale Check
+
+Question:
+
+Does the calibrated GAS support-risk bridge transfer from AntMaze navigation to
+the manipulation-style `scene-play-v0` artifact?
+
+Implemented:
+
+- Downloaded the official `scene-play-v0`, seed `0`, GAS keygraph and policy
+  using proxied multi-connection `aria2c`.
+- Exported official GAS dataset embeddings in the local `gcrlo` stack.
+- Scored same-trajectory support over the official Scene keygraph.
+- Built calibrated `risk_hybrid_support` scores with target support `8`.
+- Patched GAS keygraph costs over a wider weight range:
+  `0.10`, `0.50`, `1`, `2`, `5`, `10`, and `20`.
+- Ran path audit for all patched graphs and closed-loop evaluation for the
+  informative weights.
+
+Evidence:
+
+- Scene edge support is extremely sparse under local binary support:
+  non-goal supported edge rate `0.0098`.
+- Calibrated risk is saturated: `risk_hybrid_support` p50 and p90 are both
+  `1.0`.
+- AntMaze-scale weights barely move the planner. Path-change rate is only
+  `0.003` for `w=0.10`, `0.006` for `w=0.50`, and `0.009` for `w=1.0`.
+- Higher weights do move paths:
+  `w=5` changes `0.059` of paths, `w=10` changes `0.132`, and `w=20` changes
+  `0.245`.
+- 20 episodes/task:
+  original success `0.730`;
+  `w=5` success `0.700`;
+  `w=10` success `0.690`;
+  `w=20` success `0.720`.
+- 50 episodes/task:
+  original success `0.756`, mean length `343.468`;
+  `w=2` success `0.736`, length `352.736`;
+  `w=5` success `0.764`, length `348.896`;
+  `w=10` success `0.724`, length `359.820`;
+  `w=20` success `0.728`, length `360.108`.
+- `w=5` is the only positive all-task setting, and the gain is small:
+  `+0.008` success with longer trajectories.
+- Stronger weights improve graph support metrics but hurt final success:
+  unsupported path-edge fraction drops from `0.973` to `0.941`, while ep50
+  success drops from `0.756` to `0.728` at `w=20`.
+
+Analysis:
+
+Stage40 is a useful negative/qualified result. It shows that the support-risk
+bridge is not a universal fixed-scalar improvement across task families. Scene
+has a different edge-cost scale, much sparser local support, and stronger task
+heterogeneity. A global support-risk weight can help one task subset while
+hurting harder rearrangement tasks. This is exactly the failure mode hidden by
+graph-only metrics: path support improves monotonically, but closed-loop
+success does not.
+
+The algorithmic rule should be updated. Support risk must be normalized to base
+edge-cost scale and should become task-conditioned or path-conditioned before
+being treated as a default planner prior in manipulation domains. The AntMaze
+bridge remains useful, but Scene says the mature algorithm cannot be "add one
+global support-risk scalar to every edge."
+
+Remaining gap:
+
+This is still a one-seed GAS bridge experiment. It does not settle Scene under
+task-conditioned risk, learned edge risk, or a BARS-native policy trained on the
+same planner target distribution. The next useful Scene experiment should build
+task/path-conditioned risk, for example by fitting a small selector from
+path-level features and validating against heldout task success, rather than
+blindly sweeping larger global weights.
+
 ## Lessons So Far
 
 - Support certification is the strongest current distinction between BARS and
@@ -2240,6 +2312,11 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   closed-loop success gain: `antmaze-large-explore-v0` improves from `0.944` to
   `0.976` over 50 episodes/task at hybrid risk `w=0.50`, while mean length
   improves from `415.884` to `400.676`.
+- Stage40 shows the current global support-risk scalar is not enough for Scene:
+  `scene-play-v0` gets only a tiny ep50 gain at `w=5` (`0.756 -> 0.764`) with
+  longer trajectories, while stronger weights improve graph support metrics but
+  reduce final success. The next algorithmic form needs cost-scale
+  normalization and task/path-conditioned risk.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2325,5 +2402,8 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   Giant-stitch shows mild penalty can help, while stronger penalty mainly
   changes paths and does not monotonically improve success under a strong
   official GAS actor.
+- A single global support-risk weight is not a mature cross-domain algorithm:
+  Stage40 Scene shows that graph support metrics can improve while final
+  success drops on harder manipulation tasks.
 - Phase 5P source heads are not a complete low-level policy solution and do
   not improve AntMaze task success.
