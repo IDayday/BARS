@@ -1606,6 +1606,83 @@ Lessons:
   earlier recovery or switching mechanism when subgoal distance grows, instead
   of waiting for edge horizon timeout.
 
+## Phase 5L: Edge Progress Guard
+
+### Improvement Attempt
+
+Phase 5L added an online edge-progress guard to the hierarchical support
+executor. During execution of a selected option edge, it monitors distance to
+the currently selected offline termination subgoal. After a minimum number of
+steps, it aborts the edge and replans when either:
+
+- the subgoal distance grows more than a fixed tolerance above the best distance
+  reached on the current edge attempt;
+- recent distance improvement stalls while the current distance is worse than
+  the best reached distance.
+
+This keeps the graph support-only and does not train a new policy. It is a pure
+runtime recovery attempt.
+
+### Result
+
+AntMaze natural-start, task id 1, seeds 0/1/2, 120-step cap:
+
+| method | success | mean final L2 | mean L2 improvement | mean completed edges | mean replans | mean failed attempts | mean progress aborts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Direct GCBC to final goal | 0.0 | 43.4040 | n/a | n/a | n/a | n/a | n/a |
+| Phase 5I learned outcome, weight 0.5 | 0.0 | 39.7197 | 4.1465 | 2.333 | 7.000 | 6.000 | n/a |
+| Phase 5K preplan mismatch, weight 0.5 | 0.0 | 39.8942 | 3.9258 | 1.667 | 6.333 | 5.333 | n/a |
+| Phase 5L edge progress guard, weight 0.5 | 0.0 | 42.8189 | 0.7426 | 0.667 | 13.000 | 12.000 | 12.000 |
+
+The guard fired 12 to 13 times per episode and all episodes ended with
+`max_replans_exceeded`.
+
+### Analysis
+
+This is a negative result. The guard detects local option-execution drift, but
+early aborting alone does not improve task progress. It converts long failed
+edge attempts into many short failed edge attempts and exhausts the replan
+budget.
+
+The direct-GCBC audit gives a useful lower reference: the same policy aimed
+directly at the final task goal still gets 0 success and mean final L2
+`43.4040`. Phase 5I/5K hierarchy improves final distance to about `39.7` to
+`39.9`, so support planning is not useless, but it is not enough to make the
+trained policy succeed.
+
+The important conclusion is that graph-side ranking and runtime replan logic are
+not enough. The low-level policy must be trained or adapted on the same subgoal
+distribution that the planner emits at runtime. Without that policy-grounded
+step, better graph metrics and better edge-risk diagnostics do not translate
+into natural-start task success.
+
+### Success-Protocol Audit
+
+A minimal OGBench AntMaze probe in the `gcrlo` environment confirms that
+natural-start evaluation is reading a real success signal:
+
+- `env.reset(seed=0, options={"task_id": 1})` returns a 29-dimensional
+  observation and a 29-dimensional `goal`;
+- `env.step(action)` returns `info["success"]`;
+- the current rollout code reads `goal`/`desired_goal` from reset info and
+  reads `success` from step info.
+
+So the current 0 success rate should be treated as an execution failure, not as
+missing success-field evidence.
+
+### Rule for Future Attempts
+
+Every future graph improvement must include a policy-grounded evidence path:
+
+- how it changes the training data, loss, goal/subgoal sampling distribution,
+  policy architecture, or closed-loop executor;
+- what natural-start success or task-progress metric should improve;
+- what comparison isolates policy execution from graph connectivity.
+
+Graph coverage, offline proxy risk, and edge compatibility remain useful
+diagnostics, but they are no longer sufficient evidence of algorithmic progress
+unless tied to final-policy execution.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1686,6 +1763,8 @@ Lessons:
 - Phase 5K shows preplan GCBC policy mismatch is a useful heldout
   attempt-risk feature and can reduce online replanning / failed attempts in a
   small AntMaze smoke without adding unsupported graph edges.
+- Phase 5L shows edge-local progress signals can detect online drift, and the
+  local `gcrlo` natural-start evaluator exposes a real OGBench success field.
 
 ## Claims Not Yet Supported
 
@@ -1740,3 +1819,7 @@ Lessons:
 - Phase 5K does not beat Phase 5I's best online final-goal-distance smoke and
   still gives zero AntMaze task success; policy mismatch alone is not a
   complete execution fix.
+- Phase 5L does not improve natural-start success or final-goal distance; early
+  edge aborts alone are not a complete recovery mechanism.
+- Graph-only improvements are no longer sufficient research evidence unless
+  they are explicitly connected to final-policy training or closed-loop success.

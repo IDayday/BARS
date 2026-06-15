@@ -340,6 +340,31 @@ def plan_cluster_path(graph: nx.DiGraph, start_cluster: int, goal_cluster: int) 
         return [], "no_support_path"
 
 
+def _edge_progress_guard_decision(
+    history: list[float],
+    *,
+    edge_step: int,
+    min_steps: int,
+    window: int,
+    min_improvement: float,
+    growth_tolerance: float,
+) -> tuple[bool, str, float, float]:
+    if edge_step < int(min_steps) or len(history) < 2:
+        return False, "", float("nan"), float("nan")
+    current = float(history[-1])
+    prior = np.asarray(history[:-1], dtype=np.float64)
+    best_before = float(np.nanmin(prior)) if prior.size else current
+    ref_idx = max(0, len(history) - 1 - int(window))
+    window_ref = float(history[ref_idx])
+    window_improvement = float(window_ref - current)
+    growth_over_best = float(current - best_before)
+    if growth_over_best > float(growth_tolerance):
+        return True, "subgoal_distance_growth", window_improvement, growth_over_best
+    if window_improvement < float(min_improvement) and growth_over_best > 0.0:
+        return True, "subgoal_progress_stalled", window_improvement, growth_over_best
+    return False, "", window_improvement, growth_over_best
+
+
 def run_hierarchical_support_episodes(
     env: Any,
     policy: Any,
@@ -380,6 +405,11 @@ def run_hierarchical_support_episodes(
     state_outcome_penalty_weight: float = 0.0,
     use_preplan_policy_mismatch: bool = False,
     preplan_policy_mismatch_max_candidates: int = 64,
+    use_edge_progress_guard: bool = False,
+    edge_progress_min_steps: int = 4,
+    edge_progress_window: int = 3,
+    edge_progress_min_improvement: float = 0.05,
+    edge_progress_growth_tolerance: float = 2.0,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
     actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -396,6 +426,7 @@ def run_hierarchical_support_episodes(
         completed_edges = 0
         planned_edges = 0
         failed_edge_attempts = 0
+        edge_progress_aborts = 0
         failed_edge_counts: dict[tuple[str, int], int] = dict(prior_failed_edge_counts or {})
         current_failed_edges: set[tuple[str, int]] = set()
         prior_penalized_edges = len(failed_edge_counts)
@@ -423,6 +454,7 @@ def run_hierarchical_support_episodes(
             current_subgoal: np.ndarray | None = None
             current_subgoal_reason = ""
             subgoal_info: dict[str, float] = {}
+            edge_subgoal_l2_history: list[float] = []
             while num_steps < int(max_steps):
                 current_cluster = int(assign_clusters(obs.reshape(1, -1), cluster_model)[0])
                 if start_cluster < 0:
@@ -437,6 +469,7 @@ def run_hierarchical_support_episodes(
                     edge_step = 0
                     current_subgoal = None
                     subgoal_info = {}
+                    edge_subgoal_l2_history = []
                     need_plan = edge_cursor >= len(active_edges)
                 if need_plan:
                     dynamic_scores = pd.DataFrame()
@@ -567,6 +600,7 @@ def run_hierarchical_support_episodes(
                     edge_step = 0
                     current_subgoal = None
                     subgoal_info = {}
+                    edge_subgoal_l2_history = []
                     replans += 1
                     if replans > int(max_replans):
                         failure_reason = "max_replans_exceeded"
@@ -594,6 +628,7 @@ def run_hierarchical_support_episodes(
                     if current_subgoal is None:
                         failure_reason = current_subgoal_reason
                         break
+                    edge_subgoal_l2_history = []
                 horizon = _row_horizon(pd.Series(edge_attrs), edge_horizon_multiplier, max_edge_horizon)
                 remaining = max(1, horizon - edge_step)
                 action = policy_action(
@@ -612,6 +647,22 @@ def run_hierarchical_support_episodes(
                 final_goal_l2 = float(np.linalg.norm(obs.reshape(-1) - final_goal.reshape(-1)))
                 num_steps += 1
                 edge_step += 1
+                post_subgoal_l2 = float(np.linalg.norm(obs.reshape(-1) - current_subgoal.reshape(-1)))
+                if not edge_subgoal_l2_history:
+                    edge_subgoal_l2_history.append(float(subgoal_l2))
+                edge_subgoal_l2_history.append(float(post_subgoal_l2))
+                progress_abort, progress_reason, progress_window_improvement, progress_growth_over_best = (
+                    _edge_progress_guard_decision(
+                        edge_subgoal_l2_history,
+                        edge_step=edge_step,
+                        min_steps=edge_progress_min_steps,
+                        window=edge_progress_window,
+                        min_improvement=edge_progress_min_improvement,
+                        growth_tolerance=edge_progress_growth_tolerance,
+                    )
+                    if use_edge_progress_guard
+                    else (False, "", float("nan"), float("nan"))
+                )
                 new_cluster = int(assign_clusters(obs.reshape(1, -1), cluster_model)[0])
                 step_trace.append(
                     {
@@ -629,6 +680,11 @@ def run_hierarchical_support_episodes(
                         "success": float(success),
                         "reward": float(reward),
                         "subgoal_l2": subgoal_l2,
+                        "post_subgoal_l2": post_subgoal_l2,
+                        "edge_progress_guard_triggered": float(progress_abort),
+                        "edge_progress_guard_reason": progress_reason,
+                        "edge_progress_window_improvement": float(progress_window_improvement),
+                        "edge_progress_growth_over_best": float(progress_growth_over_best),
                         "action_norm": float(np.linalg.norm(action.reshape(-1))),
                         "edge_failure_count": int(edge_attrs.get("failure_count", 0)),
                         "edge_failure_cost": float(edge_attrs.get("failure_cost", 0.0)),
@@ -654,6 +710,18 @@ def run_hierarchical_support_episodes(
                     edge_step = 0
                     current_subgoal = None
                     subgoal_info = {}
+                    edge_subgoal_l2_history = []
+                elif progress_abort:
+                    fail_key = (str(edge_attrs["segment_source"]), int(edge_attrs["segment_edge_id"]))
+                    failed_edge_counts[fail_key] = int(failed_edge_counts.get(fail_key, 0)) + 1
+                    current_failed_edges.add(fail_key)
+                    failed_edge_attempts += 1
+                    edge_progress_aborts += 1
+                    active_edges = []
+                    current_subgoal = None
+                    subgoal_info = {}
+                    edge_subgoal_l2_history = []
+                    edge_step = 0
                 elif edge_step >= horizon:
                     fail_key = (str(edge_attrs["segment_source"]), int(edge_attrs["segment_edge_id"]))
                     failed_edge_counts[fail_key] = int(failed_edge_counts.get(fail_key, 0)) + 1
@@ -662,6 +730,7 @@ def run_hierarchical_support_episodes(
                     active_edges = []
                     current_subgoal = None
                     subgoal_info = {}
+                    edge_subgoal_l2_history = []
                     edge_step = 0
             if success < 1.0 and not failure_reason:
                 failure_reason = "max_steps_without_success"
@@ -686,6 +755,7 @@ def run_hierarchical_support_episodes(
                 "replans": int(replans),
                 "full_bank_fallbacks": int(full_bank_fallbacks),
                 "failed_edge_attempts": int(failed_edge_attempts),
+                "edge_progress_aborts": int(edge_progress_aborts),
                 "unique_failed_edges": int(len(current_failed_edges)),
                 "prior_penalized_edges": int(prior_penalized_edges),
                 "failure_reason": failure_reason,

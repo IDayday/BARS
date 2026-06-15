@@ -1,0 +1,4 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,success,total_reward,initial_goal_l2,final_goal_l2,start_cluster,goal_cluster,planned_edges,completed_edges,replans,full_bank_fallbacks,failed_edge_attempts,edge_progress_aborts,unique_failed_edges,prior_penalized_edges,failure_reason
+antmaze-large-stitch-v0,edge_progress_guard_w0p5_3ep_corebot100k_H10_B120,0,0,1,83,0.0,0.0,42.93576431274414,42.36804962158203,1,398,264,2,13,13,12,12,10,0,max_replans_exceeded
+antmaze-large-stitch-v0,edge_progress_guard_w0p5_3ep_corebot100k_H10_B120,1,1,1,74,0.0,0.0,44.32018280029297,43.442386627197266,1,399,262,0,13,13,12,12,11,0,max_replans_exceeded
+antmaze-large-stitch-v0,edge_progress_guard_w0p5_3ep_corebot100k_H10_B120,2,2,1,75,0.0,0.0,43.428653717041016,42.64640808105469,1,398,263,0,13,13,12,12,9,0,max_replans_exceeded

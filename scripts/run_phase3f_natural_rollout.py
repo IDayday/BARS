@@ -172,6 +172,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state_outcome_feature_columns", default=None)
     parser.add_argument("--use_preplan_policy_mismatch", action="store_true")
     parser.add_argument("--preplan_policy_mismatch_max_candidates", type=int, default=None)
+    parser.add_argument("--use_edge_progress_guard", action="store_true")
+    parser.add_argument("--edge_progress_min_steps", type=int, default=None)
+    parser.add_argument("--edge_progress_window", type=int, default=None)
+    parser.add_argument("--edge_progress_min_improvement", type=float, default=None)
+    parser.add_argument("--edge_progress_growth_tolerance", type=float, default=None)
     return parser.parse_args()
 
 
@@ -254,6 +259,11 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "state_outcome_feature_columns": None,
         "use_preplan_policy_mismatch": False,
         "preplan_policy_mismatch_max_candidates": 64,
+        "use_edge_progress_guard": False,
+        "edge_progress_min_steps": 4,
+        "edge_progress_window": 3,
+        "edge_progress_min_improvement": 0.05,
+        "edge_progress_growth_tolerance": 2.0,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -474,6 +484,11 @@ def main() -> None:
             state_outcome_penalty_weight=args.state_outcome_penalty_weight,
             use_preplan_policy_mismatch=args.use_preplan_policy_mismatch,
             preplan_policy_mismatch_max_candidates=args.preplan_policy_mismatch_max_candidates,
+            use_edge_progress_guard=args.use_edge_progress_guard,
+            edge_progress_min_steps=args.edge_progress_min_steps,
+            edge_progress_window=args.edge_progress_window,
+            edge_progress_min_improvement=args.edge_progress_min_improvement,
+            edge_progress_growth_tolerance=args.edge_progress_growth_tolerance,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -555,6 +570,11 @@ def main() -> None:
                 "state_outcome_feature_columns": args.state_outcome_feature_columns,
                 "preplan_policy_mismatch_used": bool(args.use_preplan_policy_mismatch),
                 "preplan_policy_mismatch_max_candidates": int(args.preplan_policy_mismatch_max_candidates),
+                "edge_progress_guard_used": bool(args.use_edge_progress_guard),
+                "edge_progress_min_steps": int(args.edge_progress_min_steps),
+                "edge_progress_window": int(args.edge_progress_window),
+                "edge_progress_min_improvement": float(args.edge_progress_min_improvement),
+                "edge_progress_growth_tolerance": float(args.edge_progress_growth_tolerance),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

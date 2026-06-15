@@ -23,6 +23,7 @@ from phase3.reset_utils import (
 )
 from phase3f.natural_rollout import run_natural_start_episodes, write_natural_rollout_outputs
 from phase3f.hierarchical_rollout import (
+    _edge_progress_guard_decision,
     build_support_planning_graph,
     choose_edge_subgoal,
     load_or_fit_runtime_cluster_model,
@@ -1062,6 +1063,66 @@ def test_preplan_policy_mismatch_scores_bad_edge_higher():
     ).set_index("segment_edge_id")
     assert scores.loc[1, "mean_preplan_policy_action_mse"] > scores.loc[0, "mean_preplan_policy_action_mse"]
     assert preplan_policy_mse_map(scores.reset_index())[("graph", 1)] > 0.0
+
+
+def test_edge_progress_guard_waits_for_min_steps():
+    triggered, reason, window_improvement, growth = _edge_progress_guard_decision(
+        [5.0, 6.0, 7.0],
+        edge_step=2,
+        min_steps=4,
+        window=3,
+        min_improvement=0.05,
+        growth_tolerance=1.0,
+    )
+    assert not triggered
+    assert reason == ""
+    assert np.isnan(window_improvement)
+    assert np.isnan(growth)
+
+
+def test_edge_progress_guard_allows_clear_subgoal_progress():
+    triggered, reason, window_improvement, growth = _edge_progress_guard_decision(
+        [5.0, 4.2, 3.7, 3.1],
+        edge_step=4,
+        min_steps=3,
+        window=3,
+        min_improvement=0.05,
+        growth_tolerance=1.0,
+    )
+    assert not triggered
+    assert reason == ""
+    assert window_improvement > 0.0
+    assert growth < 0.0
+
+
+def test_edge_progress_guard_triggers_on_subgoal_distance_growth():
+    triggered, reason, window_improvement, growth = _edge_progress_guard_decision(
+        [5.0, 4.0, 4.8, 5.4],
+        edge_step=4,
+        min_steps=3,
+        window=3,
+        min_improvement=0.05,
+        growth_tolerance=1.0,
+    )
+    assert triggered
+    assert reason == "subgoal_distance_growth"
+    assert growth > 1.0
+    assert window_improvement < 0.0
+
+
+def test_edge_progress_guard_triggers_on_stalled_progress_after_best():
+    triggered, reason, window_improvement, growth = _edge_progress_guard_decision(
+        [5.0, 4.0, 4.01, 4.02],
+        edge_step=4,
+        min_steps=3,
+        window=2,
+        min_improvement=0.05,
+        growth_tolerance=1.0,
+    )
+    assert triggered
+    assert reason == "subgoal_progress_stalled"
+    assert 0.0 < growth < 1.0
+    assert window_improvement < 0.05
 
 
 def test_state_outcome_model_can_use_preplan_policy_mismatch_feature():

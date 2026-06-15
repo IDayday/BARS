@@ -1,0 +1,4 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,total_reward,final_reward,success,initial_goal_l2,final_goal_l2,terminated,truncated,failure_reason
+antmaze-large-stitch-v0,direct_gcbc_3ep_corebot100k_task1_phase5l_audit,0,0,1,120,0.0,0.0,0.0,44.3079948425293,43.85128402709961,False,False,max_steps_without_success
+antmaze-large-stitch-v0,direct_gcbc_3ep_corebot100k_task1_phase5l_audit,1,1,1,120,0.0,0.0,0.0,43.70698928833008,43.46750259399414,False,False,max_steps_without_success
+antmaze-large-stitch-v0,direct_gcbc_3ep_corebot100k_task1_phase5l_audit,2,2,1,120,0.0,0.0,0.0,43.2727165222168,42.89326095581055,False,False,max_steps_without_success
