@@ -32,6 +32,10 @@ from phase3f.edge_memory import (  # noqa: E402
     memory_failed_edge_counts,
     write_edge_memory_outputs,
 )
+from phase3f.edge_outcome_model import (  # noqa: E402
+    edge_outcome_penalty_map,
+    fit_edge_outcome_scores,
+)
 from phase3f.task_eval import load_preflight_status, write_env_unavailable_skip  # noqa: E402
 from phase1.data import load_ogbench_dataset  # noqa: E402
 
@@ -114,6 +118,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--use_edge_memory", action="store_true")
     parser.add_argument("--update_edge_memory", action="store_true")
     parser.add_argument("--memory_penalty_mode", default=None)
+    parser.add_argument("--use_edge_outcome_model", action="store_true")
+    parser.add_argument("--outcome_penalty_weight", type=float, default=None)
+    parser.add_argument("--outcome_min_attempts", type=int, default=None)
+    parser.add_argument("--outcome_alpha", type=float, default=None)
+    parser.add_argument("--outcome_beta", type=float, default=None)
+    parser.add_argument("--outcome_uncertainty_weight", type=float, default=None)
+    parser.add_argument("--outcome_policy_mse_weight", type=float, default=None)
+    parser.add_argument("--outcome_policy_mse_scale", type=float, default=None)
+    parser.add_argument("--outcome_subgoal_l2_weight", type=float, default=None)
+    parser.add_argument("--outcome_subgoal_l2_scale", default=None)
     return parser.parse_args()
 
 
@@ -162,6 +176,16 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "use_edge_memory": False,
         "update_edge_memory": False,
         "memory_penalty_mode": "failure_excess",
+        "use_edge_outcome_model": False,
+        "outcome_penalty_weight": 1.0,
+        "outcome_min_attempts": 1,
+        "outcome_alpha": 1.0,
+        "outcome_beta": 1.0,
+        "outcome_uncertainty_weight": 0.25,
+        "outcome_policy_mse_weight": 0.0,
+        "outcome_policy_mse_scale": 0.05,
+        "outcome_subgoal_l2_weight": 0.0,
+        "outcome_subgoal_l2_scale": "auto",
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -278,8 +302,29 @@ def main() -> None:
             bank_edges_csv=args.bank_edges_csv,
             bank_segments_npz=args.bank_segments_npz,
         )
-        edge_memory = load_edge_memory(args.edge_memory_csv) if args.use_edge_memory else load_edge_memory(None)
-        prior_failed_counts = memory_failed_edge_counts(edge_memory, mode=args.memory_penalty_mode)
+        needs_memory = bool(args.use_edge_memory or args.use_edge_outcome_model)
+        edge_memory = load_edge_memory(args.edge_memory_csv) if needs_memory else load_edge_memory(None)
+        prior_failed_counts = (
+            memory_failed_edge_counts(edge_memory, mode=args.memory_penalty_mode)
+            if args.use_edge_memory
+            else {}
+        )
+        outcome_scores = fit_edge_outcome_scores(
+            edge_memory,
+            alpha=args.outcome_alpha,
+            beta=args.outcome_beta,
+            min_attempts=args.outcome_min_attempts,
+            penalty_weight=args.outcome_penalty_weight,
+            uncertainty_weight=args.outcome_uncertainty_weight,
+            policy_mse_weight=args.outcome_policy_mse_weight,
+            policy_mse_scale=args.outcome_policy_mse_scale,
+            subgoal_l2_weight=args.outcome_subgoal_l2_weight,
+            subgoal_l2_scale=args.outcome_subgoal_l2_scale,
+        ) if args.use_edge_outcome_model else fit_edge_outcome_scores(None)
+        edge_risk_penalties = edge_outcome_penalty_map(outcome_scores)
+        if args.use_edge_outcome_model:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            outcome_scores.to_csv(out_dir / "edge_outcome_scores.csv", index=False)
         episodes, traces = run_hierarchical_support_episodes(
             env,
             policy,
@@ -308,6 +353,7 @@ def main() -> None:
             policy_mse_weight=args.policy_mse_weight,
             policy_mse_scale=args.policy_mse_scale,
             prior_failed_edge_counts=prior_failed_counts,
+            edge_risk_penalties=edge_risk_penalties,
         )
     else:
         episodes, traces = run_natural_start_episodes(
@@ -351,6 +397,9 @@ def main() -> None:
                 "edge_memory_used": bool(args.use_edge_memory),
                 "edge_memory_updated": bool(args.update_edge_memory),
                 "edge_memory_prior_penalized_edges": int(len(prior_failed_counts)),
+                "edge_outcome_model_used": bool(args.use_edge_outcome_model),
+                "edge_outcome_num_scored_edges": int(outcome_scores.shape[0]),
+                "edge_outcome_num_penalized_edges": int(len(edge_risk_penalties)),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)

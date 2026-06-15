@@ -1381,6 +1381,40 @@ Lessons:
 - The next mature attempt should learn a conditioned edge outcome model from
   this memory rather than applying only a scalar edge-id penalty.
 
+### Smooth Edge Outcome Model
+
+Status:
+
+Implemented as Phase 5F. The persistent edge memory is converted into a
+Beta-smoothed online outcome prior rather than a hard failure-count penalty.
+The planner adds a continuous `edge_outcome_penalty` to support-edge costs and
+still keeps moderate within-episode failure avoidance. Phase 5F also fixes edge
+attempt extraction so repeated retries of the same edge are split when
+`edge_step` resets.
+
+Results:
+
+- AntMaze task id 1, seed 0, 1 episode x 120-step cap:
+  - Phase 5E replay: success `0.0`, completed edges `3`, final goal L2
+    `42.0989`.
+  - Phase 5F outcome model: success `0.0`, completed edges `3`, final goal L2
+    `41.2900`.
+- The outcome model loaded 15 scored memory edges and used continuous penalties
+  for known online-risk edges.
+- The corrected attempt summary shows the planner still moves into previously
+  unseen support-bank failures, such as `bank:5`, `bank:15`, `bank:23`, and
+  `bank:32`.
+
+Lessons:
+
+- Smoothing online edge memory is cleaner than hard persistent count penalties
+  and slightly improves this smoke relative to Phase 5E replay.
+- It is still not enough. The core blind spot is risk for unseen support edges,
+  not only remembering known failed edge ids.
+- The next useful model should score every candidate support edge before online
+  attempts by combining offline support, direct GCBC edge fitting, current-state
+  initiation distance, compatibility context, and online memory.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1443,6 +1477,8 @@ Lessons:
   that this proxy alone is not enough for online success.
 - Phase 5E shows persistent online edge outcome memory can be extracted,
   persisted, and fed back into support-only replanning.
+- Phase 5F shows smooth online outcome priors are cleaner than hard persistent
+  failure counts and fixes repeated-attempt labeling for edge memory.
 
 ## Claims Not Yet Supported
 
@@ -1481,3 +1517,5 @@ Lessons:
   and does not solve Scene or AntMaze natural-start tasks.
 - Phase 5E count-based failure memory is not a complete algorithm and does not
   improve online task success in the current AntMaze smoke.
+- Phase 5F smooth edge outcome priors do not solve online task success and do
+  not score unseen support edges well enough.

@@ -121,9 +121,11 @@ def build_support_planning_graph(
     include_all_bank_edges: bool = False,
     failed_edge_counts: dict[tuple[str, int], int] | None = None,
     failure_penalty: float = 0.0,
+    edge_risk_penalties: dict[tuple[str, int], float] | None = None,
 ) -> nx.DiGraph:
     graph = nx.DiGraph()
     failed_edge_counts = failed_edge_counts or {}
+    edge_risk_penalties = edge_risk_penalties or {}
 
     def maybe_add(row: Any, source: str, connector: bool) -> None:
         src = int(getattr(row, "src"))
@@ -131,13 +133,17 @@ def build_support_planning_graph(
         base_cost = _row_cost(row)
         segment_source, segment_edge_id, policy_edge_id = _edge_identity(row, source)
         failure_count = int(failed_edge_counts.get((segment_source, int(segment_edge_id)), 0))
-        cost = float(base_cost + float(failure_penalty) * failure_count)
+        failure_cost = float(failure_penalty) * failure_count
+        outcome_penalty = float(edge_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
+        cost = float(base_cost + failure_cost + outcome_penalty)
         attrs = {
             "src": src,
             "dst": dst,
             "base_cost": float(base_cost),
             "cost": cost,
             "failure_count": failure_count,
+            "failure_cost": float(failure_cost),
+            "edge_outcome_penalty": float(outcome_penalty),
             "median_h": float(getattr(row, "median_h", cost)),
             "max_h": float(getattr(row, "max_h", getattr(row, "median_h", cost))),
             "edge_id": int(getattr(row, "edge_id")),
@@ -335,6 +341,7 @@ def run_hierarchical_support_episodes(
     policy_mse_weight: float = 0.0,
     policy_mse_scale: float = 0.05,
     prior_failed_edge_counts: dict[tuple[str, int], int] | None = None,
+    edge_risk_penalties: dict[tuple[str, int], float] | None = None,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     observations = np.asarray(dataset["observations"], dtype=np.float32)
     actions = np.asarray(dataset["actions"], dtype=np.float32)
@@ -399,6 +406,7 @@ def run_hierarchical_support_episodes(
                         allow_bank_connectors=allow_bank_connectors,
                         failed_edge_counts=failed_edge_counts,
                         failure_penalty=failure_penalty,
+                        edge_risk_penalties=edge_risk_penalties,
                     )
                     active_path, plan_status = plan_cluster_path(graph, current_cluster, goal_cluster)
                     if (not active_path or len(active_path) <= 1) and allow_full_bank_fallback:
@@ -411,6 +419,7 @@ def run_hierarchical_support_episodes(
                             include_all_bank_edges=True,
                             failed_edge_counts=failed_edge_counts,
                             failure_penalty=failure_penalty,
+                            edge_risk_penalties=edge_risk_penalties,
                         )
                         fallback_path, fallback_status = plan_cluster_path(fallback_graph, current_cluster, goal_cluster)
                         if fallback_path and len(fallback_path) > 1:
@@ -491,6 +500,9 @@ def run_hierarchical_support_episodes(
                         "subgoal_l2": subgoal_l2,
                         "action_norm": float(np.linalg.norm(action.reshape(-1))),
                         "edge_failure_count": int(edge_attrs.get("failure_count", 0)),
+                        "edge_failure_cost": float(edge_attrs.get("failure_cost", 0.0)),
+                        "edge_outcome_penalty": float(edge_attrs.get("edge_outcome_penalty", 0.0)),
+                        "edge_planning_cost": float(edge_attrs.get("cost", 0.0)),
                         **subgoal_info,
                     }
                 )

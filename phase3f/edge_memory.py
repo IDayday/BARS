@@ -83,7 +83,18 @@ def extract_edge_attempts_from_traces(traces: list[dict[str, Any]]) -> pd.DataFr
 
         for step in steps:
             key = _attempt_key(step)
-            if current_key is not None and key != current_key:
+            has_edge_step = "edge_step" in step
+            prev_has_edge_step = bool(current_steps and "edge_step" in current_steps[-1])
+            edge_step = int(step.get("edge_step", 0))
+            prev_edge_step = int(current_steps[-1].get("edge_step", 0)) if current_steps else 0
+            restarted_same_edge = bool(
+                current_key == key
+                and current_steps
+                and has_edge_step
+                and prev_has_edge_step
+                and edge_step <= prev_edge_step
+            )
+            if current_key is not None and (key != current_key or restarted_same_edge):
                 flush()
                 current_steps = []
             current_key = key

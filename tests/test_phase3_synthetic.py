@@ -34,6 +34,7 @@ from phase3f.edge_memory import (
     merge_edge_memory,
     summarize_edge_attempts,
 )
+from phase3f.edge_outcome_model import edge_outcome_penalty_map, fit_edge_outcome_scores
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -587,6 +588,52 @@ def test_edge_memory_extracts_attempts_and_summarizes_failures():
     assert summary.loc[("bank", 11), "failure_excess"] == 1
 
 
+def test_edge_memory_splits_restarted_same_edge_attempts():
+    traces = [
+        {
+            "episode_id": 0,
+            "steps": [
+                {
+                    "cluster": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "segment_edge_id": 5,
+                    "segment_source": "bank",
+                    "edge_step": 1,
+                },
+                {
+                    "cluster": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "segment_edge_id": 5,
+                    "segment_source": "bank",
+                    "edge_step": 2,
+                },
+                {
+                    "cluster": 0,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "segment_edge_id": 5,
+                    "segment_source": "bank",
+                    "edge_step": 1,
+                },
+                {
+                    "cluster": 1,
+                    "edge_src": 0,
+                    "edge_dst": 1,
+                    "segment_edge_id": 5,
+                    "segment_source": "bank",
+                    "edge_step": 2,
+                },
+            ],
+        }
+    ]
+    attempts = extract_edge_attempts_from_traces(traces)
+    assert attempts.shape[0] == 2
+    assert attempts["attempt_steps"].tolist() == [2, 2]
+    assert attempts["completed"].tolist() == [0, 1]
+
+
 def test_edge_memory_merge_produces_failed_edge_penalty_counts():
     existing = pd.DataFrame(
         {
@@ -631,3 +678,48 @@ def test_edge_memory_merge_produces_failed_edge_penalty_counts():
     assert graph_row["failure_excess"] == 1
     assert failed_counts[("graph", 3)] == 1
     assert failed_counts[("bank", 7)] == 1
+
+
+def test_edge_outcome_scores_penalize_failed_edges_more_than_completed_edges():
+    memory = pd.DataFrame(
+        {
+            "segment_source": ["graph", "graph"],
+            "segment_edge_id": [0, 1],
+            "edge_src": [0, 0],
+            "edge_dst": [1, 2],
+            "attempts": [2, 2],
+            "completed": [2, 0],
+            "timeouts": [0, 2],
+            "success_rate": [1.0, 0.0],
+            "failure_excess": [0, 2],
+            "mean_attempt_steps": [2.0, 2.0],
+            "mean_final_subgoal_l2": [0.1, 2.0],
+            "mean_selected_policy_action_mse": [0.01, 0.10],
+        }
+    )
+    scores = fit_edge_outcome_scores(memory, penalty_weight=3.0, uncertainty_weight=0.0)
+    penalties = edge_outcome_penalty_map(scores)
+
+    completed_penalty = penalties[("graph", 0)]
+    failed_penalty = penalties[("graph", 1)]
+    assert failed_penalty > completed_penalty
+    assert scores.loc[scores["segment_edge_id"] == 1, "posterior_success_prob"].iloc[0] < 0.5
+
+
+def test_edge_outcome_penalty_changes_support_planning_route():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 0, 2],
+            "dst": [1, 2, 1],
+            "median_h": [1.0, 2.0, 2.0],
+            "cost": [1.0, 2.0, 2.0],
+        }
+    )
+    base = build_support_planning_graph(edges)
+    outcome_penalized = build_support_planning_graph(
+        edges,
+        edge_risk_penalties={("graph", 0): 10.0},
+    )
+    assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
+    assert list(__import__("networkx").shortest_path(outcome_penalized, 0, 1, weight="cost")) == [0, 2, 1]
