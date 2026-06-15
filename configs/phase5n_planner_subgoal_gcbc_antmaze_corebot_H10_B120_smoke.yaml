@@ -13,6 +13,7 @@ val_examples: 4096
 train_examples: 65536
 log_interval: 50
 device: cuda
+dataloader_num_workers: 2
 edge_embedding_dim: 0
 num_planner_queries: 5000
 source_probabilities:
@@ -29,4 +30,3 @@ planner_usage_strength: 0.35
 planner_first_edge_strength: 0.65
 min_loss_weight: 0.5
 max_loss_weight: 2.5
-

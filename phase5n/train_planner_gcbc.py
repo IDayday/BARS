@@ -20,10 +20,25 @@ from phase5n.planner_subgoal_dataset import (
 )
 
 
-def _make_loader(dataset: PlannerMixedGCBCDataset, batch_size: int, shuffle: bool, seed: int) -> DataLoader:
+def _make_loader(
+    dataset: PlannerMixedGCBCDataset,
+    batch_size: int,
+    shuffle: bool,
+    seed: int,
+    num_workers: int = 0,
+) -> DataLoader:
     generator = torch.Generator()
     generator.manual_seed(int(seed))
-    return DataLoader(dataset, batch_size=int(batch_size), shuffle=bool(shuffle), num_workers=0, generator=generator)
+    workers = max(0, int(num_workers))
+    return DataLoader(
+        dataset,
+        batch_size=int(batch_size),
+        shuffle=bool(shuffle),
+        num_workers=workers,
+        persistent_workers=workers > 0,
+        prefetch_factor=2 if workers > 0 else None,
+        generator=generator,
+    )
 
 
 def _cycle(loader: DataLoader):
@@ -49,11 +64,18 @@ def evaluate_mixed_policy_mse(
     batch_size: int,
     max_examples: int,
     device: torch.device,
+    num_workers: int = 0,
 ) -> tuple[float, pd.DataFrame, pd.DataFrame]:
     if len(dataset) == 0 or int(max_examples) <= 0:
         return 0.0, pd.DataFrame(), pd.DataFrame()
     eval_ds = dataset.with_indices(max_examples=int(max_examples), seed=dataset.seed + 991)
-    loader = _make_loader(eval_ds, batch_size=batch_size, shuffle=False, seed=dataset.seed + 13)
+    loader = _make_loader(
+        eval_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        seed=dataset.seed + 13,
+        num_workers=num_workers,
+    )
     model.eval()
     total = 0.0
     count = 0
@@ -169,6 +191,7 @@ def train_planner_subgoal_gcbc(
     train_examples: int | None = None,
     log_interval: int | None = None,
     device: str | None = None,
+    dataloader_num_workers: int = 0,
     use_remaining_h: bool = True,
     edge_embedding_dim: int = 0,
     source_probabilities: dict[str, float] | None = None,
@@ -232,7 +255,15 @@ def train_planner_subgoal_gcbc(
         edge_embedding_dim=int(edge_embedding_dim),
     ).to(dev)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(lr))
-    loader = _cycle(_make_loader(train_ds, batch_size=batch_size, shuffle=True, seed=seed))
+    loader = _cycle(
+        _make_loader(
+            train_ds,
+            batch_size=batch_size,
+            shuffle=True,
+            seed=seed,
+            num_workers=dataloader_num_workers,
+        )
+    )
     log_interval = int(log_interval or max(1, min(1000, int(num_steps) // 10 if int(num_steps) > 0 else 1)))
 
     train_rows: list[dict[str, Any]] = []
@@ -264,6 +295,7 @@ def train_planner_subgoal_gcbc(
                 batch_size=batch_size,
                 max_examples=val_examples,
                 device=dev,
+                num_workers=dataloader_num_workers,
             )
             source_summary = summarize_source_metrics(last_source_metrics)
             edge_summary = summarize_edge_groups(last_edge_metrics.merge(planner_weights, on="edge_id", how="left"), option_edges)
@@ -302,6 +334,7 @@ def train_planner_subgoal_gcbc(
         "action_dim": int(full.action_dim),
         "num_edges": int(num_edges),
         "device": str(dev),
+        "dataloader_num_workers": int(dataloader_num_workers),
         "source_probabilities": full.source_probabilities,
         "source_loss_weights": full.source_loss_weights,
         "num_planner_queries": int(num_planner_queries),
@@ -361,4 +394,3 @@ def train_planner_subgoal_gcbc(
         "planner_query_paths": path_rows,
         "output_dir": out,
     }
-

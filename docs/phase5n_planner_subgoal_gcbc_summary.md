@@ -77,6 +77,58 @@ This is only a wiring smoke. The absolute MSE is not comparable to the prior
 100000-step Phase 3A checkpoint because this run uses 200 steps and a smaller
 network.
 
+## Full AntMaze H10 B120 Result
+
+Command:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 MUJOCO_GL=egl \
+OGBENCH_DATASET_DIR=/mnt/project/offlinerl_datasets/ogbench \
+PYTHONPATH=/mnt/project/BARS/external_src/tmd-release \
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n gcrlo python -u \
+  scripts/train_phase5n_planner_subgoal_gcbc.py \
+  --config configs/phase5n_planner_subgoal_gcbc_antmaze_corebot_H10_B120.yaml \
+  --device cuda
+```
+
+Output directory:
+
+`results/phase5n/antmaze_large_stitch/core_plus_bottleneck_budget120_H10_planner_gcbc/`
+
+Final 100000-step supervised metrics:
+
+| metric | value |
+| --- | ---: |
+| val_action_mse | 0.044359 |
+| final_goal_hindsight_val_mse | 0.087105 |
+| support_edge_local_val_mse | 0.032122 |
+| planner_first_edge_replay_val_mse | 0.029160 |
+| planner_used_edge_val_mse | 0.032687 |
+| not_planner_used_edge_val_mse | 0.032828 |
+| high_support_edge_val_mse | 0.043825 |
+| low_support_edge_val_mse | 0.021538 |
+
+The prior Phase 3A 100000-step edge-GCBC reference has
+`final val_action_mse = 0.0426389`. Phase 5N is close but slightly worse on
+overall MSE, while much better on planner/subgoal target families. The cost is
+clear: final-goal hindsight MSE is high, so the direct final-goal policy is
+weaker.
+
+Natural-start rollout results, 3 AntMaze task-1 episodes:
+
+| method | success | mean final L2 | completed edges | replans | failed edge attempts |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| old direct GCBC | 0.0 | 43.404 | n/a | n/a | n/a |
+| old repaired state-outcome planner | 0.0 | 39.720 | 2.333 | 7.000 | 6.000 |
+| Phase5N direct GCBC | 0.0 | 44.736 | n/a | n/a | n/a |
+| Phase5N base support planner | 0.0 | 43.711 | 0.000 | 0.000 | 0.000 |
+| Phase5N repaired state-outcome planner | 0.0 | 36.032 | 3.333 | 6.000 | 5.333 |
+
+The base support planner does not evaluate execution because natural start and
+goal clusters are outside the compressed base graph in these episodes
+(`start_cluster_not_in_graph` / `goal_cluster_not_in_graph`). The repaired graph
+is the relevant comparison.
+
 ## Analysis
 
 This is the first implemented BARS-native policy-training path that explicitly
@@ -91,25 +143,33 @@ What is useful:
   supervised target construction.
 - The output model is compatible with the existing natural-start hierarchical
   evaluator.
+- On repaired hierarchical planning, Phase5N improves partial task progress:
+  final L2 decreases from `39.720` to `36.032`, completed edges increase from
+  `2.333` to `3.333`, and failed edge attempts decrease from `6.000` to
+  `5.333`.
 
 What remains unproven:
 
 - This does not prove closed-loop success.
-- The smoke run does not prove the planner-aware policy is better than the
-  100000-step Phase 3A GCBC.
+- The 100000-step Phase5N run still has `0.0` success in the tested 3-episode
+  AntMaze task-1 rollout.
+- The direct final-goal policy regresses because final-goal hindsight MSE is
+  much worse than edge/planner MSE.
 - It does not solve recovery from off-support drift.
 - It has not yet been compared to GAS under a matched online protocol.
 
 ## Next Gate
 
-Run the full 100000-step config, then evaluate:
+The useful next policy change is not another graph-only tweak. It should keep
+planner-subgoal gains while fixing direct/final-goal competence:
 
-1. direct final-goal natural-start success;
-2. BARS hierarchical natural-start success using this checkpoint;
-3. matched comparison against the current Phase 3A GCBC and official GAS
-   protocol records.
+1. increase or curriculum-schedule final-goal hindsight weight;
+2. train target-source-conditioned heads or a target-source embedding so final
+   goals and edge subgoals do not compete in one undifferentiated regressor;
+3. add exact online planner-subgoal replay and recovery samples from failed
+   natural-start traces;
+4. benchmark GAS / OGBench reference actor MSE under a matched protocol before
+   deciding whether BARS needs a learned skill representation.
 
-If success remains `0.0`, the next policy-side improvement should be a learned
-BARS skill/phi representation or rollout-derived recovery training, not another
-graph-only planner tweak.
-
+Success rate remains the primary metric. Phase5N is a useful partial-progress
+improvement, not a solved algorithm.

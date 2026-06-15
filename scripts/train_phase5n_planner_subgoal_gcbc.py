@@ -61,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train_examples", type=int, default=None)
     parser.add_argument("--log_interval", type=int, default=None)
     parser.add_argument("--device", default=None)
+    parser.add_argument("--dataloader_num_workers", type=int, default=None)
     parser.add_argument("--edge_embedding_dim", type=int, default=None)
     parser.add_argument("--num_planner_queries", type=int, default=None)
     args = parser.parse_args()
@@ -82,6 +83,7 @@ def parse_args() -> argparse.Namespace:
         "train_examples": None,
         "log_interval": None,
         "edge_embedding_dim": 0,
+        "dataloader_num_workers": 0,
         "source_probabilities": {
             "final_goal_hindsight": 0.25,
             "support_edge_local": 0.35,
@@ -138,6 +140,7 @@ def main() -> None:
         train_examples=args.train_examples,
         log_interval=args.log_interval,
         device=args.device,
+        dataloader_num_workers=args.dataloader_num_workers,
         edge_embedding_dim=args.edge_embedding_dim,
         source_probabilities=args.source_probabilities,
         source_loss_weights=args.source_loss_weights,
@@ -155,4 +158,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

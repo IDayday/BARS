@@ -1,0 +1,3 @@
+failure_reason,count
+start_cluster_not_in_graph,2
+goal_cluster_not_in_graph,1

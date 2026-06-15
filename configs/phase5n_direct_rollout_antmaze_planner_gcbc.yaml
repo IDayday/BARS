@@ -1,0 +1,14 @@
+dataset_name: antmaze-large-stitch-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+preflight_root: results/phase3/env_preflight_gcrlo
+method: direct_gcbc_phase5n_planner_H10_B120
+model_path: results/phase5n/antmaze_large_stitch/core_plus_bottleneck_budget120_H10_planner_gcbc/model.pt
+output_dir: results/phase3f
+action_mode: direct_gcbc
+num_episodes: 3
+max_steps: 120
+task_ids: [1]
+seed: 0
+device: auto
+trace_every: 1
+

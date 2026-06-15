@@ -1,0 +1,40 @@
+action_dim: 8
+base_loss_weight_mode: support_bottleneck
+base_loss_weight_strength: 0.3
+batch_size: 1024
+config: configs/phase5n_planner_subgoal_gcbc_antmaze_corebot_H10_B120.yaml
+dataloader_num_workers: 4
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+dataset_name: antmaze-large-stitch-v0
+device: cuda
+edge_embedding_dim: 0
+hidden_dims:
+- 512
+- 512
+- 512
+log_interval: 1000
+lr: 0.0003
+max_loss_weight: 2.5
+max_transitions: 200000
+min_loss_weight: 0.5
+note: Offline supervised planner-aware GCBC metrics are not rollout success.
+num_edges: 582
+num_planner_queries: 20000
+num_steps: 100000
+obs_dim: 29
+output_dir: results/phase5n/antmaze_large_stitch/core_plus_bottleneck_budget120_H10_planner_gcbc
+phase2_run_dir: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10
+planner_first_edge_strength: 0.65
+planner_usage_strength: 0.35
+seed: 0
+source_loss_weights:
+  final_goal_hindsight: 1.0
+  planner_first_edge_replay: 1.0
+  support_edge_local: 1.0
+source_probabilities:
+  final_goal_hindsight: 0.25
+  planner_first_edge_replay: 0.4
+  support_edge_local: 0.35
+train_examples: 1024000
+val_examples: 8192
+val_fraction: 0.05

@@ -1,0 +1,34 @@
+dataset_name: antmaze-large-stitch-v0
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+preflight_root: results/phase3/env_preflight_gcrlo
+method: hierarchical_base_phase5n_planner_H10_B120
+model_path: results/phase5n/antmaze_large_stitch/core_plus_bottleneck_budget120_H10_planner_gcbc/model.pt
+output_dir: results/phase3f
+action_mode: hierarchical_support
+num_episodes: 3
+max_steps: 120
+task_ids: [1]
+seed: 0
+device: auto
+max_transitions: 200000
+cluster_method: grid_xy
+state_dims: [0, 1]
+n_clusters: 400
+cluster_cache_dir: results/phase3f/cluster_cache
+graph_edges_csv: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10/option_edges.csv
+graph_segments_npz: results/phase2/antmaze_large_stitch/core_plus_bottleneck_budget120_H10/edge_segments.npz
+edge_horizon_multiplier: 2.0
+max_edge_horizon: 25
+max_replans: 12
+subgoal_max_candidates: 128
+disable_bank_connectors: true
+allow_full_bank_fallback: false
+initiation_weight: 1.0
+downstream_weight: 0.25
+policy_mse_weight: 2.0
+policy_mse_scale: 0.05
+use_state_conditioned_risk: true
+state_risk_penalty_weight: 0.25
+state_risk_distance_scale: auto
+state_risk_max_candidates: 128
+state_risk_distance_dims: [0, 1]

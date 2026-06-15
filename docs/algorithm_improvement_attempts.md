@@ -1769,6 +1769,22 @@ AntMaze H10 B120 smoke:
 - Planner query generation reaches `4980 / 5000` sampled graph queries.
 - `407 / 582` support edges appear as planner first edges.
 
+AntMaze H10 B120 full 100000-step run:
+
+- final `val_action_mse = 0.0443589`, close to but worse than the Phase 3A
+  edge-GCBC reference `0.0426389`.
+- `support_edge_local_val_mse = 0.0321218`.
+- `planner_first_edge_replay_val_mse = 0.0291603`.
+- `final_goal_hindsight_val_mse = 0.0871046`.
+- direct natural-start GCBC remains `0.0` success and regresses in mean final
+  goal distance to `44.736`.
+- base compressed hierarchical planner cannot start in the matched natural
+  episodes because start/goal clusters are outside the base graph.
+- repaired + state-outcome hierarchical planner remains `0.0` success but
+  improves mean final goal distance from the old GCBC's `39.720` to `36.032`,
+  improves completed edges from `2.333` to `3.333`, and reduces failed edge
+  attempts from `6.000` to `5.333`.
+
 Artifacts:
 
 - `results/phase5n/antmaze_large_stitch/core_plus_bottleneck_budget120_H10_planner_gcbc_smoke/`
@@ -1781,10 +1797,43 @@ the planner is now part of the supervised target distribution. It directly
 addresses the mismatch where the runtime graph emits subgoals that the policy
 was not preferentially trained to follow.
 
-However, this is still offline supervised evidence. It does not prove online
-success, and the smoke run is too short to compare against the 100000-step
-Phase 3A GCBC. The next gate is a full Phase5N checkpoint followed by
-natural-start direct and hierarchical rollout in `gcrlo`.
+The full result is mixed but useful. Planner-aware training improves the
+subgoal families that hierarchical execution needs, and this translates into
+better repaired-planner partial task progress. It also hurts direct final-goal
+competence, as shown by high final-goal hindsight MSE and worse direct rollout
+distance. The next policy improvement should preserve planner-subgoal training
+while restoring final-goal behavior, likely through target-source conditioning,
+curriculum weights, or separate policy heads.
+
+It still does not solve online success. Success remains `0.0` in the tested
+AntMaze natural-start episodes.
+
+## Phase 5O: Policy Action-MSE Reference
+
+### Finding
+
+GAS and OGBench-style policies do compute actor action MSE internally, but
+their papers and public benchmark tables generally do not report it as the main
+metric. GAS uses a TDR-direction target for its low-level policy; OGBench
+reference agents such as GCBC, CRL, TMD, and HIQL also log actor MSE under
+their own target semantics.
+
+### Current Reference
+
+The local supervised target to beat is still the Phase 3A 100000-step BARS
+edge-GCBC checkpoint with final `val_action_mse = 0.0426389`. Phase 5N full
+training is intended to test whether planner-aware target sampling can approach
+or improve that level while better matching runtime planner targets.
+
+### Rule
+
+Do not compare BARS to a guessed GAS/HIQL action-MSE number. Measure it under a
+matched local protocol, and always pair it with natural-start success. If MSE
+matches GAS but success does not, the bottleneck is likely target
+representation, subgoal switching, or closed-loop compounding rather than
+one-step fitting.
+
+See `docs/phase5o_policy_action_mse_reference.md`.
 
 ## Claims Currently Supported
 
@@ -1875,6 +1924,12 @@ natural-start direct and hierarchical rollout in `gcrlo`.
 - Phase 5N V0 implements the first BARS-native planner-aware low-level GCBC
   training path: final-goal, support-edge, and planner-first-edge targets are
   trained jointly without adding unsupported goals.
+- Phase 5N full training improves repaired hierarchical partial progress
+  despite `0.0` task success: mean final-goal L2 improves from `39.720` to
+  `36.032` against the old GCBC under the matched state-outcome planner.
+- Phase 5O establishes that action MSE should be measured locally for GAS and
+  OGBench reference policies; public success tables are not a substitute for a
+  matched low-level actor-MSE audit.
 
 ## Claims Not Yet Supported
 
@@ -1938,3 +1993,8 @@ natural-start direct and hierarchical rollout in `gcrlo`.
   construction and training protocol.
 - Phase 5N V0 is not yet an online success result; the 200-step smoke only
   validates training/data plumbing and grouped supervised metrics.
+- Phase 5N full training still does not achieve AntMaze task success and
+  regresses direct final-goal rollout distance; planner-aware target sampling
+  alone is not a complete low-level policy solution.
+- GAS/HIQL/CRL action MSE is not yet known for this local protocol; it must be
+  computed from live checkpoints before being used as a design target.

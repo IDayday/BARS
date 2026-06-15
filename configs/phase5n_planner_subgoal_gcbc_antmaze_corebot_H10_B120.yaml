@@ -12,6 +12,7 @@ val_fraction: 0.05
 val_examples: 8192
 log_interval: 1000
 device: cuda
+dataloader_num_workers: 4
 edge_embedding_dim: 0
 num_planner_queries: 20000
 source_probabilities:

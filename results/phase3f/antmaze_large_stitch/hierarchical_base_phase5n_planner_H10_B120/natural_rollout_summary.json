@@ -1,0 +1,11 @@
+{
+  "dataset_name": "antmaze-large-stitch-v0",
+  "mean_final_goal_l2": 43.710548400878906,
+  "mean_steps": 0.0,
+  "mean_total_reward": 0.0,
+  "method": "hierarchical_base_phase5n_planner_H10_B120",
+  "num_episodes": 3,
+  "skipped": false,
+  "skipped_reason": "",
+  "success_rate": 0.0
+}
