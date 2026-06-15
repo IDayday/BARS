@@ -13,6 +13,7 @@ from bars.gas_bars.support_keygraph import (
     save_keygraph_pickle,
 )
 from scripts.stage37_prepare_calibrated_support_scores import add_calibrated_support_columns
+from scripts.stage41_mix_task_keygraph_paths import mix_task_keygraph_paths
 
 
 def _dummy_keygraph():
@@ -176,3 +177,28 @@ def test_calibrated_support_risk_columns_are_monotone_and_protect_goal_edges():
     assert out.loc[1, "risk_hybrid_support"] > out.loc[2, "risk_hybrid_support"]
     assert out.loc[3, "risk_hybrid_support"] == 0.0
     assert out.loc[3, "risk_unsupported_binary"] == 0.0
+
+
+def test_stage41_task_path_mixer_replaces_only_selected_task_caches():
+    base = SimpleNamespace(
+        task_paths_dict={1: {0: [0, 1]}, 2: {0: [0, 2]}},
+        task_paths_dist_dict={1: {0: 1.0}, 2: {0: 2.0}},
+    )
+    method_a = SimpleNamespace(
+        task_paths_dict={1: {0: [0, 10, 1]}, 2: {0: [0, 20, 2]}},
+        task_paths_dist_dict={1: {0: 11.0}, 2: {0: 22.0}},
+    )
+    method_b = SimpleNamespace(
+        task_paths_dict={1: {0: [0, 100, 1]}, 2: {0: [0, 200, 2]}},
+        task_paths_dist_dict={1: {0: 101.0}, 2: {0: 202.0}},
+    )
+
+    mixed, rows = mix_task_keygraph_paths(base, {"a": method_a, "b": method_b}, {1: "a", 2: "b"})
+
+    assert mixed.task_paths_dict[1][0] == [0, 10, 1]
+    assert mixed.task_paths_dist_dict[1][0] == 11.0
+    assert mixed.task_paths_dict[2][0] == [0, 200, 2]
+    assert mixed.task_paths_dist_dict[2][0] == 202.0
+    assert base.task_paths_dict[1][0] == [0, 1]
+    assert mixed.bars_task_method_map == {"1": "a", "2": "b"}
+    assert {row["method"] for row in rows} == {"a", "b"}

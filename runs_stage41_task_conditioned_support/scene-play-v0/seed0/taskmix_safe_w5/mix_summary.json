@@ -1,0 +1,59 @@
+{
+  "base_keygraph": "runs_stage40_official_gas_artifacts/scene-play-v0/seed0/graph/keygraph.pkl",
+  "graph_source": "base_keygraph",
+  "method_keygraphs": {
+    "hybrid_w5p00_forward": "runs_stage40_gas_support_patch/scene-play-v0/seed0/patched_graph_hybrid_w5p00_forward/keygraph.pkl",
+    "original": "runs_stage40_official_gas_artifacts/scene-play-v0/seed0/graph/keygraph.pkl"
+  },
+  "note": "Only GAS task cached paths are mixed; low-level policy and node embeddings are unchanged.",
+  "output_keygraph": "runs_stage41_task_conditioned_support/scene-play-v0/seed0/taskmix_safe_w5/keygraph.pkl",
+  "task_method_map": {
+    "1": "original",
+    "2": "hybrid_w5p00_forward",
+    "3": "original",
+    "4": "hybrid_w5p00_forward",
+    "5": "hybrid_w5p00_forward"
+  },
+  "task_path_rows": [
+    {
+      "destination_task_paths_key": "1",
+      "mean_cached_distance": 82.67219971371088,
+      "method": "original",
+      "num_cached_start_nodes": 731,
+      "source_task_paths_key": "1",
+      "task_id": 1
+    },
+    {
+      "destination_task_paths_key": "2",
+      "mean_cached_distance": 92.77851741831036,
+      "method": "hybrid_w5p00_forward",
+      "num_cached_start_nodes": 735,
+      "source_task_paths_key": "2",
+      "task_id": 2
+    },
+    {
+      "destination_task_paths_key": "3",
+      "mean_cached_distance": 75.87464515509092,
+      "method": "original",
+      "num_cached_start_nodes": 733,
+      "source_task_paths_key": "3",
+      "task_id": 3
+    },
+    {
+      "destination_task_paths_key": "4",
+      "mean_cached_distance": 94.61356452524839,
+      "method": "hybrid_w5p00_forward",
+      "num_cached_start_nodes": 735,
+      "source_task_paths_key": "4",
+      "task_id": 4
+    },
+    {
+      "destination_task_paths_key": "5",
+      "mean_cached_distance": 102.00796158472662,
+      "method": "hybrid_w5p00_forward",
+      "num_cached_start_nodes": 735,
+      "source_task_paths_key": "5",
+      "task_id": 5
+    }
+  ]
+}

@@ -2317,6 +2317,14 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   longer trajectories, while stronger weights improve graph support metrics but
   reduce final success. The next algorithmic form needs cost-scale
   normalization and task/path-conditioned risk.
+- Stage41 tests the simplest task-conditioned version of that idea by mixing
+  GAS per-task cached paths from original and support-risk keygraphs while
+  keeping the official actor and nodes unchanged. It does not produce a robust
+  Scene gain: at 200 episodes/task, original GAS is `0.741`, global `w=5` is
+  `0.754`, and the low-support-only task mix is `0.748`. The result suggests
+  that whole-task cache selection is too coarse; future improvements need
+  policy-aware/path-local compatibility and cost-scale-normalized risk rather
+  than only support-aware graph routing.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay

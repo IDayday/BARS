@@ -431,3 +431,43 @@ Result files:
 - `runs_stage40_gas_support_patch/scene-play-v0/seed0/calibrated_support_scores/edge_scores_calibrated_target8_summary.json`
 - `runs_stage40_gas_support_patch/scene-play-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_summary.csv`
 - `runs_stage40_gas_support_patch/scene-play-v0/seed0/path_audit_hybrid_weight_sweep_extended/path_diff_summary.csv`
+
+## Stage41 Task-Conditioned Scene Routing
+
+Stage41 checks the immediate next hypothesis from Stage40: perhaps Scene needs
+different support-risk paths for different tasks.  The implementation keeps the
+official GAS actor, node embeddings, and base graph object compatible with GAS,
+and mixes only `task_paths_dict` / `task_paths_dist_dict` per task.
+
+Closed-loop results:
+
+| dataset | episodes/task | method | success | mean length | unsupported path-edge fraction | mean same-traj support | path change rate |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| scene play | 50 | original | `0.756` | `343.468` | `0.973` | `11.240` | `0.000` |
+| scene play | 50 | global `w=5` | `0.764` | `348.896` | `0.963` | `16.367` | `0.059` |
+| scene play | 50 | taskmix low-support-only | `0.764` | `341.896` | `0.968` | `12.416` | `0.033` |
+| scene play | 50 | taskmix safe `w=5` | `0.724` | `363.472` | `0.966` | `13.278` | `0.042` |
+| scene play | 50 | taskmix oracle diagnostic | `0.748` | `344.704` | `0.963` | `14.356` | `0.068` |
+| scene play | 200 | original | `0.741` | `355.008` | `0.973` | `11.240` | `0.000` |
+| scene play | 200 | global `w=5` | `0.754` | `347.454` | `0.963` | `16.367` | `0.059` |
+| scene play | 200 | taskmix low-support-only | `0.748` | `352.252` | `0.968` | `12.416` | `0.033` |
+
+This is a useful negative/boundary result.  Whole-task support-route selection
+does not beat the simple global `w=5` Scene setting, and the global `w=5`
+ep200 gain is still small relative to the approximate binomial uncertainty.
+The graph-side support metrics improve more than the final success signal.
+
+The next algorithmic step should not be more task-cache mixing.  It should make
+support risk policy-aware and path-local: normalize risk to the base cost scale,
+penalize only route changes that create likely low-level execution risk, and
+use online traces or reliable policy compatibility proxies to decide whether a
+support-backed detour is actually executable.
+
+Result files:
+
+- `docs/stage41_task_conditioned_support_summary.md`
+- `runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_eval_summary.csv`
+- `runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_eval_with_path_metrics.csv`
+- `runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_summary.json`
+- `runs_stage41_task_conditioned_support/scene-play-v0/seed0/path_audit_taskmix/path_summary.csv`
+- `runs_stage41_task_conditioned_support/scene-play-v0/seed0/path_audit_taskmix/path_diff_summary.csv`

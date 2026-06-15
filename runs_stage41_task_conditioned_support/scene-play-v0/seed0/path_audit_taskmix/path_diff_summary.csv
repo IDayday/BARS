@@ -1,0 +1,5 @@
+reference_method,method,num_common_paths,num_changed_paths,path_change_rate
+original,global_w5,3655,217,0.059370725034199726
+original,taskmix_low_support_only,3655,122,0.03337893296853625
+original,taskmix_safe_w5,3655,154,0.04213406292749658
+original,taskmix_oracle_diagnostic,3655,247,0.06757865937072503

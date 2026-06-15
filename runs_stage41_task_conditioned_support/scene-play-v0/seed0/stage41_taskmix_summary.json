@@ -1,0 +1,17 @@
+{
+  "conclusion": "Task-conditioned cached-path mixing did not produce a robust Scene success improvement over original GAS in ep200; graph support metrics improved slightly but final success did not.",
+  "dataset": "scene-play-v0",
+  "eval_summary_csv": "runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_eval_summary.csv",
+  "eval_with_path_metrics_csv": "runs_stage41_task_conditioned_support/scene-play-v0/seed0/stage41_taskmix_eval_with_path_metrics.csv",
+  "key_result": {
+    "ep200_global_w5_success": 0.754,
+    "ep200_original_success": 0.741,
+    "ep200_taskmix_low_support_only_success": 0.748,
+    "ep50_global_w5_success": 0.764,
+    "ep50_original_success": 0.756,
+    "ep50_taskmix_low_support_only_success": 0.764
+  },
+  "path_summary_csv": "runs_stage41_task_conditioned_support/scene-play-v0/seed0/path_audit_taskmix/path_summary.csv",
+  "seed": 0,
+  "stage": "stage41_task_conditioned_support"
+}
