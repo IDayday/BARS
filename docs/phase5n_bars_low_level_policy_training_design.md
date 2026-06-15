@@ -118,3 +118,30 @@ Build `phase5n/planner_subgoal_dataset.py`:
 This is the first route that can turn BARS graph improvements into a complete
 policy-and-planner algorithm.
 
+## Implemented V0
+
+The first implementation is now available:
+
+- `phase5n/planner_subgoal_dataset.py`
+- `phase5n/train_planner_gcbc.py`
+- `scripts/train_phase5n_planner_subgoal_gcbc.py`
+- `configs/phase5n_planner_subgoal_gcbc_antmaze_corebot_H10_B120.yaml`
+- `docs/phase5n_planner_subgoal_gcbc_summary.md`
+
+V0 implements a support-safe planner-aware target mixture:
+
+```text
+final-goal hindsight
+  + support-edge local
+  + planner-first-edge replay
+```
+
+Planner replay currently uses graph-level shortest-path queries to identify
+edges that BARS would issue frequently as immediate subgoals. The supervised
+examples are still extracted only from real Phase 2 edge segments. This makes
+the training distribution more policy/planner aligned without creating
+unsupported targets.
+
+The remaining gap is exact online planner-subgoal replay from natural-start
+traces and recovery samples after drift. Those should be added after the full
+Phase5N checkpoint is trained and evaluated.

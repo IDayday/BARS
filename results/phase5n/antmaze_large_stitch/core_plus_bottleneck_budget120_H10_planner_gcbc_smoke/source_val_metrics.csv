@@ -1,0 +1,16 @@
+step,target_source_id,target_source,val_action_mse,num_examples
+1,0,final_goal_hindsight,0.6657854755371809,1000
+1,1,support_edge_local,0.6518003058018694,1444
+1,2,planner_first_edge_replay,0.6593516438649223,1652
+50,0,final_goal_hindsight,0.35322071438282726,1000
+50,1,support_edge_local,0.3584571389695552,1444
+50,2,planner_first_edge_replay,0.3511457147965203,1652
+100,0,final_goal_hindsight,0.3101917698029429,1000
+100,1,support_edge_local,0.312137223799504,1444
+100,2,planner_first_edge_replay,0.3045282449661224,1652
+150,0,final_goal_hindsight,0.29512611860968174,1000
+150,1,support_edge_local,0.29277994088800186,1444
+150,2,planner_first_edge_replay,0.28696224943240856,1652
+200,0,final_goal_hindsight,0.2835212371535599,1000
+200,1,support_edge_local,0.27719574338960307,1444
+200,2,planner_first_edge_replay,0.2712125106338078,1652

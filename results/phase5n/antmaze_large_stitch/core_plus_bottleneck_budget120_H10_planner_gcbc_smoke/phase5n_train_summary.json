@@ -1,0 +1,26 @@
+{
+  "final": {
+    "bottleneck_edge_val_mse": 0.28029773201431984,
+    "final_goal_hindsight_val_mse": 0.2835212371535599,
+    "high_support_edge_val_mse": 0.27775389869600664,
+    "long_horizon_edge_val_mse": 0.27676675266529804,
+    "low_support_edge_val_mse": 0.274834093206039,
+    "non_bottleneck_edge_val_mse": 0.27222620011071313,
+    "not_planner_used_edge_val_mse": 0.27663066436061473,
+    "planner_first_edge_replay_val_mse": 0.2712125106338078,
+    "planner_used_edge_val_mse": 0.27614307562948165,
+    "short_horizon_edge_val_mse": 0.27584679365373554,
+    "step": 200,
+    "support_edge_local_val_mse": 0.27719574338960307,
+    "val_action_mse": 0.27632689103484154
+  },
+  "mean_planner_loss_weight": 0.9999279629019664,
+  "note": "Offline supervised planner-aware GCBC metrics are not rollout success.",
+  "num_planner_reachable_queries": 4980,
+  "num_train_episodes": 950,
+  "num_train_segments": 543562,
+  "num_val_episodes": 50,
+  "num_val_segments": 28608,
+  "phase": "Phase 5N",
+  "title": "BARS Planner-Aware Low-Level GCBC"
+}
