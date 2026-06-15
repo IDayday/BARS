@@ -35,6 +35,7 @@ from phase3f.edge_memory import (
     summarize_edge_attempts,
 )
 from phase3f.edge_outcome_model import edge_outcome_penalty_map, fit_edge_outcome_scores
+from phase3f.offline_edge_prior import build_offline_edge_prior_scores, offline_edge_prior_penalty_map
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -723,3 +724,102 @@ def test_edge_outcome_penalty_changes_support_planning_route():
     )
     assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
     assert list(__import__("networkx").shortest_path(outcome_penalized, 0, 1, weight="cost")) == [0, 2, 1]
+
+
+def test_offline_edge_prior_penalizes_weak_support_unseen_edges():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1],
+            "src": [0, 0],
+            "dst": [1, 2],
+            "num_segments": [100, 2],
+            "num_unique_starts": [50, 1],
+            "num_unique_episodes": [10, 1],
+            "median_h": [2.0, 10.0],
+        }
+    )
+    scores = build_offline_edge_prior_scores(
+        edges,
+        penalty_weight=5.0,
+        certification_weight=0.0,
+        support_weight=0.45,
+        diversity_weight=0.35,
+        horizon_weight=0.20,
+    ).set_index("segment_edge_id")
+
+    assert scores.loc[1, "offline_edge_prior_penalty"] > scores.loc[0, "offline_edge_prior_penalty"]
+    assert scores.loc[1, "offline_edge_prior_reliability"] < scores.loc[0, "offline_edge_prior_reliability"]
+
+
+def test_offline_edge_prior_uses_certification_and_repair_bank_key():
+    graph_edges = pd.DataFrame(
+        {
+            "edge_id": [10],
+            "src": [0],
+            "dst": [1],
+            "num_segments": [5],
+            "num_unique_starts": [2],
+            "num_unique_episodes": [1],
+            "median_h": [8.0],
+            "is_repair_edge": [True],
+            "bank_edge_id": [99],
+        }
+    )
+    certification = pd.DataFrame(
+        {
+            "edge_id": [10],
+            "is_repair_edge": [True],
+            "bank_edge_id": [99],
+            "calibrated_edge_reliability_score": [0.9],
+        }
+    )
+    scores = build_offline_edge_prior_scores(
+        graph_edges,
+        penalty_weight=10.0,
+        certification_weight=1.0,
+        support_weight=0.0,
+        diversity_weight=0.0,
+        horizon_weight=0.0,
+    )
+    assert scores.iloc[0]["segment_source"] == "bank"
+    assert scores.iloc[0]["segment_edge_id"] == 99
+
+    # Use an in-memory CSV roundtrip to exercise the same lookup path as configs.
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".csv") as f:
+        certification.to_csv(f.name, index=False)
+        certified = build_offline_edge_prior_scores(
+            graph_edges,
+            certification_csv=f.name,
+            penalty_weight=10.0,
+            certification_weight=1.0,
+            support_weight=0.0,
+            diversity_weight=0.0,
+            horizon_weight=0.0,
+        )
+    row = certified.iloc[0]
+    penalties = offline_edge_prior_penalty_map(certified)
+    assert row["segment_source"] == "bank"
+    assert row["segment_edge_id"] == 99
+    assert np.isclose(float(row["offline_edge_prior_penalty"]), 1.0)
+    assert penalties[("bank", 99)] == float(row["offline_edge_prior_penalty"])
+
+
+def test_offline_edge_prior_penalty_changes_support_planning_route():
+    edges = pd.DataFrame(
+        {
+            "edge_id": [0, 1, 2],
+            "src": [0, 0, 2],
+            "dst": [1, 2, 1],
+            "median_h": [1.0, 2.0, 2.0],
+            "cost": [1.0, 2.0, 2.0],
+        }
+    )
+    base = build_support_planning_graph(edges)
+    prior_penalized = build_support_planning_graph(
+        edges,
+        edge_risk_penalties={("graph", 0): 10.0},
+    )
+    assert list(__import__("networkx").shortest_path(base, 0, 1, weight="cost")) == [0, 1]
+    assert list(__import__("networkx").shortest_path(prior_penalized, 0, 1, weight="cost")) == [0, 2, 1]

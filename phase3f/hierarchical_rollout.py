@@ -134,8 +134,8 @@ def build_support_planning_graph(
         segment_source, segment_edge_id, policy_edge_id = _edge_identity(row, source)
         failure_count = int(failed_edge_counts.get((segment_source, int(segment_edge_id)), 0))
         failure_cost = float(failure_penalty) * failure_count
-        outcome_penalty = float(edge_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
-        cost = float(base_cost + failure_cost + outcome_penalty)
+        risk_penalty = float(edge_risk_penalties.get((segment_source, int(segment_edge_id)), 0.0))
+        cost = float(base_cost + failure_cost + risk_penalty)
         attrs = {
             "src": src,
             "dst": dst,
@@ -143,7 +143,8 @@ def build_support_planning_graph(
             "cost": cost,
             "failure_count": failure_count,
             "failure_cost": float(failure_cost),
-            "edge_outcome_penalty": float(outcome_penalty),
+            "edge_outcome_penalty": float(risk_penalty),
+            "edge_risk_penalty": float(risk_penalty),
             "median_h": float(getattr(row, "median_h", cost)),
             "max_h": float(getattr(row, "max_h", getattr(row, "median_h", cost))),
             "edge_id": int(getattr(row, "edge_id")),
@@ -502,6 +503,7 @@ def run_hierarchical_support_episodes(
                         "edge_failure_count": int(edge_attrs.get("failure_count", 0)),
                         "edge_failure_cost": float(edge_attrs.get("failure_cost", 0.0)),
                         "edge_outcome_penalty": float(edge_attrs.get("edge_outcome_penalty", 0.0)),
+                        "edge_risk_penalty": float(edge_attrs.get("edge_risk_penalty", 0.0)),
                         "edge_planning_cost": float(edge_attrs.get("cost", 0.0)),
                         **subgoal_info,
                     }

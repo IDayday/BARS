@@ -1415,6 +1415,41 @@ Lessons:
   attempts by combining offline support, direct GCBC edge fitting, current-state
   initiation distance, compatibility context, and online memory.
 
+### Offline-Informed Edge Prior
+
+Status:
+
+Implemented as Phase 5G. The natural-start planner now assigns every
+planner-visible support edge a static offline risk prior from Phase 4G
+certification when available and Phase 2 support metadata otherwise. This prior
+is added to the Phase 5F online outcome penalty, so previously unseen
+support-bank edges no longer have zero risk by default.
+
+Results:
+
+- AntMaze task id 1, seeds 0/1/2, 3 episodes x 120-step cap:
+  - Phase 5F outcome-only: success `0.0`, mean final goal L2 `43.0624`, mean
+    completed edges `1.667`.
+  - Phase 5G offline prior + outcome: success `0.0`, mean final goal L2
+    `42.0333`, mean completed edges `0.333`.
+- Phase 5G scored 2151 planner-visible edge keys. Median offline prior
+  reliability is `0.4571`; median offline prior penalty is `0.5429`.
+- A one-episode penalty-weight sweep shows mild prior weight is best in this
+  smoke: weight `1.0` gives final L2 `39.9252`, weight `2.0` gives `40.4665`,
+  and weight `4.0` worsens to `42.5091`.
+
+Lessons:
+
+- Scoring unseen support edges is useful and improves final-goal distance in
+  the small 3-episode smoke.
+- The prior must remain mild. Strong static penalties reduce edge progress and
+  increase replanning.
+- Completed-edge count and final-goal distance can disagree, so a successful
+  algorithm needs both path progress and task-distance metrics.
+- The next model should be state-conditioned: edge risk should depend on the
+  current online observation and candidate segment initiation distance, not only
+  on edge id.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1479,6 +1514,9 @@ Lessons:
   persisted, and fed back into support-only replanning.
 - Phase 5F shows smooth online outcome priors are cleaner than hard persistent
   failure counts and fixes repeated-attempt labeling for edge memory.
+- Phase 5G shows a mild offline prior over all support edges can improve
+  AntMaze natural-start final-goal distance relative to outcome-only memory in
+  a small 3-episode smoke.
 
 ## Claims Not Yet Supported
 
@@ -1519,3 +1557,5 @@ Lessons:
   improve online task success in the current AntMaze smoke.
 - Phase 5F smooth edge outcome priors do not solve online task success and do
   not score unseen support edges well enough.
+- Phase 5G offline edge priors do not solve online task success and reduce
+  completed-edge count in the current AntMaze smoke.

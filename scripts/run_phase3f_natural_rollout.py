@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -35,6 +36,10 @@ from phase3f.edge_memory import (  # noqa: E402
 from phase3f.edge_outcome_model import (  # noqa: E402
     edge_outcome_penalty_map,
     fit_edge_outcome_scores,
+)
+from phase3f.offline_edge_prior import (  # noqa: E402
+    build_offline_edge_prior_scores,
+    offline_edge_prior_penalty_map,
 )
 from phase3f.task_eval import load_preflight_status, write_env_unavailable_skip  # noqa: E402
 from phase1.data import load_ogbench_dataset  # noqa: E402
@@ -128,6 +133,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outcome_policy_mse_scale", type=float, default=None)
     parser.add_argument("--outcome_subgoal_l2_weight", type=float, default=None)
     parser.add_argument("--outcome_subgoal_l2_scale", default=None)
+    parser.add_argument("--use_offline_edge_prior", action="store_true")
+    parser.add_argument("--offline_certification_csv", default=None)
+    parser.add_argument("--offline_prior_penalty_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_certification_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_support_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_diversity_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_horizon_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_policy_weight", type=float, default=None)
+    parser.add_argument("--offline_prior_compatibility_weight", type=float, default=None)
     return parser.parse_args()
 
 
@@ -186,6 +200,15 @@ def merge_args(args: argparse.Namespace) -> argparse.Namespace:
         "outcome_policy_mse_scale": 0.05,
         "outcome_subgoal_l2_weight": 0.0,
         "outcome_subgoal_l2_scale": "auto",
+        "use_offline_edge_prior": False,
+        "offline_certification_csv": None,
+        "offline_prior_penalty_weight": 1.0,
+        "offline_prior_certification_weight": 0.45,
+        "offline_prior_support_weight": 0.20,
+        "offline_prior_diversity_weight": 0.15,
+        "offline_prior_horizon_weight": 0.10,
+        "offline_prior_policy_weight": 0.05,
+        "offline_prior_compatibility_weight": 0.05,
     }
     for key, value in defaults.items():
         if merged.get(key) is None:
@@ -321,10 +344,29 @@ def main() -> None:
             subgoal_l2_weight=args.outcome_subgoal_l2_weight,
             subgoal_l2_scale=args.outcome_subgoal_l2_scale,
         ) if args.use_edge_outcome_model else fit_edge_outcome_scores(None)
-        edge_risk_penalties = edge_outcome_penalty_map(outcome_scores)
+        outcome_penalties = edge_outcome_penalty_map(outcome_scores)
+        edge_risk_penalties = dict(outcome_penalties)
+        offline_prior_scores = build_offline_edge_prior_scores(
+            graph_edges,
+            bank_edges=bank_edges,
+            certification_csv=args.offline_certification_csv,
+            penalty_weight=args.offline_prior_penalty_weight,
+            certification_weight=args.offline_prior_certification_weight,
+            support_weight=args.offline_prior_support_weight,
+            diversity_weight=args.offline_prior_diversity_weight,
+            horizon_weight=args.offline_prior_horizon_weight,
+            policy_weight=args.offline_prior_policy_weight,
+            compatibility_weight=args.offline_prior_compatibility_weight,
+        ) if args.use_offline_edge_prior else build_offline_edge_prior_scores(pd.DataFrame())
+        offline_prior_penalties = offline_edge_prior_penalty_map(offline_prior_scores)
+        for key, value in offline_prior_penalties.items():
+            edge_risk_penalties[key] = float(edge_risk_penalties.get(key, 0.0)) + float(value)
         if args.use_edge_outcome_model:
             out_dir.mkdir(parents=True, exist_ok=True)
             outcome_scores.to_csv(out_dir / "edge_outcome_scores.csv", index=False)
+        if args.use_offline_edge_prior:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            offline_prior_scores.to_csv(out_dir / "offline_edge_prior_scores.csv", index=False)
         episodes, traces = run_hierarchical_support_episodes(
             env,
             policy,
@@ -399,7 +441,12 @@ def main() -> None:
                 "edge_memory_prior_penalized_edges": int(len(prior_failed_counts)),
                 "edge_outcome_model_used": bool(args.use_edge_outcome_model),
                 "edge_outcome_num_scored_edges": int(outcome_scores.shape[0]),
-                "edge_outcome_num_penalized_edges": int(len(edge_risk_penalties)),
+                "edge_outcome_num_penalized_edges": int(len(outcome_penalties)),
+                "offline_edge_prior_used": bool(args.use_offline_edge_prior),
+                "offline_certification_csv_resolved": args.offline_certification_csv,
+                "offline_prior_num_scored_edges": int(offline_prior_scores.shape[0]),
+                "offline_prior_num_penalized_edges": int(len(offline_prior_penalties)),
+                "total_edge_risk_penalized_edges": int(len(edge_risk_penalties)),
             }
         )
     _write_config(out_dir / "config_resolved.yaml", args, extra)
