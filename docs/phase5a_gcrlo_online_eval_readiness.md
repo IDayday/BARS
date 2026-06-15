@@ -93,7 +93,13 @@ Both environments can run natural-start `reset/step`:
 
 The blocker has moved from `env_unavailable` to `reset_unsupported`.
 
-Next evaluation should prioritize natural-start closed-loop task rollout:
+Phase 5B now provides a minimal natural-start closed-loop smoke test that uses
+`info["goal"]` from `env.reset(...)` and trained GCBC checkpoints. The smoke
+runs completed in `gcrlo` for AntMaze and Scene, but direct edge-BC GCBC did not
+solve either task in 2 episodes x 100 steps. This only validates the online
+evaluation interface; it does not validate the graph algorithm.
+
+Next evaluation should prioritize hierarchical natural-start rollout:
 
 1. `env.reset()`.
 2. Infer current cluster from observation.

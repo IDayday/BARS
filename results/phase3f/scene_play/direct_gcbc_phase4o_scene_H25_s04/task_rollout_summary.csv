@@ -1,0 +1,2 @@
+dataset_name,method,num_episodes,success_rate,mean_steps,mean_total_reward,mean_final_goal_l2,skipped,skipped_reason
+scene-play-v0,direct_gcbc_phase4o_scene_H25_s04,2,0.0,100.0,0.0,6.175863265991211,False,

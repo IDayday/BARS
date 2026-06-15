@@ -1,0 +1,19 @@
+action_mode: direct_gcbc
+config: configs/phase5b_natural_rollout_antmaze_direct.yaml
+dataset_dir: /mnt/project/offlinerl_datasets/ogbench
+dataset_name: antmaze-large-stitch-v0
+device: cpu
+device_resolved: cpu
+keep_going_after_success: false
+max_steps: 100
+method: direct_gcbc_corebot_H10_B120
+model_path: results/phase3/antmaze_large_stitch/core_plus_bottleneck/model.pt
+num_episodes: 2
+output_dir: results/phase3f
+preflight_root: results/phase3/env_preflight_gcrlo
+seed: 0
+skip_preflight_check: false
+task_ids:
+- 1
+- 2
+trace_every: 1

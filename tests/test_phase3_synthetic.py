@@ -21,6 +21,7 @@ from phase3.reset_utils import (
     env_unavailable_probe_result,
     probe_reset_capability,
 )
+from phase3f.natural_rollout import run_natural_start_episodes, write_natural_rollout_outputs
 from scripts.eval_phase3_edge_execution import _write_rollout_skip
 
 
@@ -263,3 +264,63 @@ def test_rollout_skip_summary_preserves_env_unavailable_status(tmp_path):
     assert summary["skipped_reason"] == RESET_STATUS_ENV_UNAVAILABLE
     assert summary["reset_probe"]["reset_probe_status"] == RESET_STATUS_ENV_UNAVAILABLE
     assert summary["reset_probe"]["reset_supported"] is None
+
+
+def test_natural_start_direct_rollout_uses_env_goal_and_writes_summary(tmp_path):
+    class DummyActionSpace:
+        shape = (1,)
+        low = np.asarray([-1.0], dtype=np.float32)
+        high = np.asarray([1.0], dtype=np.float32)
+
+        def sample(self):
+            return np.asarray([0.0], dtype=np.float32)
+
+    class DummyEnv:
+        def __init__(self):
+            self.action_space = DummyActionSpace()
+            self.x = 0.0
+            self.goal = np.asarray([1.0], dtype=np.float32)
+
+        def reset(self, seed=None, options=None):
+            del seed, options
+            self.x = 0.0
+            return np.asarray([self.x], dtype=np.float32), {"goal": self.goal.copy()}
+
+        def step(self, action):
+            self.x = float(np.clip(self.x + float(action[0]), -10.0, 10.0))
+            success = self.x >= 1.0
+            return (
+                np.asarray([self.x], dtype=np.float32),
+                1.0 if success else 0.0,
+                success,
+                False,
+                {"success": success},
+            )
+
+    class DummyPolicy:
+        def __call__(self, obs, goal):
+            del obs, goal
+            return np.asarray([0.6], dtype=np.float32)
+
+    episodes, traces = run_natural_start_episodes(
+        DummyEnv(),
+        DummyPolicy(),
+        dataset_name="dummy-v0",
+        method="direct_gcbc",
+        num_episodes=1,
+        max_steps=5,
+        seed=0,
+        action_mode="direct_gcbc",
+    )
+    assert episodes.loc[0, "success"] == 1.0
+    assert episodes.loc[0, "num_steps"] == 2
+    assert traces[0]["steps"][-1]["success"] == 1.0
+    summary = write_natural_rollout_outputs(
+        tmp_path,
+        dataset_name="dummy-v0",
+        method="direct_gcbc",
+        episodes=episodes,
+        traces=traces,
+    )
+    assert summary.loc[0, "success_rate"] == 1.0
+    assert (tmp_path / "episode_traces.jsonl").read_text().strip()

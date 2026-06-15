@@ -1,0 +1,3 @@
+dataset_name,method,episode_id,seed,task_id,num_steps,total_reward,final_reward,success,initial_goal_l2,final_goal_l2,terminated,truncated,failure_reason
+antmaze-large-stitch-v0,direct_gcbc_corebot_H10_B120,0,0,1,100,0.0,0.0,0.0,43.07111740112305,42.83976745605469,False,False,max_steps_without_success
+antmaze-large-stitch-v0,direct_gcbc_corebot_H10_B120,1,1,2,100,0.0,0.0,0.0,16.55779266357422,16.716096878051758,False,False,max_steps_without_success

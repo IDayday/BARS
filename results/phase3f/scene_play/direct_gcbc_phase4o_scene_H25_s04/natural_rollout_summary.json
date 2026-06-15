@@ -1,0 +1,11 @@
+{
+  "dataset_name": "scene-play-v0",
+  "mean_final_goal_l2": 6.175863265991211,
+  "mean_steps": 100.0,
+  "mean_total_reward": 0.0,
+  "method": "direct_gcbc_phase4o_scene_H25_s04",
+  "num_episodes": 2,
+  "skipped": false,
+  "skipped_reason": "",
+  "success_rate": 0.0
+}

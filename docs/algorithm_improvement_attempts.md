@@ -1274,6 +1274,26 @@ Evidence required:
 - Reset or natural-start semantics are documented.
 - Rollout success is reported separately from offline MSE.
 
+### Natural-Start Online Smoke
+
+Status:
+
+Implemented as Phase 5B. The `gcrlo` environment can run natural-start
+Gymnasium loops for AntMaze and Scene using OGBench `info["goal"]` as the
+goal-conditioned policy input. Direct GCBC smoke with 2 episodes x 100 steps
+completed but produced zero task success on both datasets, so the result is an
+interface validation and a negative weak-baseline result, not evidence against
+the graph method.
+
+Lessons:
+
+- The online blocker is no longer package construction in `gcrlo`.
+- Arbitrary reset-to-state remains unsupported with the current offline dataset
+  state references, so edge-level reset rollout should remain gated.
+- Direct edge-BC GCBC is not a complete algorithm for natural-start tasks; the
+  next mature algorithmic unit needs graph planning, option subgoal selection,
+  and switching.
+
 ## Claims Currently Supported
 
 - BARS Phase 2 can construct support-certified compressed option graphs from
@@ -1326,6 +1346,8 @@ Evidence required:
   coverage from `0.17` to `0.64`, and guarded planner-relevant weighting selects
   `s04` with improved final validation MSE, direct repair-edge MSE, and
   policy-support score.
+- Phase 5B shows the local `gcrlo` stack can run reset-free natural-start
+  OGBench closed-loop episodes with trained GCBC checkpoints.
 
 ## Claims Not Yet Supported
 
@@ -1355,3 +1377,6 @@ Evidence required:
   or generalizes as a fixed best strength across horizons.
 - Phase 4O guard thresholds are calibrated to closed-loop execution success or
   should be treated as final hyperparameter-selection rules.
+- Phase 5B direct GCBC smoke success rate is not evidence that support graphs
+  are ineffective; it does not include hierarchical planning or option
+  switching.
