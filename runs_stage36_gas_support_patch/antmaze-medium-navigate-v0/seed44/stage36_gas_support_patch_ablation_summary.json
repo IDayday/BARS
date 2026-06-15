@@ -1,0 +1,26 @@
+{
+  "artifact_source": "stage30 official GAS smoke copy; policy/keygraph copied into runs_stage36_gas_support_patch/artifact_root",
+  "dataset_embeddings_source": "exported from official GAS policy agent.get_phi over OGBench train observations",
+  "env": "antmaze-medium-navigate-v0",
+  "eval_ep20": {
+    "original_length": 248.7,
+    "original_success": 0.97,
+    "support_penalty_2_delta_length": 13.25,
+    "support_penalty_2_delta_success": 0.010000000000000009,
+    "support_penalty_2_length": 261.95,
+    "support_penalty_2_success": 0.98
+  },
+  "eval_ep5": {
+    "original_success": 0.96,
+    "support_penalty_2_delta_success": 0.040000000000000036,
+    "support_penalty_2_success": 1.0,
+    "support_penalty_8_delta_success": -0.039999999999999925,
+    "support_penalty_8_success": 0.92
+  },
+  "interpretation": "The support-only patch is plug-compatible with official GAS and can change final closed-loop success without retraining the policy. On this near-saturated smoke env, mild penalty=2 produced a small ep20 gain (0.97 to 0.98) but increased mean episode length (248.7 to 261.95). Strong penalty=8 degraded ep5 success. Treat this as a promising but not yet conclusive transfer result: the useful regime is calibrated soft risk, not hard pruning or large penalties.",
+  "next_step": "Run the same patch on non-saturated official GAS artifacts such as antmaze-large-stitch/giant if keygraph+policy artifacts are restored or regenerated.",
+  "official_gas_policy_unchanged": true,
+  "seed": 44,
+  "support_only_non_goal_supported_edge_rate": 0.18790018059431948,
+  "support_only_unsupported_edge_rate": 0.8022218618228998
+}

@@ -1935,6 +1935,13 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   edges while keeping the official GAS actor unchanged. This is the cleanest
   immediate success-rate A/B route because it tests graph evidence on a mature
   low-level policy without pretending that BARS clusters are GAS skills.
+- Stage36 smoke A/B confirms that the bridge can affect final closed-loop GAS
+  success without retraining the policy: on `antmaze-medium-navigate-v0`
+  seed `44`, support penalty `2` changes success from `0.97` to `0.98` over
+  20 episodes/task, while increasing mean episode length from `248.70` to
+  `261.95`; support penalty `8` hurts the 5-episode smoke (`0.96` to `0.92`).
+  The useful pattern is calibrated soft edge risk, not hard pruning or large
+  unsupported-edge penalties.
 - Phase 5P tests source-conditioned GCBC action heads for final-goal,
   support-edge, and planner-replay targets. It slightly reduces final-goal MSE
   relative to Phase 5N but worsens overall, support-edge, and planner-replay
@@ -2008,8 +2015,9 @@ See `docs/phase5o_policy_action_mse_reference.md`.
   alone is not a complete low-level policy solution.
 - GAS/HIQL/CRL action MSE is not yet known for this local protocol; it must be
   computed from live checkpoints before being used as a design target.
-- Stage36 has not yet produced an online success-rate result; it only provides
-  the patched-keygraph mechanism and protocol needed to compare original GAS vs
-  BARS-support-patched GAS under the same policy.
+- Stage36 has only a small near-saturated online A/B so far. It shows
+  plug-compatibility with official GAS and a marginal smoke improvement, but it
+  is not yet strong evidence of SOTA improvement; the decisive test must use
+  restored or regenerated non-saturated GAS artifacts.
 - Phase 5P source heads are not a complete low-level policy solution and do
   not improve AntMaze task success.

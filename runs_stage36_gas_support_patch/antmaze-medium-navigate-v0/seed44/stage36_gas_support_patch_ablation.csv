@@ -1,0 +1,6 @@
+method,eval_episodes_per_task,unsupported_penalty,overall_success,overall_return,overall_normalized_return,overall_length,task1_success,task1_length,task2_success,task2_length,task3_success,task3_length,task4_success,task4_length,task5_success,task5_length
+original_ep5,5,0.0,0.96,0.96,96.0,260.48,1.0,305.2,1.0,209.8,0.8,327.2,1.0,242.4,1.0,217.8
+support_penalty_2_ep5,5,2.0,1.0,1.0,100.0,288.92,1.0,502.6,1.0,253.4,1.0,171.4,1.0,299.6,1.0,217.6
+support_penalty_8_ep5,5,8.0,0.92,0.92,92.0,331.68,1.0,390.2,1.0,243.6,1.0,176.8,1.0,317.2,0.6,530.6
+original_ep20,20,0.0,0.97,0.97,97.0,248.7,1.0,311.15,1.0,211.15,0.95,191.1,0.95,279.55,0.95,250.55
+support_penalty_2_ep20,20,2.0,0.98,0.98,98.0,261.95,1.0,334.7,1.0,243.4,0.95,197.95,0.95,318.05,1.0,215.65

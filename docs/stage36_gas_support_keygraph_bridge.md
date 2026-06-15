@@ -36,6 +36,7 @@ New files:
 
 - `bars/gas_bars/support_keygraph.py`
 - `scripts/stage36_patch_official_gas_keygraph_support.py`
+- `scripts/stage36_score_gas_support_only.py`
 - `configs/stage36_gas_support_keygraph_patch_antmaze.json`
 - `tests/test_gas_support_keygraph_patch.py`
 
@@ -95,16 +96,58 @@ PYTHONPATH=/mnt/project/BARS/external_src/GAS conda run -n gcrlo python external
 The valid comparison is original GAS keygraph vs patched keygraph with the
 same policy checkpoint, task set, seeds, and evaluation hyperparameters.
 
+## Smoke A/B Result On Official GAS Actor
+
+Available complete large-stitch artifacts were not present in the current
+workspace, but Stage30 retained an official GAS smoke artifact for
+`antmaze-medium-navigate-v0`, seed `44`. I copied only its keygraph and policy
+into `runs_stage36_gas_support_patch/artifact_root`, kept the policy checkpoint
+unchanged, exported dataset embeddings through the GAS policy's `agent.get_phi`,
+and generated support-only edge scores in the same GAS latent space.
+
+Support audit:
+
+- graph edges: `12332`
+- goal connector edges: `150`
+- non-goal local-supported edge rate: `0.1879`
+- effective unsupported edge rate after protecting goal connectors: `0.8022`
+
+Closed-loop A/B, same official GAS actor:
+
+| method | episodes/task | unsupported penalty | success | mean episode length |
+| --- | ---: | ---: | ---: | ---: |
+| original keygraph | 5 | 0 | `0.96` | `260.48` |
+| support penalty | 5 | 2 | `1.00` | `288.92` |
+| support penalty | 5 | 8 | `0.92` | `331.68` |
+| original keygraph | 20 | 0 | `0.97` | `248.70` |
+| support penalty | 20 | 2 | `0.98` | `261.95` |
+
+This is the first direct evidence that BARS graph evidence can be applied to a
+mature GAS actor and change final closed-loop success without retraining the
+policy. The effect is still small and from a near-saturated smoke environment:
+penalty `2` gives a marginal success gain but longer paths, while penalty `8`
+hurts success. The useful transfer direction is calibrated soft edge risk, not
+hard pruning or large unsupported-edge penalties.
+
+Result files:
+
+- `runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/stage36_gas_support_patch_ablation.csv`
+- `runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/stage36_gas_support_patch_ablation_summary.json`
+- `runs_stage36_gas_support_patch/antmaze-medium-navigate-v0/seed44/support_only_edge_scores/support_only_metrics.json`
+
 ## Current Interpretation
 
-Phase5P source-head GCBC is still training and was around validation MSE
-`0.055` near step 79000, worse than the earlier Phase3A `0.0426` and Phase5N
-`0.0444` references. That reinforces the current experimental priority:
-measure BARS graph improvements with a mature GAS actor before spending more
-GPU time on another isolated BARS low-level policy variant.
+Phase5P source-head GCBC did not solve the BARS policy bottleneck. Stage36 is
+therefore the right bridge for near-term success-rate evidence: test graph
+evidence on a mature official GAS actor while preserving GAS target semantics.
 
-Stage36 can support a strong conclusion only after online evaluation. If
-success improves with the patched keygraph and unchanged policy, the graph
-evidence is useful beyond our weaker GCBC actor. If it does not, the likely
-bottleneck is graph-policy target switching, over-pruning, or the support proxy
-itself, not just BARS policy weakness.
+The smoke A/B says the bridge is viable but not yet a complete algorithmic win.
+BARS support evidence should be used as a calibrated risk/cost prior over GAS
+edges. It should not directly replace GAS's graph or aggressively remove
+distance edges, because the trained GAS actor and planner were optimized around
+that graph's target distribution.
+
+The next decisive experiment is the same patch on non-saturated official GAS
+artifacts such as `antmaze-large-stitch-v0` or `antmaze-giant-stitch-v0`, where
+there is enough baseline failure rate to measure whether support-calibrated
+graph costs improve success rather than merely reshuffle already solved tasks.

@@ -1,0 +1,15 @@
+{
+  "dataset_embeddings": "runs_stage36_gas_support_patch/artifact_root/antmaze-medium-navigate-v0/seed44/features/dataset_embeddings.npy",
+  "env": "antmaze-medium-navigate-v0",
+  "keygraph": "runs_stage36_gas_support_patch/artifact_root/antmaze-medium-navigate-v0/seed44/graph/keygraph.pkl",
+  "mean_same_traj_support": 6.195669802140772,
+  "non_goal_supported_edge_rate": 0.18790018059431948,
+  "num_edges": 12332,
+  "num_goal_connector_edges": 150,
+  "seed": 44,
+  "support_horizon": 16,
+  "support_k": 64,
+  "support_radius": 0.0,
+  "supported_edge_rate": 0.1895069737268894,
+  "unsupported_penalty": 8.0
+}

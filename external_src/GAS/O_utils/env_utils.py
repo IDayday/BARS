@@ -1,3 +1,4 @@
+import os
 import time
 import ogbench
 import gymnasium
@@ -49,7 +50,11 @@ class EpisodeMonitor(gymnasium.Wrapper):
 
 def make_env_and_datasets(env_name, seed):
     """Make OGBench environment and datasets."""
-    env, train_dataset, val_dataset = ogbench.make_env_and_datasets(env_name, compact_dataset=False)
+    dataset_dir = os.environ.get("OGBENCH_DATASET_DIR") or os.environ.get("BARS_OGBENCH_DATASET_DIR")
+    kwargs = {"compact_dataset": False}
+    if dataset_dir:
+        kwargs["dataset_dir"] = dataset_dir
+    env, train_dataset, val_dataset = ogbench.make_env_and_datasets(env_name, **kwargs)
     env = EpisodeMonitor(env)
     observation, info = env.reset(seed=seed)
     
