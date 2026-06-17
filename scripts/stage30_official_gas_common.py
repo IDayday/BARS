@@ -15,6 +15,10 @@ from typing import Any, Iterable, Sequence
 OFFICIAL_GAS_REPO = "https://github.com/qortmdgh4141/GAS.git"
 OFFICIAL_HF_REPO = "qortmdgh4141/GAS"
 ARCHIVED_PRE_STAGE30_STATUS = "ARCHIVED_INTERNAL_EXPLORATION_NOT_GAS_EVIDENCE"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_STAGE32_PROTOCOL_REGISTRY = REPO_ROOT / "configs" / "stage32_official_gas_protocol_registry.json"
+
+_PROTOCOL_REGISTRY_CACHE: dict[Path, dict[str, dict[str, Any]]] = {}
 
 
 @dataclass(frozen=True)
@@ -99,7 +103,52 @@ def env_to_hf_slug(env_name: str) -> str:
     return env_name[:-3] if env_name.endswith("-v0") else env_name
 
 
+def load_gas_protocol_registry(path: Path | str | None = None) -> dict[str, dict[str, Any]]:
+    registry_path = Path(path or os.environ.get("STAGE32_PROTOCOL_REGISTRY") or DEFAULT_STAGE32_PROTOCOL_REGISTRY)
+    if not registry_path.is_absolute():
+        registry_path = REPO_ROOT / registry_path
+    registry_path = registry_path.resolve()
+    if registry_path in _PROTOCOL_REGISTRY_CACHE:
+        return _PROTOCOL_REGISTRY_CACHE[registry_path]
+    if not registry_path.exists():
+        _PROTOCOL_REGISTRY_CACHE[registry_path] = {}
+        return {}
+    raw = json.loads(registry_path.read_text(encoding="utf-8"))
+    env_rows = raw.get("environments", raw if isinstance(raw, list) else [])
+    registry = {str(row["env_name"]): dict(row) for row in env_rows}
+    _PROTOCOL_REGISTRY_CACHE[registry_path] = registry
+    return registry
+
+
+def official_gas_protocol(env_name: str, *, registry_path: Path | str | None = None) -> dict[str, Any] | None:
+    row = load_gas_protocol_registry(registry_path).get(env_name)
+    return dict(row) if row else None
+
+
+def selected_stage32_envs(*, registry_path: Path | str | None = None) -> list[str]:
+    registry = load_gas_protocol_registry(registry_path)
+    return [env for env, row in registry.items() if int(row.get("selected_paper_env", 1))]
+
+
 def gas_agent_flag_args(env_name: str) -> list[str]:
+    protocol = official_gas_protocol(env_name)
+    if protocol:
+        return [
+            "--agent_config.encoder",
+            str(protocol["encoder"]),
+            "--agent_config.discount",
+            str(protocol["discount"]),
+            "--agent_config.tdr_expectile",
+            str(protocol["tdr_expectile"]),
+            "--agent_config.alpha",
+            str(protocol["alpha"]),
+            "--agent_config.batch_size",
+            str(protocol["batch_size"]),
+            "--agent_config.p_aug",
+            str(protocol["p_aug"]),
+            "--agent_config.way_steps",
+            str(protocol["way_steps"]),
+        ]
     slug = env_to_hf_slug(env_name)
     discount = "0.995" if "giant" in slug else "0.99"
     alpha = "0.01" if "explore" in slug else "1.0"
@@ -141,6 +190,9 @@ def gas_config_overrides(env_name: str) -> dict[str, Any]:
 
 
 def final_goal_threshold(env_name: str) -> int:
+    protocol = official_gas_protocol(env_name)
+    if protocol:
+        return int(protocol["eval_final_goal_threshold"])
     return 1 if "kitchen" in env_name else 2
 
 
@@ -320,12 +372,25 @@ def configure_official_env(gpu: str | int = "0") -> dict[str, str]:
     env.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
     env.setdefault("MUJOCO_GL", "egl")
     env.setdefault("OGBENCH_DATASET_DIR", "/mnt/project/offlinerl_datasets/ogbench")
+    env.setdefault("D4RL_DATASET_DIR", "/mnt/project/offlinerl_datasets/d4rl")
     env.setdefault("D4RL_SUPPRESS_IMPORT_ERROR", "1")
+    ogbench_package_root = REPO_ROOT / "external_src" / "tmd-release"
+    if ogbench_package_root.exists():
+        existing_pythonpath = [x for x in env.get("PYTHONPATH", "").split(":") if x]
+        if str(ogbench_package_root) not in existing_pythonpath:
+            env["PYTHONPATH"] = ":".join([str(ogbench_package_root), *existing_pythonpath])
+    mujoco_bin = "/root/.mujoco/mujoco210/bin"
+    if Path(mujoco_bin).exists() and mujoco_bin not in env.get("LD_LIBRARY_PATH", "").split(":"):
+        env["LD_LIBRARY_PATH"] = f"{env.get('LD_LIBRARY_PATH', '')}:{mujoco_bin}".lstrip(":")
     if str(gpu).lower() in {"cpu", "-1", ""}:
         env["JAX_PLATFORMS"] = "cpu"
         env["JAX_PLATFORM_NAME"] = "cpu"
     else:
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+        gpu_str = str(gpu)
+        env["CUDA_VISIBLE_DEVICES"] = gpu_str
+        first_gpu = gpu_str.split(",", 1)[0].strip()
+        if first_gpu.isdigit():
+            env["MUJOCO_EGL_DEVICE_ID"] = first_gpu
     return env
 
 
@@ -367,8 +432,17 @@ def ensure_ogbench_default_symlinks(env_name: str, dataset_dir: Path | None = No
                 row["status"] = "target_exists_not_symlink"
                 rows.append(row)
                 continue
-        os.symlink(src, dst)
-        row["status"] = "created_symlink"
+        try:
+            os.symlink(src, dst)
+            row["status"] = "created_symlink"
+        except FileExistsError:
+            try:
+                if dst.resolve() == src.resolve():
+                    row["status"] = "created_by_concurrent_worker"
+                else:
+                    row["status"] = "target_exists_not_symlink"
+            except Exception:
+                row["status"] = "target_exists_unresolved"
         rows.append(row)
     return rows
 

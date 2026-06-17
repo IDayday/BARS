@@ -18,9 +18,11 @@ from stage30_official_gas_common import (
     ARCHIVED_PRE_STAGE30_STATUS,
     configure_official_env,
     final_goal_threshold,
+    gas_agent_flag_args,
     gas_source_identity,
     gas_config_overrides,
     load_dataset_arrays,
+    official_gas_protocol,
     parse_csv_list,
     parse_seed_list,
     protocol_lock_row,
@@ -35,6 +37,7 @@ def _import_official_gas(gas_repo: Path) -> dict[str, Any]:
     sys.path.insert(0, str(gas_repo.resolve()))
     import jax
     import ogbench
+    from D_utils.d4rl_env_utils import d4rl_make_env_and_dataset
     from K_utils.keygraph_utils import KeyGraph
     from M_utils.agents import agents_dict
     from M_utils.agents.gas import get_config
@@ -46,6 +49,7 @@ def _import_official_gas(gas_repo: Path) -> dict[str, Any]:
     return {
         "jax": jax,
         "ogbench": ogbench,
+        "d4rl_make_env_and_dataset": d4rl_make_env_and_dataset,
         "KeyGraph": KeyGraph,
         "agents_dict": agents_dict,
         "get_config": get_config,
@@ -64,11 +68,16 @@ def _load_official_components(art, gas_repo: Path, seed: int, eval_on_cpu: int) 
     config = mods["get_config"]()
     for key, value in gas_config_overrides(art.env_name).items():
         config[key] = value
-    dataset_dir = os.environ.get("OGBENCH_DATASET_DIR", "/mnt/project/offlinerl_datasets/ogbench")
-    raw_env, train_dataset, _ = mods["ogbench"].make_env_and_datasets(art.env_name, dataset_dir=dataset_dir, compact_dataset=False)
-    env = mods["EpisodeMonitor"](raw_env)
-    env.reset(seed=seed)
-    train_gc_dataset = mods["GCDataset"](mods["Dataset"].create(**train_dataset), config)
+    if art.env_name == "kitchen-partial-v0":
+        env, train_dataset = mods["d4rl_make_env_and_dataset"](art.env_name, seed)
+        env.reset(seed)
+        train_gc_dataset = mods["GCDataset"](train_dataset, config)
+    else:
+        dataset_dir = os.environ.get("OGBENCH_DATASET_DIR", "/mnt/project/offlinerl_datasets/ogbench")
+        raw_env, train_dataset, _ = mods["ogbench"].make_env_and_datasets(art.env_name, dataset_dir=dataset_dir, compact_dataset=False)
+        env = mods["EpisodeMonitor"](raw_env)
+        env.reset(seed=seed)
+        train_gc_dataset = mods["GCDataset"](mods["Dataset"].create(**train_dataset), config)
     example_batch = train_gc_dataset.sample(1)
     agent = mods["agents_dict"][config["agent_name"]].create(seed, example_batch["observations"], example_batch["actions"], config)
     policy_restore_path = os.path.dirname(str(art.policy_path))
@@ -509,6 +518,35 @@ def main() -> None:
     for art in artifacts:
         components = _load_official_components(art, gas_repo, art.seed, args.eval_on_cpu)
         key_graph = components["key_graph"]
+        config = components["config"]
+        protocol = official_gas_protocol(art.env_name) or {}
+        registry_way_steps = protocol.get("way_steps", "")
+        registry_te_threshold = protocol.get("te_threshold", "")
+        keygraph_way_steps = int(getattr(key_graph, "way_steps", -1))
+        keygraph_te_threshold = getattr(key_graph, "te_threshold", "")
+        config_way_steps = int(config["way_steps"])
+        protocol_fields_valid = 1
+        for field in ("encoder", "discount", "tdr_expectile", "alpha", "batch_size", "p_aug", "way_steps"):
+            if field not in protocol:
+                protocol_fields_valid = 0
+                continue
+            actual = config.get(field)
+            expected = protocol[field]
+            try:
+                if isinstance(expected, float) and abs(float(actual) - float(expected)) > 1e-12:
+                    protocol_fields_valid = 0
+                elif isinstance(expected, int) and int(actual) != int(expected):
+                    protocol_fields_valid = 0
+                elif isinstance(expected, str) and str(actual) != expected:
+                    protocol_fields_valid = 0
+            except Exception:
+                protocol_fields_valid = 0
+        valid_protocol = int(
+            bool(protocol)
+            and protocol_fields_valid
+            and keygraph_way_steps == int(registry_way_steps)
+            and abs(float(keygraph_te_threshold) - float(registry_te_threshold)) <= 1e-12
+        )
         task_ids = task_ids_arg or _official_task_ids(components["env"], art.env_name)
         if args.max_task_id > 0:
             task_ids = [int(x) for x in task_ids if int(x) <= args.max_task_id]
@@ -532,6 +570,21 @@ def main() -> None:
                     "fallback_mode": args.fallback_mode,
                     "max_task_id": args.max_task_id,
                     "official_task_id_source": "auto_env_task_infos" if not task_ids_arg else "explicit_cli",
+                    "protocol_registry_path": str(protocol.get("registry_path", "")),
+                    "registry_way_steps": registry_way_steps,
+                    "config_way_steps": config_way_steps,
+                    "key_graph.way_steps": keygraph_way_steps,
+                    "registry_te_threshold": registry_te_threshold,
+                    "key_graph.te_threshold": keygraph_te_threshold,
+                    "config_encoder": config.get("encoder", ""),
+                    "config_discount": config.get("discount", ""),
+                    "config_tdr_expectile": config.get("tdr_expectile", ""),
+                    "config_alpha": config.get("alpha", ""),
+                    "config_batch_size": config.get("batch_size", ""),
+                    "config_p_aug": config.get("p_aug", ""),
+                    "config_flags_used": " ".join(gas_agent_flag_args(art.env_name)) if "gas_agent_flag_args" in globals() else "",
+                    "final_goal_threshold": final_goal_threshold(art.env_name),
+                    "valid_protocol": valid_protocol,
                 },
             )
         )
